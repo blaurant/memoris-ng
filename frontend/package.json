@@ -6,6 +6,10 @@
     "dev": "npx shadow-cljs watch app",
     "build": "npx shadow-cljs release app"
   },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
   "devDependencies": {
     "shadow-cljs": "2.28.14"
   }

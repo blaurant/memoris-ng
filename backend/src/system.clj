@@ -6,10 +6,14 @@
             [infrastructure.rest-api.handler]
             [infrastructure.rest-api.server]))
 
+;; Teach aero how to read #ig/ref tags from system.edn
+(defmethod aero/reader 'ig/ref [_ _ value] (ig/ref value))
+
 (defn read-config
   "Load system.edn from classpath for the given profile keyword."
   [profile]
-  (aero/read-config (io/resource "system.edn") {:profile profile}))
+  (aero/read-config (io/resource "system.edn")
+                    {:profile profile}))
 
 (defn- deployed-env?
   "Returns true when the HOSTNAME env var contains the given string (uppercased)."
