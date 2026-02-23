@@ -1,0 +1,24 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure         {:mvn/version "1.12.0"}
+        metosin/reitit               {:mvn/version "0.7.2"}
+        metosin/muuntaja             {:mvn/version "0.6.8"}
+        ring/ring-core               {:mvn/version "1.12.2"}
+        ring/ring-jetty-adapter      {:mvn/version "1.12.2"}
+        ring-cors/ring-cors          {:mvn/version "0.1.13"}
+        integrant/integrant          {:mvn/version "0.11.0"}
+        aero/aero                    {:mvn/version "1.1.6"}
+        com.brunobonacci/mulog       {:mvn/version "0.9.0"}}
+
+ :aliases
+ {:test  {:extra-paths ["test"]
+          :extra-deps  {lambdaisland/kaocha {:mvn/version "1.91.1392"}}
+          :main-opts   ["-m" "kaocha.runner"]}
+
+  :build {:deps       {io.github.clojure/tools.build {:mvn/version "0.10.5"}}
+          :ns-default build}
+
+  :lint  {:extra-deps {clj-kondo/clj-kondo {:mvn/version "2024.08.01"}}
+          :main-opts  ["-m" "clj-kondo.main" "--lint" "src" "test"]}
+
+  :fmt   {:extra-deps {dev.weavejester/cljfmt {:mvn/version "0.12.0"}}
+          :main-opts  ["-m" "cljfmt.main" "check" "src" "test"]}}}

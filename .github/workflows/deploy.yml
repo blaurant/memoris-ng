@@ -1,0 +1,137 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  # ── Build (shared across all envs) ──────────────────────────────────────
+  build:
+    name: Build backend image + frontend assets
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Clojure
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          cli: latest
+          bb: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Cache backend deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.clojure/.cpcache
+          key: backend-deps-${{ hashFiles('backend/deps.edn') }}
+          restore-keys: backend-deps-
+
+      - name: Backend tests
+        working-directory: backend
+        run: clojure -M:test
+
+      - name: Build backend uberjar
+        working-directory: backend
+        run: clojure -T:build uber
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npx shadow-cljs release app
+        env:
+          APP_ENV: ${{ vars.APP_ENV }}
+
+      - name: Compute image tag
+        id: meta
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=sha-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}/backend:latest
+
+  # ── Dev (auto on push to main) ───────────────────────────────────────────
+  deploy-dev:
+    name: Deploy → dev
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Deploy backend to dev
+        run: |
+          echo "Deploying ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
+          # Replace with: kubectl set image, docker compose pull, ssh, etc.
+        env:
+          APP_ENV: dev
+
+  # ── Staging (approval required) ─────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → staging
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Deploy backend to staging
+        run: |
+          echo "Deploying ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
+        env:
+          APP_ENV: staging
+
+  # ── Prod (tag only, approval required) ───────────────────────────────────
+  deploy-prod:
+    name: Deploy → prod
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Deploy backend to prod
+        run: |
+          echo "Deploying ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
+        env:
+          APP_ENV: prod

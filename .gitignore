@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Backend — Clojure
+backend/target/
+backend/.cpcache/
+backend/.nrepl-port
+*.jar
+*.class
+
+# Frontend — ClojureScript / shadow-cljs
+frontend/node_modules/
+frontend/.shadow-cljs/
+frontend/public/js/
+frontend/out/
+.nrepl-port
+
+# Logs
+log/
+*.log
+
+# Secrets & local config
+.env
+.env.local
+
+# IntelliJ / IDEA / Cursive
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Emacs
+*~
+\#*\#
+.\#*
