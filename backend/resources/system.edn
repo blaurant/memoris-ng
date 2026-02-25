@@ -7,9 +7,9 @@
  :networks/in-memory-repo {}
 
  :http/handler
- {:cors-origins   #profile {:dev  ["http://localhost:3449"]
-                             :staging []
-                             :prod    []}
+ {:cors-origins   #profile {:dev     ["http://localhost:3449"]
+                             :staging [#env CORS_ORIGIN]
+                             :prod    [#env CORS_ORIGIN]}
   :network-repo   #ig/ref :networks/in-memory-repo}
 
  :http/server

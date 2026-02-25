@@ -84,7 +84,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push Docker image
+      - name: Build & push backend image
         uses: docker/build-push-action@v5
         with:
           context: backend
@@ -92,6 +92,18 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/backend:${{ steps.meta.outputs.tag }}
             ghcr.io/${{ github.repository }}/backend:latest
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          push: true
+          build-args: |
+            API_BASE=${{ vars.STAGING_BACKEND_URL }}
+            GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}/frontend:latest
 
   # ── Dev (auto on push to main) ───────────────────────────────────────────
   deploy-dev:
@@ -118,11 +130,24 @@ jobs:
     environment: staging
 
     steps:
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Deploy backend to staging
         run: |
-          echo "Deploying ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
+          railway up --service backend \
+            --image ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}
         env:
-          APP_ENV: staging
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+
+      - name: Deploy frontend to staging
+        run: |
+          railway up --service frontend \
+            --image ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
 
   # ── Prod (tag only, approval required) ───────────────────────────────────
   deploy-prod:
