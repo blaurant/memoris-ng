@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   # ── Build (shared across all envs) ──────────────────────────────────────
@@ -140,30 +141,30 @@ jobs:
       - name: Deploy backend to staging
         run: |
           IMAGE="ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
-          # Update image source
-          curl -sf "$RAILWAY_API" \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
-          # Trigger redeploy
-          curl -sf "$RAILWAY_API" \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
+          railway_gql() {
+            RESP=$(curl -sf "$RAILWAY_API" \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$1")
+            echo "$RESP"
+            echo "$RESP" | grep -q '"errors"' && exit 1 || true
+          }
+          railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
+          railway_gql '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
       - name: Deploy frontend to staging
         run: |
           IMAGE="ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}"
-          # Update image source
-          curl -sf "$RAILWAY_API" \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
-          # Trigger redeploy
-          curl -sf "$RAILWAY_API" \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
+          railway_gql() {
+            RESP=$(curl -sf "$RAILWAY_API" \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$1")
+            echo "$RESP"
+            echo "$RESP" | grep -q '"errors"' && exit 1 || true
+          }
+          railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
+          railway_gql '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
   # ── Prod (tag only, approval required) ───────────────────────────────────
   deploy-prod:
