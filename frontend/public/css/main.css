@@ -1,0 +1,230 @@
+/* ============================================================
+   Wattprox — CSS principal
+   ============================================================ */
+
+/* Variables */
+:root {
+  --color-green:        #2e7d32;
+  --color-green-light:  #4caf50;
+  --color-green-pale:   #e8f5e9;
+  --color-text:         #212121;
+  --color-muted:        #616161;
+  --color-border:       #e0e0e0;
+  --color-bg:           #fafafa;
+  --color-white:        #ffffff;
+  --color-error:        #c62828;
+  --color-success:      #1b5e20;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius:    6px;
+  --shadow:    0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Reset minimal */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--color-green); }
+
+/* ── Layout ── */
+.container {
+  max-width: 1100px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+/* ── Navbar ── */
+.navbar {
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.navbar__logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-green);
+  text-decoration: none;
+}
+.navbar__tagline {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, var(--color-green) 0%, var(--color-green-light) 100%);
+  color: var(--color-white);
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+.hero__title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+.hero__subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  opacity: 0.9;
+  max-width: 600px;
+  margin-inline: auto;
+  margin-bottom: 2rem;
+}
+.hero__values {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+.hero__value {
+  background: rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn--primary {
+  background: var(--color-white);
+  color: var(--color-green);
+}
+.btn--green {
+  background: var(--color-green);
+  color: var(--color-white);
+}
+.btn--green:hover { background: var(--color-green-light); }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Sections ── */
+.section {
+  padding: 4rem 1.5rem;
+}
+.section--alt { background: var(--color-green-pale); }
+.section__title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-green);
+  margin-bottom: 0.5rem;
+}
+.section__subtitle {
+  color: var(--color-muted);
+  margin-bottom: 2rem;
+}
+
+/* ── Map ── */
+.map-container {
+  width: 66%;
+  height: 640px;
+  margin-inline: auto;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--color-border);
+  background: #e5e5e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-placeholder {
+  color: var(--color-muted);
+  font-size: 1rem;
+}
+
+/* ── Eligibility form ── */
+.eligibility-form {
+  margin-inline: auto;
+}
+.eligibility-form__group {
+  max-width: 540px;
+  margin-inline: auto;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.eligibility-form__input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.eligibility-form__input:focus {
+  border-color: var(--color-green-light);
+}
+
+/* ── Eligibility result ── */
+.eligibility-result {
+  max-width: 540px;
+  margin-inline: auto;
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.eligibility-result--ok {
+  background: #e8f5e9;
+  color: var(--color-success);
+  border: 1.5px solid #a5d6a7;
+}
+.eligibility-result--ko {
+  background: #ffebee;
+  color: var(--color-error);
+  border: 1.5px solid #ef9a9a;
+}
+
+/* ── Spinner ── */
+.loading {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  padding: 0.5rem 0;
+}
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Media queries ── */
+@media (max-width: 640px) {
+  .eligibility-form__group { flex-direction: column; }
+  .hero { padding: 3rem 1rem; }
+}

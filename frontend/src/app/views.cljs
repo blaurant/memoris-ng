@@ -1,16 +1,13 @@
 (ns app.views
-  (:require [re-frame.core :as rf]))
+  (:require [app.pages.home :as home]))
 
-(defn hello-button []
-  (let [message  @(rf/subscribe [:hello/message])
-        loading? @(rf/subscribe [:hello/loading?])]
-    [:div
-     [:button {:on-click #(rf/dispatch [:hello/fetch])
-               :disabled loading?}
-      "Hello World"]
-     (when message
-       [:p message])]))
+(defn- navbar []
+  [:nav.navbar
+   [:a.navbar__logo {:href "/"} "Wattprox"]
+   [:span.navbar__tagline "Énergie locale partagée"]])
 
 (defn main-panel []
-  [:div
-   [hello-button]])
+  [:<>
+   [navbar]
+   [home/home-page]
+   [:footer.footer "© 2026 Wattprox — Énergie locale partagée"]])

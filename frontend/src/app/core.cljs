@@ -1,5 +1,6 @@
 (ns app.core
   (:require [app.events]
+            [app.routes :as routes]
             [app.subs]
             [app.views :as views]
             [re-frame.core :as rf]
@@ -15,4 +16,5 @@
 
 (defn init []
   (rf/dispatch-sync [:app/initialize])
+  (routes/init!)
   (mount-root))

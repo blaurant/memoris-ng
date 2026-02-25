@@ -1,7 +1,16 @@
-{:http/handler
- {:cors-origins #profile {:dev  ["http://localhost:3449"]
-                          :staging []
-                          :prod    []}}
+{:log/mulog
+ {:type   :multi
+  :publishers [{:type :console}
+               {:type     :simple-file
+                :filename "log/app.log"}]}
+
+ :networks/in-memory-repo {}
+
+ :http/handler
+ {:cors-origins   #profile {:dev  ["http://localhost:3449"]
+                             :staging []
+                             :prod    []}
+  :network-repo   #ig/ref :networks/in-memory-repo}
 
  :http/server
  {:port    #profile {:dev 3000 :staging 8080 :prod 8080}

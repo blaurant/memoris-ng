@@ -3,7 +3,9 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [integrant.core :as ig]
+            [infrastructure.networks.in-memory-repo]
             [infrastructure.rest-api.handler]
+            [infrastructure.rest-api.logging]
             [infrastructure.rest-api.server]))
 
 ;; Teach aero how to read #ig/ref tags from system.edn
