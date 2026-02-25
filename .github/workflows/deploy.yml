@@ -131,18 +131,16 @@ jobs:
     environment: staging
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy backend to staging
-        run: |
-          railway up --service backend \
-            --image ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}
+        run: railway up --service backend --detach backend/
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
 
       - name: Deploy frontend to staging
-        run: |
-          railway up --service frontend \
-            --image ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}
+        run: railway up --service frontend --detach frontend/
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
