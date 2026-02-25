@@ -127,23 +127,43 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    container: ghcr.io/railwayapp/cli:latest
     environment: staging
 
-    steps:
-      - uses: actions/checkout@v4
+    env:
+      RAILWAY_API: https://backboard.railway.com/graphql/v2
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_ENV_ID: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
+      BACKEND_SVC_ID: ${{ vars.RAILWAY_BACKEND_SERVICE_ID }}
+      FRONTEND_SVC_ID: ${{ vars.RAILWAY_FRONTEND_SERVICE_ID }}
 
+    steps:
       - name: Deploy backend to staging
-        run: railway up --service backend --detach backend/
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
+          # Update image source
+          curl -sf "$RAILWAY_API" \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
+          # Trigger redeploy
+          curl -sf "$RAILWAY_API" \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
       - name: Deploy frontend to staging
-        run: railway up --service frontend --detach frontend/
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}"
+          # Update image source
+          curl -sf "$RAILWAY_API" \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
+          # Trigger redeploy
+          curl -sf "$RAILWAY_API" \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
   # ── Prod (tag only, approval required) ───────────────────────────────────
   deploy-prod:
