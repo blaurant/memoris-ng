@@ -150,7 +150,7 @@ jobs:
             echo "$RESP" | grep -q '"errors"' && exit 1 || true
           }
           railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
-          railway_gql '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
+          railway_gql '{"query":"mutation { serviceInstanceDeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
       - name: Deploy frontend to staging
         run: |
@@ -164,7 +164,7 @@ jobs:
             echo "$RESP" | grep -q '"errors"' && exit 1 || true
           }
           railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
-          railway_gql '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
+          railway_gql '{"query":"mutation { serviceInstanceDeploy(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
   # ── Prod (tag only, approval required) ───────────────────────────────────
   deploy-prod:
