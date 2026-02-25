@@ -127,12 +127,10 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
     environment: staging
 
     steps:
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
       - name: Deploy backend to staging
         run: |
           railway up --service backend \
