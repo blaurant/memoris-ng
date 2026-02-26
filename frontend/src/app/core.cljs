@@ -6,7 +6,8 @@
             [app.subs]
             [app.views :as views]
             [re-frame.core :as rf]
-            [reagent.dom :as rdom]))
+            [reagent.dom :as rdom]
+            [reitit.frontend :as rfe]))
 
 (defn mount-root []
   (rf/clear-subscription-cache!)
@@ -19,5 +20,9 @@
 (defn init []
   (rf/dispatch-sync [:app/initialize])
   (rf/dispatch-sync [:auth/restore-session])
+  ;; Resolve initial route synchronously before first render
+  (let [match (rfe/match-by-path routes/router (.-pathname js/location))
+        page  (or (-> match :data :name) :page/home)]
+    (rf/dispatch-sync [:router/navigated page]))
   (routes/init!)
   (mount-root))
