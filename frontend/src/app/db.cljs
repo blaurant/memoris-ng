@@ -11,4 +11,9 @@
    :eligibility/loading? false
    :eligibility/address  nil
 
-   :router/current-page  :page/home})
+   :router/current-page  :page/home
+
+   :auth/token    nil
+   :auth/user     nil
+   :auth/loading? false
+   :auth/error    nil})

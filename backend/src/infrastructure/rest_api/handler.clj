@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.handler
-  (:require [infrastructure.rest-api.logging :as logging]
+  (:require [infrastructure.rest-api.auth-handler :as auth-handler]
+            [infrastructure.rest-api.logging :as logging]
             [infrastructure.rest-api.network-handler :as network-handler]
             [integrant.core :as ig]
             [muuntaja.core :as m]
@@ -13,22 +14,23 @@
   {:status 200
    :body   {:message "Hello you !"}})
 
-(defn- build-router [network-repo]
+(defn- build-router [network-repo user-repo token-verifier jwt-secret]
   (ring/router
-    (into [["/api/v1/hello" {:get hello-handler}]]
-          (network-handler/routes network-repo))
+    (concat [["/api/v1/hello" {:get hello-handler}]]
+            (network-handler/routes network-repo)
+            (auth-handler/routes user-repo token-verifier jwt-secret))
     {:data {:muuntaja   m/instance
             :middleware [muuntaja/format-middleware]}}))
 
 (defmethod ig/init-key :http/handler
-  [_ {:keys [cors-origins network-repo]}]
+  [_ {:keys [cors-origins network-repo user-repo token-verifier jwt-secret]}]
   (-> (ring/ring-handler
-        (build-router network-repo)
+        (build-router network-repo user-repo token-verifier jwt-secret)
         (ring/create-default-handler))
       (logging/wrap-request-logging)
       (wrap-cors
         :access-control-allow-origin  (map re-pattern cors-origins)
         :access-control-allow-methods [:get :post :put :delete]
-        :access-control-allow-headers ["Content-Type" "Accept"])))
+        :access-control-allow-headers ["Content-Type" "Accept" "Authorization"])))
 
 (defmethod ig/halt-key! :http/handler [_ _] nil)

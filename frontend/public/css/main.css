@@ -214,6 +214,101 @@ a { color: var(--color-green); }
   padding: 0.5rem 0;
 }
 
+/* ── Navbar auth zone ── */
+.navbar__auth {
+  margin-left: auto;
+}
+.navbar__user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+.btn--small {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* ── Auth buttons (social login) ── */
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 360px;
+  margin-inline: auto;
+}
+.auth-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-text);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.auth-btn:hover {
+  box-shadow: var(--shadow);
+  border-color: var(--color-muted);
+}
+.auth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.auth-btn--google  { border-left: 3px solid #4285F4; }
+.auth-btn--apple   { border-left: 3px solid #000000; }
+.auth-btn--facebook { border-left: 3px solid #1877F2; }
+
+.auth-error {
+  color: var(--color-error);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+/* ── Login page ── */
+.login-container {
+  max-width: 480px;
+  margin: 4rem auto;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+.login-container h1 {
+  font-size: 1.8rem;
+  color: var(--color-green);
+  margin-bottom: 0.5rem;
+}
+.login-container p {
+  color: var(--color-muted);
+  margin-bottom: 2rem;
+}
+
+/* ── Portal page ── */
+.portal-container {
+  max-width: 600px;
+  margin: 4rem auto;
+  padding: 2rem 1.5rem;
+}
+.portal-container h1 {
+  font-size: 1.8rem;
+  color: var(--color-green);
+  margin-bottom: 1.5rem;
+}
+.portal-info {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.portal-info p {
+  margin-bottom: 0.5rem;
+}
+
 /* ── Footer ── */
 .footer {
   text-align: center;

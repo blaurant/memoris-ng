@@ -14,8 +14,14 @@
         :modules    {:main {:init-fn app.core/init}}
         :dev        {:closure-defines {app.config/API_BASE           "http://localhost:3000"
                                        app.config/GOOGLE_MAPS_API_KEY #shadow/env ["GOOGLE_MAPS_API_KEY" ""]
-                                       app.config/APP_ENV             "dev"}
+                                       app.config/APP_ENV             "dev"
+                                       app.config/GOOGLE_CLIENT_ID    #shadow/env ["GOOGLE_CLIENT_ID" ""]
+                                       app.config/FACEBOOK_APP_ID     #shadow/env ["FACEBOOK_APP_ID" ""]
+                                       app.config/APPLE_CLIENT_ID     #shadow/env ["APPLE_CLIENT_ID" ""]}
                      :devtools        {:after-load app.core/on-reload}}
         :release    {:closure-defines {app.config/API_BASE           ""
                                        app.config/GOOGLE_MAPS_API_KEY #shadow/env ["GOOGLE_MAPS_API_KEY" ""]
-                                       app.config/APP_ENV             #shadow/env ["APP_ENV" "prod"]}}}}}
+                                       app.config/APP_ENV             #shadow/env ["APP_ENV" "prod"]
+                                       app.config/GOOGLE_CLIENT_ID    #shadow/env ["GOOGLE_CLIENT_ID" ""]
+                                       app.config/FACEBOOK_APP_ID     #shadow/env ["FACEBOOK_APP_ID" ""]
+                                       app.config/APPLE_CLIENT_ID     #shadow/env ["APPLE_CLIENT_ID" ""]}}}}}

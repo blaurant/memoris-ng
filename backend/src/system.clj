@@ -3,10 +3,13 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [integrant.core :as ig]
+            [infrastructure.auth.jwt]
+            [infrastructure.auth.token-verifier]
             [infrastructure.networks.in-memory-repo]
             [infrastructure.rest-api.handler]
             [infrastructure.rest-api.logging]
-            [infrastructure.rest-api.server]))
+            [infrastructure.rest-api.server]
+            [infrastructure.users.in-memory-repo]))
 
 ;; Teach aero how to read #ig/ref tags from system.edn
 (defmethod aero/reader 'ig/ref [_ _ value] (ig/ref value))

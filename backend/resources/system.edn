@@ -6,11 +6,24 @@
 
  :networks/in-memory-repo {}
 
+ :users/in-memory-repo {}
+
+ :auth/token-verifier
+ {:client-ids {:google   #env GOOGLE_CLIENT_ID
+               :apple    #env APPLE_CLIENT_ID
+               :facebook #env FACEBOOK_APP_ID}}
+
+ :auth/jwt-secret
+ {:secret #env JWT_SECRET}
+
  :http/handler
  {:cors-origins   #profile {:dev     ["http://localhost:3449"]
                              :staging [#env CORS_ORIGIN]
                              :prod    [#env CORS_ORIGIN]}
-  :network-repo   #ig/ref :networks/in-memory-repo}
+  :network-repo   #ig/ref :networks/in-memory-repo
+  :user-repo      #ig/ref :users/in-memory-repo
+  :token-verifier #ig/ref :auth/token-verifier
+  :jwt-secret     #ig/ref :auth/jwt-secret}
 
  :http/server
  {:port    #profile {:dev 3000 :staging 8080 :prod 8080}

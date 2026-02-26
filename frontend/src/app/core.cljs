@@ -1,5 +1,7 @@
 (ns app.core
-  (:require [app.events]
+  (:require [app.auth.events]
+            [app.auth.subs]
+            [app.events]
             [app.routes :as routes]
             [app.subs]
             [app.views :as views]
@@ -16,5 +18,6 @@
 
 (defn init []
   (rf/dispatch-sync [:app/initialize])
+  (rf/dispatch-sync [:auth/restore-session])
   (routes/init!)
   (mount-root))

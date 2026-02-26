@@ -3,7 +3,8 @@
             [app.config :as config]
             [app.db :as db]
             [day8.re-frame.http-fx]
-            [re-frame.core :as rf]))
+            [re-frame.core :as rf]
+            [reitit.frontend.easy :as rfee]))
 
 (rf/reg-event-db :app/initialize
   (fn [_ _]
@@ -37,6 +38,14 @@
 (rf/reg-event-db :router/navigated
   (fn [db [_ page-name]]
     (assoc db :router/current-page page-name)))
+
+(rf/reg-event-fx :router/navigate
+  (fn [_ [_ page-name]]
+    {:navigate page-name}))
+
+(rf/reg-fx :navigate
+  (fn [page-name]
+    (rfee/push-state page-name)))
 
 ;; ── Networks ──────────────────────────────────────────────────────────────────
 
