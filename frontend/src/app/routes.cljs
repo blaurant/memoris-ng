@@ -16,5 +16,5 @@
     router
     (fn [match _]
       (let [page (or (-> match :data :name) :page/home)]
-        (rf/dispatch [:router/navigated page])))
+        (rf/dispatch-sync [:router/navigated page])))
     {:use-fragment false}))
