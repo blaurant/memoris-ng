@@ -13,7 +13,9 @@
         :asset-path "/js"
         :modules    {:main {:init-fn app.core/init}}
         :dev        {:closure-defines {app.config/API_BASE           "http://localhost:3000"
-                                       app.config/GOOGLE_MAPS_API_KEY #shadow/env ["GOOGLE_MAPS_API_KEY" ""]}
+                                       app.config/GOOGLE_MAPS_API_KEY #shadow/env ["GOOGLE_MAPS_API_KEY" ""]
+                                       app.config/APP_ENV             "dev"}
                      :devtools        {:after-load app.core/on-reload}}
         :release    {:closure-defines {app.config/API_BASE           ""
-                                       app.config/GOOGLE_MAPS_API_KEY #shadow/env ["GOOGLE_MAPS_API_KEY" ""]}}}}}
+                                       app.config/GOOGLE_MAPS_API_KEY #shadow/env ["GOOGLE_MAPS_API_KEY" ""]
+                                       app.config/APP_ENV             #shadow/env ["APP_ENV" "prod"]}}}}}

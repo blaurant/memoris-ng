@@ -174,9 +174,38 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
 
+    env:
+      RAILWAY_API: https://backboard.railway.com/graphql/v2
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_ENV_ID: ${{ vars.RAILWAY_ENVIRONMENT_ID }}
+      BACKEND_SVC_ID: ${{ vars.RAILWAY_BACKEND_SERVICE_ID }}
+      FRONTEND_SVC_ID: ${{ vars.RAILWAY_FRONTEND_SERVICE_ID }}
+
     steps:
       - name: Deploy backend to prod
         run: |
-          echo "Deploying ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
-        env:
-          APP_ENV: prod
+          IMAGE="ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
+          railway_gql() {
+            RESP=$(curl -sf "$RAILWAY_API" \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$1")
+            echo "$RESP"
+            echo "$RESP" | grep -q '"errors"' && exit 1 || true
+          }
+          railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
+          railway_gql '{"query":"mutation { serviceInstanceDeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
+
+      - name: Deploy frontend to prod
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}"
+          railway_gql() {
+            RESP=$(curl -sf "$RAILWAY_API" \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$1")
+            echo "$RESP"
+            echo "$RESP" | grep -q '"errors"' && exit 1 || true
+          }
+          railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
+          railway_gql '{"query":"mutation { serviceInstanceDeploy(serviceId: \"'"$FRONTEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'

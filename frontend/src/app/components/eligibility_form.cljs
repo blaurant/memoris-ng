@@ -60,7 +60,8 @@
       (fn [_ _ _]
         [:div.map-container
          {:ref   (fn [el] (when el (reset! map-el el)))
-          :style {:margin-top "1rem"}}])})))
+          :style {:margin-top "1rem" :width "100%" :aspect-ratio "4/3"
+                  :min-height "250px" :max-height "450px"}}])})))
 
 (defn- geocode-address!
   "Uses the Google Maps Geocoder to convert address string to lat/lng,
@@ -69,15 +70,17 @@
   (if-not (exists? js/google)
     (on-error "Google Maps n'est pas encore chargé. Veuillez patienter.")
     (let [geocoder (js/google.maps.Geocoder.)]
-      (.geocode geocoder
-                #js {:address address}
-                (fn [results status]
-                  (if (= status "OK")
-                    (let [loc      (-> results (aget 0) .-geometry .-location)
-                          lat      (.lat loc)
-                          lng      (.lng loc)]
-                      (rf/dispatch [:eligibility/check {:lat lat :lng lng :address address}]))
-                    (on-error (str "Adresse introuvable (" status ")"))))))))
+      (-> (.geocode geocoder #js {:address address})
+          (.then (fn [^js response]
+                   (let [results (.-results response)
+                         ^js first-result (when (and results (pos? (.-length results)))
+                                           (aget results 0))
+                         ^js loc (some-> first-result .-geometry .-location)]
+                     (if loc
+                       (rf/dispatch [:eligibility/check {:lat (.lat loc) :lng (.lng loc) :address address}])
+                       (on-error "Aucun résultat pour cette adresse.")))))
+          (.catch (fn [_err]
+                    (on-error "Adresse introuvable.")))))))
 
 (defn eligibility-form
   "Form-2 component that geocodes an address and checks eligibility."

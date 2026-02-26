@@ -97,6 +97,7 @@
           [:div
            [:div.map-container
             {:ref   (fn [el] (when el (reset! map-el el)))
-             :style {:min-height "640px"}}]
+             :style {:width "100%" :aspect-ratio "4/3"
+                     :min-height "300px" :max-height "640px"}}]
            (when (and (not ready?) (not loading?))
              [:p.map-placeholder "Chargement de la carte…"])]))})))
