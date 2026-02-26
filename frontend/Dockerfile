@@ -21,10 +21,16 @@ COPY public/ public/
 ARG API_BASE=""
 ARG GOOGLE_MAPS_API_KEY=""
 ARG APP_ENV="prod"
+ARG SITE_URL=""
 
 # Compile ClojureScript release build with overridden closure-defines
 RUN npx shadow-cljs release app \
     --config-merge "{:closure-defines {app.config/API_BASE \"${API_BASE}\" app.config/GOOGLE_MAPS_API_KEY \"${GOOGLE_MAPS_API_KEY}\" app.config/APP_ENV \"${APP_ENV}\"}}"
+
+# Inject absolute OG image URL for social sharing previews
+RUN if [ -n "$SITE_URL" ]; then \
+      sed -i "s|content=\"/og-image.png\"|content=\"${SITE_URL}/og-image.png\"|" public/index.html; \
+    fi
 
 # --- Runtime stage: Nginx serves static assets ---
 FROM nginx:1-alpine

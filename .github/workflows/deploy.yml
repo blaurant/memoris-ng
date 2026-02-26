@@ -156,6 +156,7 @@ jobs:
             API_BASE=${{ vars.STAGING_BACKEND_URL }}
             GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
             APP_ENV=staging
+            SITE_URL=${{ vars.SITE_URL }}
           tags: |
             ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}-staging
             ghcr.io/${{ github.repository }}/frontend:staging
@@ -228,6 +229,7 @@ jobs:
             API_BASE=${{ vars.PROD_BACKEND_URL }}
             GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
             APP_ENV=prod
+            SITE_URL=${{ vars.SITE_URL }}
           tags: |
             ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}
             ghcr.io/${{ github.repository }}/frontend:latest
