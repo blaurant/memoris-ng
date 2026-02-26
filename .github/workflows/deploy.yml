@@ -94,17 +94,11 @@ jobs:
             ghcr.io/${{ github.repository }}/backend:${{ steps.meta.outputs.tag }}
             ghcr.io/${{ github.repository }}/backend:latest
 
-      - name: Build & push frontend image
-        uses: docker/build-push-action@v5
+      - name: Upload frontend context
+        uses: actions/upload-artifact@v4
         with:
-          context: frontend
-          push: true
-          build-args: |
-            API_BASE=${{ vars.STAGING_BACKEND_URL }}
-            GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
-          tags: |
-            ghcr.io/${{ github.repository }}/frontend:${{ steps.meta.outputs.tag }}
-            ghcr.io/${{ github.repository }}/frontend:latest
+          name: frontend-context
+          path: frontend/
 
   # ── Dev (auto on push to main) ───────────────────────────────────────────
   deploy-dev:
@@ -128,6 +122,8 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     environment: staging
 
     env:
@@ -138,7 +134,33 @@ jobs:
       FRONTEND_SVC_ID: ${{ vars.RAILWAY_FRONTEND_SERVICE_ID }}
 
     steps:
-      - name: Deploy backend to staging
+      - name: Download frontend context
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-context
+          path: frontend/
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          push: true
+          build-args: |
+            API_BASE=${{ vars.STAGING_BACKEND_URL }}
+            GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+            APP_ENV=staging
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}-staging
+            ghcr.io/${{ github.repository }}/frontend:staging
+
+      - name: Deploy backend to Railway
         run: |
           IMAGE="ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
           railway_gql() {
@@ -152,9 +174,9 @@ jobs:
           railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
           railway_gql '{"query":"mutation { serviceInstanceDeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
-      - name: Deploy frontend to staging
+      - name: Deploy frontend to Railway
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}"
+          IMAGE="ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}-staging"
           railway_gql() {
             RESP=$(curl -sf "$RAILWAY_API" \
               -H "Authorization: Bearer $RAILWAY_TOKEN" \
@@ -172,6 +194,8 @@ jobs:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     environment: prod
 
     env:
@@ -182,7 +206,33 @@ jobs:
       FRONTEND_SVC_ID: ${{ vars.RAILWAY_FRONTEND_SERVICE_ID }}
 
     steps:
-      - name: Deploy backend to prod
+      - name: Download frontend context
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-context
+          path: frontend/
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          push: true
+          build-args: |
+            API_BASE=${{ vars.PROD_BACKEND_URL }}
+            GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+            APP_ENV=prod
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}
+            ghcr.io/${{ github.repository }}/frontend:latest
+
+      - name: Deploy backend to Railway
         run: |
           IMAGE="ghcr.io/${{ github.repository }}/backend:${{ needs.build.outputs.image_tag }}"
           railway_gql() {
@@ -196,7 +246,7 @@ jobs:
           railway_gql '{"query":"mutation { serviceInstanceUpdate(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\", input: { source: { image: \"'"$IMAGE"'\" } }) }"}'
           railway_gql '{"query":"mutation { serviceInstanceDeploy(serviceId: \"'"$BACKEND_SVC_ID"'\", environmentId: \"'"$RAILWAY_ENV_ID"'\") }"}'
 
-      - name: Deploy frontend to prod
+      - name: Deploy frontend to Railway
         run: |
           IMAGE="ghcr.io/${{ github.repository }}/frontend:${{ needs.build.outputs.image_tag }}"
           railway_gql() {
