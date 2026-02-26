@@ -155,6 +155,7 @@ jobs:
           build-args: |
             API_BASE=${{ vars.STAGING_BACKEND_URL }}
             GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             APP_ENV=staging
             SITE_URL=${{ vars.SITE_URL }}
           tags: |
@@ -228,6 +229,7 @@ jobs:
           build-args: |
             API_BASE=${{ vars.PROD_BACKEND_URL }}
             GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             APP_ENV=prod
             SITE_URL=${{ vars.SITE_URL }}
           tags: |
