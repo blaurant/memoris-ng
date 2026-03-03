@@ -27,9 +27,13 @@
          [:button.btn.btn--small
           {:on-click #(rf/dispatch [:auth/logout])}
           "Déconnexion"]]
-        [:a.btn.btn--green.btn--small
-         {:href (rfee/href :page/login)}
-         "Se connecter"])]]))
+        [:div.navbar__buttons
+         [:a.btn.btn--green.btn--small
+          {:href (rfee/href :page/signup)}
+          "Nouvel utilisateur"]
+         [:a.btn.btn--small
+          {:href (rfee/href :page/login)}
+          "Se connecter"]])]]))
 
 (defn- current-page []
   (let [page       @(rf/subscribe [:router/current-page])
@@ -37,7 +41,10 @@
     (case page
       :page/login  (if logged-in?
                      (do (rf/dispatch [:router/navigate :page/portal]) nil)
-                     [login/login-page])
+                     [login/login-page {:signup? false}])
+      :page/signup (if logged-in?
+                     (do (rf/dispatch [:router/navigate :page/portal]) nil)
+                     [login/login-page {:signup? true}])
       :page/portal (if logged-in?
                      [portal/portal-page]
                      (do (rf/dispatch [:router/navigate :page/home]) nil))

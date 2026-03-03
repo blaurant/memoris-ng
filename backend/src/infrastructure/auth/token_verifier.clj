@@ -35,7 +35,7 @@
                       (.withAudience (into-array String [client-id]))
                       (.build))
         verified  (.verify verifier id-token)]
-    {:sub   (.getSubject verified)
+    {:subject-id   (.getSubject verified)
      :email (.asString (.getClaim verified "email"))
      :name  (.asString (.getClaim verified "name"))}))
 
@@ -50,7 +50,7 @@
                       (.withAudience (into-array String [client-id]))
                       (.build))
         verified  (.verify verifier id-token)]
-    {:sub   (.getSubject verified)
+    {:subject-id   (.getSubject verified)
      :email (.asString (.getClaim verified "email"))
      :name  (or (.asString (.getClaim verified "name"))
                 (.asString (.getClaim verified "email")))}))
@@ -67,7 +67,7 @@
         parse      (fn [s] (json/read-str s :key-fn keyword))]
     (let [_        (parse debug-resp)
           me-data (parse me-resp)]
-      {:sub   (:id me-data)
+      {:subject-id   (:id me-data)
        :email (:email me-data)
        :name  (:name me-data)})))
 

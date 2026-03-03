@@ -1,18 +1,19 @@
 (ns infrastructure.users.in-memory-repo
-  (:require [domain.user-repo :as user-repo]
+  (:require [domain.user :as user]
+            [domain.user-repo :as user-repo]
             [integrant.core :as ig]))
 
 (defrecord InMemoryUserRepo [store]
   user-repo/UserRepo
   (find-by-id [_ id]
-    (some (fn [u] (when (= id (:user/id u)) u))
+    (some (fn [u] (when (= id (:user/id u)) (user/build-user u)))
           (vals @store)))
 
   (find-by-provider [_ provider provider-subject-identifier]
     (some (fn [u]
             (when (and (= provider                      (:user/provider u))
                        (= provider-subject-identifier   (:user/provider-subject-identifier u)))
-              u))
+              (user/build-user u)))
           (vals @store)))
 
   (save! [_ user]

@@ -12,7 +12,9 @@
         com.auth0/java-jwt           {:mvn/version "4.4.0"}
         com.auth0/jwks-rsa           {:mvn/version "0.22.1"}
         danlentz/clj-uuid            {:mvn/version "0.1.9"}
-        org.clojure/data.json        {:mvn/version "2.5.1"}}
+        org.clojure/data.json        {:mvn/version "2.5.1"}
+        com.xtdb/xtdb-core           {:mvn/version "1.24.4"}
+        com.xtdb/xtdb-rocksdb        {:mvn/version "1.24.4"}}
 
  :aliases
  {:test  {:extra-paths ["test"]

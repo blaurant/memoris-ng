@@ -7,6 +7,7 @@
   (rfe/router
    [["/"       {:name :page/home}]
     ["/login"  {:name :page/login}]
+    ["/signup" {:name :page/signup}]
     ["/portal" {:name :page/portal}]]))
 
 (defn init!

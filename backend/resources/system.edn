@@ -6,7 +6,11 @@
 
  :networks/in-memory-repo {}
 
- :users/in-memory-repo {}
+ :xtdb/node
+ {:dir "data/xtdb"}
+
+ :users/xtdb-repo
+ {:node #ig/ref :xtdb/node}
 
  :auth/token-verifier
  {:client-ids {:google   #env GOOGLE_CLIENT_ID
@@ -21,7 +25,7 @@
                              :staging [#env CORS_ORIGIN]
                              :prod    [#env CORS_ORIGIN]}
   :network-repo   #ig/ref :networks/in-memory-repo
-  :user-repo      #ig/ref :users/in-memory-repo
+  :user-repo      #ig/ref :users/xtdb-repo
   :token-verifier #ig/ref :auth/token-verifier
   :jwt-secret     #ig/ref :auth/jwt-secret}
 

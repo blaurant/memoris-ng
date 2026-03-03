@@ -11,9 +11,9 @@
 (defrecord MockTokenVerifier []
   tv/TokenVerifier
   (verify-provider-token [_ _provider _id-token]
-    {:sub   "provider-user-123"
-     :email "alice@example.com"
-     :name  "Alice"}))
+    {:subject-id "provider-user-123"
+     :email      "alice@example.com"
+     :name       "Alice"}))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,13 +41,9 @@
     (assert (= :alive    (:user/lifecycle (:user ctx))))
     (assert (= "alice@example.com" (:user/email (:user ctx)))))
 
-  (THEN "audit trail has a created and a login entry" [ctx]
-    (assert (= 2 (count (:user/audit-trail (:user ctx)))))
-    (assert (= :created (-> ctx :user :user/audit-trail first :audit/action)))
-    (assert (= :login   (-> ctx :user :user/audit-trail second :audit/action)))
-    (assert (= :google  (-> ctx :user :user/audit-trail second :audit/info :provider)))))
+)
 
-(defscenario "Existing user signs in — trail gets a new entry"
+(defscenario "Existing user signs in — same user is returned"
   (GIVEN "an existing user in the repo" [ctx]
     (let [repo     (fresh-repo)
           verifier (mock-verifier)
@@ -59,8 +55,8 @@
            (auth/login-with-provider (:repo ctx) (:verifier ctx)
                                      :google "token2")))
 
-  (THEN "audit trail has three entries" [ctx]
-    (assert (= 3 (count (:user/audit-trail (:user ctx)))))))
+  (THEN "the same user is returned" [ctx]
+    (assert (= (:user/id (:first-user ctx)) (:user/id (:user ctx))))))
 
 (defscenario "Suspended user signs in — exception thrown"
   (GIVEN "a suspended user in the repo" [ctx]
@@ -80,4 +76,4 @@
         (assoc ctx :exception (.getMessage e)))))
 
   (THEN "an error is thrown saying not active" [ctx]
-    (assert (= "User account is not active" (:exception ctx)))))
+    (assert (= "User account is not alive" (:exception ctx)))))

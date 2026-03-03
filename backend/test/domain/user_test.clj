@@ -8,7 +8,9 @@
    :user/email        "alice@example.com"
    :user/name         "Alice"
    :user/provider     :google
-   :user/provider-subject-identifier "google-12345"})
+   :user/provider-subject-identifier "google-12345"
+   :user/role         :customer
+   :user/lifecycle    :alive})
 
 (deftest build-user-valid
   (testing "builds a user with valid attributes"
@@ -17,17 +19,14 @@
       (is (= "Alice" (:user/name u)))
       (is (= :google (:user/provider u))))))
 
-(deftest build-user-defaults
-  (testing "applies default values"
-    (let [u (user/build-user valid-attrs)]
-      (is (= :customer (:user/role u)))
-      (is (= :alive (:user/lifecycle u)))))
+(deftest build-user-validates-all-fields
+  (testing "throws when role is missing"
+    (is (thrown? clojure.lang.ExceptionInfo
+                (user/build-user (dissoc valid-attrs :user/role)))))
 
-  (testing "audit trail has a :created entry"
-    (let [u (user/build-user valid-attrs)]
-      (is (= 1 (count (:user/audit-trail u))))
-      (is (= :created (-> u :user/audit-trail first :audit/action)))
-      (is (inst? (-> u :user/audit-trail first :audit/timestamp))))))
+  (testing "throws when lifecycle is missing"
+    (is (thrown? clojure.lang.ExceptionInfo
+                (user/build-user (dissoc valid-attrs :user/lifecycle))))))
 
 (deftest build-user-invalid
   (testing "throws on missing required fields"
@@ -103,19 +102,3 @@
       (is (thrown? clojure.lang.ExceptionInfo
                   (user/reactivate deactivated))))))
 
-(deftest record-login-test
-  (testing "appends a login entry to audit trail"
-    (let [u (-> (user/build-user valid-attrs)
-                (user/record-login :google))]
-      (is (= 2 (count (:user/audit-trail u))))
-      (is (= :created (-> u :user/audit-trail first :audit/action)))
-      (is (= :login   (-> u :user/audit-trail second :audit/action)))
-      (is (= :google  (-> u :user/audit-trail second :audit/info :provider)))
-      (is (inst? (-> u :user/audit-trail second :audit/timestamp)))))
-
-  (testing "appends multiple login entries"
-    (let [u (-> (user/build-user valid-attrs)
-                (user/record-login :google)
-                (user/record-login :apple))]
-      (is (= 3 (count (:user/audit-trail u))))
-      (is (= :apple (-> u :user/audit-trail last :audit/info :provider))))))

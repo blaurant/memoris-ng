@@ -23,6 +23,9 @@ log/
 .env
 .env.local
 
+# XTDB data
+backend/data/
+
 # IntelliJ / IDEA / Cursive
 .idea/
 *.iml
