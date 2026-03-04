@@ -8,6 +8,7 @@ RUN clojure -T:build uber
 
 # --- Runtime stage ---
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache libstdc++
 WORKDIR /app
 COPY --from=builder /app/target/app.jar app.jar
 EXPOSE 8080
