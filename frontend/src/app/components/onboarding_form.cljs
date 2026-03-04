@@ -1,0 +1,314 @@
+(ns app.components.onboarding-form
+  (:require [app.components.google-map :as gmap]
+            [app.consumptions.contract :as contract]
+            [re-frame.core :as rf]
+            [reagent.core :as r]))
+
+(def steps
+  [{:key :consumer-information :label "Adresse & Réseau"        :number 1}
+   {:key :linky-reference       :label "Référence Linky"        :number 2}
+   {:key :billing-address       :label "Adresse de facturation" :number 3}
+   {:key :contract-signature    :label "Signature du contrat"   :number 4}])
+
+(def ^:private step-order
+  {:consumer-information 0
+   :linky-reference      1
+   :billing-address      2
+   :contract-signature   3})
+
+(defn- step-status [step-key current-step]
+  (let [idx     (step-order step-key)
+        current (step-order current-step)]
+    (cond
+      (< idx current) :completed
+      (= idx current) :active
+      :else           :pending)))
+
+(defn- stepper [current-step]
+  [:div.stepper
+   (doall
+     (for [{:keys [key label number]} steps]
+       (let [status (step-status key current-step)]
+         ^{:key key}
+         [:div.stepper__item
+          {:class (str "stepper__item--" (name status))}
+          [:div.stepper__circle
+           (if (= status :completed)
+             [:svg {:width "14" :height "14" :viewBox "0 0 24 24"
+                    :fill "none" :stroke "currentColor" :stroke-width "3"
+                    :stroke-linecap "round" :stroke-linejoin "round"}
+              [:polyline {:points "20 6 9 17 4 12"}]]
+             (str number))]
+          [:div.stepper__label label]])))])
+
+(defn- network-map-modal
+  "Form-3 modal with a Google Map for selecting a network by clicking its circle."
+  [address networks on-select on-cancel]
+  (let [map-el           (atom nil)
+        map-inst         (atom nil)
+        circles          (atom [])
+        selected-network (r/atom nil)]
+    (r/create-class
+     {:display-name "network-map-modal"
+
+      :component-did-mount
+      (fn [_this]
+        (let [init-map!
+              (fn []
+                (let [geocoder (js/google.maps.Geocoder.)
+                      create-map!
+                      (fn [center zoom]
+                        (when @map-el
+                          (let [gmap (js/google.maps.Map.
+                                      @map-el
+                                      #js {:center center :zoom zoom :mapTypeId "roadmap"})]
+                            (reset! map-inst gmap)
+                            ;; Draw circles with click listeners
+                            (doseq [c @circles] (.setMap ^js c nil))
+                            (reset! circles
+                                    (mapv (fn [net]
+                                            (let [circle (js/google.maps.Circle.
+                                                          #js {:map          gmap
+                                                               :center       #js {:lat (:network/center-lat net)
+                                                                                  :lng (:network/center-lng net)}
+                                                               :radius       (* (:network/radius-km net) 1000)
+                                                               :strokeColor  "#2e7d32"
+                                                               :strokeWeight 2
+                                                               :fillColor    "#4caf50"
+                                                               :fillOpacity  0.2
+                                                               :clickable    true})]
+                                              (.addListener circle "click"
+                                                (fn [_e]
+                                                  ;; Reset all circles to default style
+                                                  (doseq [c @circles]
+                                                    (.setOptions ^js c #js {:fillOpacity  0.2
+                                                                           :strokeWeight 2}))
+                                                  ;; Highlight selected circle
+                                                  (.setOptions circle #js {:fillOpacity  0.5
+                                                                          :strokeWeight 3})
+                                                  (reset! selected-network net)))
+                                              circle))
+                                          networks)))))]
+                  (if (seq address)
+                    (-> (.geocode geocoder #js {:address address})
+                        (.then (fn [^js response]
+                                 (let [results      (.-results response)
+                                       ^js first-r  (when (and results (pos? (.-length results)))
+                                                      (aget results 0))
+                                       ^js loc      (some-> first-r .-geometry .-location)]
+                                   (if loc
+                                     (create-map! #js {:lat (.lat loc) :lng (.lng loc)} 10)
+                                     (create-map! #js {:lat 46.6 :lng 1.9} 6)))))
+                        (.catch (fn [_err]
+                                  (create-map! #js {:lat 46.6 :lng 1.9} 6))))
+                    (create-map! #js {:lat 46.6 :lng 1.9} 6))))]
+          (if (and (exists? js/google) (exists? js/google.maps))
+            (init-map!)
+            (gmap/load-google-maps-script! init-map!))))
+
+      :component-will-unmount
+      (fn [_this]
+        (doseq [c @circles] (.setMap ^js c nil)))
+
+      :reagent-render
+      (fn [_address _networks _on-select on-cancel]
+        (let [sel @selected-network]
+          [:div.modal-overlay {:on-click (fn [e]
+                                           (when (= (.-target e) (.-currentTarget e))
+                                             (on-cancel)))}
+           [:div.modal
+            [:div.modal__header
+             [:span "Sélectionner un réseau sur la carte"]
+             [:button.btn.btn--small
+              {:on-click on-cancel
+               :style {:background "transparent" :color "var(--color-muted)"
+                       :border "none" :font-size "1.2rem" :padding "0"}}
+              "\u00D7"]]
+            [:div.modal__map
+             {:ref (fn [el] (when el (reset! map-el el)))}]
+            [:div.modal__selection
+             (if sel
+               (str "Réseau sélectionné : " (:network/name sel))
+               "Aucun réseau sélectionné")]
+            [:div.modal__actions
+             [:button.btn.btn--small.btn--outline
+              {:on-click on-cancel}
+              "Annuler"]
+             [:button.btn.btn--small.btn--green
+              {:disabled (nil? sel)
+               :on-click #(on-select (:network/id sel))}
+              "Valider"]]]]))})))
+
+(defn- step1-form [consumption-id]
+  (let [address    (r/atom "")
+        network-id (r/atom "")
+        show-map?  (r/atom false)
+        networks   @(rf/subscribe [:networks/list])]
+    (fn []
+      [:div.onboarding__form
+       [:input.onboarding__input
+        {:type        "text"
+         :placeholder "Votre adresse de consommation"
+         :value       @address
+         :on-change   #(reset! address (.. % -target -value))}]
+       [:div.onboarding__network-row
+        [:select.onboarding__select
+         {:value     @network-id
+          :on-change #(reset! network-id (.. % -target -value))}
+         [:option {:value ""} "Choisir un réseau"]
+         (doall
+           (for [n networks]
+             ^{:key (:network/id n)}
+             [:option {:value (:network/id n)} (:network/name n)]))]
+        [:button.btn.btn--small.btn--outline
+         {:on-click #(reset! show-map? true)}
+         "Sélectionner sur la carte"]]
+       [:button.btn.btn--green.btn--small
+        {:disabled (or (empty? @address) (empty? @network-id))
+         :on-click #(rf/dispatch [:consumptions/submit-step1
+                                  consumption-id @address @network-id])}
+        "Suivant"]
+       (when @show-map?
+         [network-map-modal
+          @address
+          networks
+          (fn [selected-id]
+            (reset! network-id selected-id)
+            (reset! show-map? false))
+          (fn []
+            (reset! show-map? false))])])))
+
+(defn- step2-form [consumption-id]
+  (let [linky-ref (r/atom "")]
+    (fn []
+      [:div.onboarding__form
+       [:input.onboarding__input
+        {:type        "text"
+         :placeholder "Référence Linky (ex: PRM 12345678901234)"
+         :value       @linky-ref
+         :on-change   #(reset! linky-ref (.. % -target -value))}]
+       [:button.btn.btn--green.btn--small
+        {:disabled (empty? @linky-ref)
+         :on-click #(rf/dispatch [:consumptions/submit-step2
+                                  consumption-id @linky-ref])}
+        "Suivant"]])))
+
+(defn- step3-form [consumption-id consumer-address]
+  (let [use-same?    (r/atom true)
+        billing-addr (r/atom "")]
+    (fn []
+      (let [same? @use-same?
+            effective-addr (if same? consumer-address @billing-addr)]
+        [:div.onboarding__form
+         [:div.onboarding__radio-group
+          [:label.onboarding__radio-label
+           [:input {:type      "radio"
+                    :name      "billing-choice"
+                    :checked   same?
+                    :on-change #(reset! use-same? true)}]
+           "Utiliser la même adresse que l'adresse de consommation"]
+          [:label {:class (str "onboarding__radio-label"
+                               (when same? " onboarding__radio-label--disabled"))}
+           [:input {:type      "radio"
+                    :name      "billing-choice"
+                    :checked   (not same?)
+                    :on-change #(reset! use-same? false)}]
+           "Utiliser une adresse différente pour la facturation"]]
+         [:input.onboarding__input
+          {:type        "text"
+           :placeholder "Adresse de facturation"
+           :value       (if same? consumer-address @billing-addr)
+           :disabled    same?
+           :on-change   #(reset! billing-addr (.. % -target -value))}]
+         [:button.btn.btn--green.btn--small
+          {:disabled (empty? effective-addr)
+           :on-click #(rf/dispatch [:consumptions/submit-step3
+                                    consumption-id effective-addr])}
+          "Suivant"]]))))
+
+(def ^:private contract-configs
+  [{:type     :proxywatt
+    :label    "Contrat ProxyWatt"
+    :text     contract/contract-text
+    :signed-key :consumption/contract-signed-at}
+   {:type     :producer
+    :label    "Contrat Producteur"
+    :text     contract/producer-contract-text
+    :signed-key :consumption/producer-contract-signed-at}
+   {:type     :sepa
+    :label    "Mandat de virement SEPA"
+    :text     contract/sepa-mandate-text
+    :signed-key :consumption/sepa-mandate-signed-at}])
+
+(defn- contract-icon []
+  [:svg {:width "24" :height "24" :viewBox "0 0 24 24"
+         :fill "none" :stroke "currentColor" :stroke-width "1.5"
+         :stroke-linecap "round" :stroke-linejoin "round"}
+   [:path {:d "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}]
+   [:polyline {:points "14 2 14 8 20 8"}]
+   [:line {:x1 "16" :y1 "13" :x2 "8" :y2 "13"}]
+   [:line {:x1 "16" :y1 "17" :x2 "8" :y2 "17"}]
+   [:polyline {:points "10 9 9 9 8 9"}]])
+
+(defn- step4-form [consumption-id consumption]
+  (let [open-contract (r/atom nil)]
+    (fn [consumption-id consumption]
+      [:div.onboarding__form
+       (doall
+         (for [{:keys [type label text signed-key]} contract-configs]
+           (let [signed? (some? (get consumption signed-key))]
+             ^{:key type}
+             [:div.contract-row
+              [:div.contract-row__info
+               [contract-icon]
+               [:span.contract-row__label label]]
+              (if signed?
+                [:span.contract-row__signed "Signe\u0301 \u2713"]
+                [:button.btn.btn--small.btn--outline
+                 {:on-click #(reset! open-contract type)}
+                 "A signer"])])))
+       (when-let [ct @open-contract]
+         (let [{:keys [label text]} (first (filter #(= ct (:type %)) contract-configs))]
+           [:div.modal-overlay {:on-click (fn [e]
+                                            (when (= (.-target e) (.-currentTarget e))
+                                              (reset! open-contract nil)))}
+            [:div.modal
+             [:div.modal__header
+              [:span label]
+              [:button.btn.btn--small
+               {:on-click #(reset! open-contract nil)
+                :style {:background "transparent" :color "var(--color-muted)"
+                        :border "none" :font-size "1.2rem" :padding "0"}}
+               "\u00D7"]]
+             [:div.modal__body
+              [:pre {:style {:white-space      "pre-wrap"
+                             :font-size        "0.85rem"
+                             :line-height      "1.5"
+                             :background-color "var(--color-green-pale)"
+                             :padding          "1rem"
+                             :border-radius    "var(--radius)"
+                             :max-height       "400px"
+                             :overflow-y       "auto"}}
+               text]]
+             [:div.modal__actions
+              [:button.btn.btn--small.btn--outline
+               {:on-click #(reset! open-contract nil)}
+               "Annuler"]
+              [:button.btn.btn--small.btn--green
+               {:on-click (fn []
+                            (reset! open-contract nil)
+                            (rf/dispatch [:consumptions/submit-step4 consumption-id ct]))}
+               "Signer le contrat"]]]]))])))
+
+(defn onboarding-form [consumption]
+  (let [lifecycle (keyword (:consumption/lifecycle consumption))
+        cid       (:consumption/id consumption)]
+    [:div.consumption-block.consumption-block--onboarding
+     [:div.consumption-block__header "Nouvelle Consommation"]
+     [stepper lifecycle]
+     (case lifecycle
+       :consumer-information  [step1-form cid]
+       :linky-reference       [step2-form cid]
+       :billing-address       [step3-form cid (:consumption/consumer-address consumption)]
+       :contract-signature    [step4-form cid consumption]
+       nil)]))

@@ -96,3 +96,9 @@
   (fn [db _]
     (js/console.error "Failed to check eligibility")
     (assoc db :eligibility/loading? false)))
+
+;; ── Portal ──────────────────────────────────────────────────────────────────
+
+(rf/reg-event-db :portal/set-section
+  (fn [db [_ section]]
+    (assoc db :portal/active-section section)))

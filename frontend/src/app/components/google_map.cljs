@@ -3,7 +3,7 @@
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
-(defn- load-google-maps-script!
+(defn load-google-maps-script!
   "Injects the Google Maps JS API <script> tag once into the document head.
   Calls on-ready once the API is fully loaded."
   [on-ready]

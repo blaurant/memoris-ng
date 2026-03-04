@@ -1,6 +1,8 @@
 (ns app.core
   (:require [app.auth.events]
             [app.auth.subs]
+            [app.consumptions.events]
+            [app.consumptions.subs]
             [app.events]
             [app.routes :as routes]
             [app.subs]

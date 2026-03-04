@@ -16,4 +16,8 @@
    :auth/token    nil
    :auth/user     nil
    :auth/loading? false
-   :auth/error    nil})
+   :auth/error    nil
+
+   :consumptions/list     []
+   :consumptions/loading? false
+   :portal/active-section :dashboard})

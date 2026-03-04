@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.handler
   (:require [infrastructure.rest-api.auth-handler :as auth-handler]
+            [infrastructure.rest-api.consumption-handler :as consumption-handler]
             [infrastructure.rest-api.logging :as logging]
             [infrastructure.rest-api.network-handler :as network-handler]
             [integrant.core :as ig]
@@ -14,18 +15,19 @@
   {:status 200
    :body   {:message "Hello you !"}})
 
-(defn- build-router [network-repo user-repo token-verifier jwt-secret]
+(defn- build-router [network-repo user-repo consumption-repo token-verifier jwt-secret]
   (ring/router
     (concat [["/api/v1/hello" {:get hello-handler}]]
             (network-handler/routes network-repo)
-            (auth-handler/routes user-repo token-verifier jwt-secret))
+            (auth-handler/routes user-repo token-verifier jwt-secret)
+            (consumption-handler/routes consumption-repo jwt-secret))
     {:data {:muuntaja   m/instance
             :middleware [muuntaja/format-middleware]}}))
 
 (defmethod ig/init-key :http/handler
-  [_ {:keys [cors-origins network-repo user-repo token-verifier jwt-secret]}]
+  [_ {:keys [cors-origins network-repo user-repo consumption-repo token-verifier jwt-secret]}]
   (-> (ring/ring-handler
-        (build-router network-repo user-repo token-verifier jwt-secret)
+        (build-router network-repo user-repo consumption-repo token-verifier jwt-secret)
         (ring/create-default-handler))
       (logging/wrap-request-logging)
       (wrap-cors

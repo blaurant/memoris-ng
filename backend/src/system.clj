@@ -11,7 +11,9 @@
             [infrastructure.rest-api.server]
             [infrastructure.users.in-memory-repo]
             [infrastructure.xtdb.node]
-            [infrastructure.users.xtdb-repo]))
+            [infrastructure.users.xtdb-repo]
+            [infrastructure.consumptions.in-memory-repo]
+            [infrastructure.consumptions.xtdb-repo]))
 
 ;; Teach aero how to read #ig/ref tags from system.edn
 (defmethod aero/reader 'ig/ref [_ _ value] (ig/ref value))
