@@ -5,9 +5,10 @@
 
 (defrecord InMemoryConsumptionRepo [store]
   consumption-repo/ConsumptionRepo
+
   (find-by-id [_ id]
-    (some (fn [c] (when (= id (:consumption/id c)) (consumption/build-consumption c)))
-          (vals @store)))
+    (when-let [c (get @store id)]
+      (consumption/build-consumption c)))
 
   (find-by-user-id [_ user-id]
     (vec (keep (fn [c]
@@ -17,7 +18,19 @@
 
   (save! [_ c]
     (swap! store assoc (:consumption/id c) c)
-    c))
+    c)
+
+  (save! [_ original updated]
+    (let [id      (:consumption/id original)
+          applied (swap! store
+                         (fn [m]
+                           (if (= original (get m id))
+                             (assoc m id updated)
+                             m)))]
+      (when (not= updated (get applied id))
+        (throw (ex-info "Concurrent modification detected"
+                        {:consumption-id id})))
+      updated)))
 
 (defmethod ig/init-key :consumptions/in-memory-repo
   [_ _]

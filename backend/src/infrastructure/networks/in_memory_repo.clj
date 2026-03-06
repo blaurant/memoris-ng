@@ -17,7 +17,19 @@
      :network/name       "Réseau Solaire Lyon Sud"
      :network/center-lat 45.7597
      :network/center-lng 4.8422
-     :network/radius-km  10.0})])
+     :network/radius-km  10.0})
+   (network/build-network
+     {:network/id         #uuid "33333333-0000-0000-0000-000000000003"
+      :network/name       "Réseau élec de L'Erdre"
+      :network/center-lat 47.3466,
+      :network/center-lng -1.5213
+      :network/radius-km  10.0})
+   (network/build-network
+     {:network/id         #uuid "44444444-0000-0000-0000-000000000004"
+      :network/name       "Réseau des Génices de la Nièvre"
+      :network/center-lat 47.3054,
+      :network/center-lng 3.2537
+      :network/radius-km  10.0})])
 
 (defrecord InMemoryNetworkRepo [networks]
   NetworkRepo

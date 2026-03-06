@@ -1,7 +1,9 @@
 (ns domain.consumption
-    (:require [domain.id :as id]
-      [malli.core :as m]
-      [malli.util :as mu]))
+    (:require [clojure.string]
+              [domain.id :as id]
+              [malli.core :as m]
+              [malli.util :as mu])
+    (:import (java.time Instant)))
 
 (def address?
   [:and
@@ -38,9 +40,9 @@
 
 (def ContractSignature
   [:map
-   [:consumption/contract-signed-at {:optional true} [:maybe string?]]
-   [:consumption/producer-contract-signed-at {:optional true} [:maybe string?]]
-   [:consumption/sepa-mandate-signed-at {:optional true} [:maybe string?]]])
+   [:consumption/contract-signed-at {:optional true} string?]
+   [:consumption/producer-contract-signed-at {:optional true} string?]
+   [:consumption/sepa-mandate-signed-at {:optional true} string?]])
 
 ;; Full schema: step fields optional (for deserialization from storage)
 (def Consumption
@@ -81,51 +83,52 @@
 ;; ── Queries ─────────────────────────────────────────────────────────────────
 
 (defn onboarding?
-      "Returns true if the consumption is in one of the 3 onboarding states."
+      "Returns true if the consumption is in one of the 4 onboarding states."
       [c]
       (contains? #{:consumer-information :linky-reference :billing-address :contract-signature}
                  (:consumption/lifecycle c)))
 
 ;; ── Transitions ─────────────────────────────────────────────────────────────
 
+(defn- assert-lifecycle
+  "Guard: throws if the consumption is not in the expected lifecycle state."
+  [c expected]
+  (when (not= expected (:consumption/lifecycle c))
+    (throw (ex-info (str "Expected lifecycle " expected " but was " (:consumption/lifecycle c))
+                    {:expected expected :actual (:consumption/lifecycle c)}))))
+
 (defn register-consumer-information
       "Transition :consumer-information -> :linky-reference with address and network-id."
       [c address network-id]
-      (when-not (= :consumer-information (:consumption/lifecycle c))
-                (throw (ex-info "Can only register consumer informations from :consumer-information state"
-                                {:lifecycle (:consumption/lifecycle c)})))
-      (validate (mu/merge BaseConsumption ConsumerInformation)
-                (assoc c
-                       :consumption/lifecycle :linky-reference
-                       :consumption/consumer-address address
-                       :consumption/network-id network-id)))
+      (let [_ (assert-lifecycle c :consumer-information)]
+        (validate (mu/merge BaseConsumption ConsumerInformation)
+                  (assoc c
+                         :consumption/lifecycle :linky-reference
+                         :consumption/consumer-address address
+                         :consumption/network-id network-id))))
 
 (defn associate-linky-reference
       "Transition :linky-reference -> :billing-address with linky reference."
       [c linky-ref]
-      (when-not (= :linky-reference (:consumption/lifecycle c))
-                (throw (ex-info "Can only associate linky reference from :linky-reference state"
-                                {:lifecycle (:consumption/lifecycle c)})))
-      (validate (-> BaseConsumption
-                    (mu/merge ConsumerInformation)
-                    (mu/merge LinkyReference))
-                (assoc c
-                       :consumption/lifecycle :billing-address
-                       :consumption/linky-reference linky-ref)))
+      (let [_ (assert-lifecycle c :linky-reference)]
+        (validate (-> BaseConsumption
+                      (mu/merge ConsumerInformation)
+                      (mu/merge LinkyReference))
+                  (assoc c
+                         :consumption/lifecycle :billing-address
+                         :consumption/linky-reference linky-ref))))
 
 (defn complete-billing-address
-      "Transition :billing-address -> :pending with billing address."
+      "Transition :billing-address -> :contract-signature with billing address."
       [c billing-addr]
-      (when-not (= :billing-address (:consumption/lifecycle c))
-                (throw (ex-info "Can only complete billing address from :billing-address state"
-                                {:lifecycle (:consumption/lifecycle c)})))
-      (validate (-> BaseConsumption
-                    (mu/merge ConsumerInformation)
-                    (mu/merge LinkyReference)
-                    (mu/merge BillingAddress))
-                (assoc c
-                       :consumption/lifecycle :contract-signature
-                       :consumption/billing-address billing-addr)))
+      (let [_ (assert-lifecycle c :billing-address)]
+        (validate (-> BaseConsumption
+                      (mu/merge ConsumerInformation)
+                      (mu/merge LinkyReference)
+                      (mu/merge BillingAddress))
+                  (assoc c
+                         :consumption/lifecycle :contract-signature
+                         :consumption/billing-address billing-addr))))
 
 (def ^:private contract-type->key
   {:proxywatt :consumption/contract-signed-at
@@ -140,18 +143,18 @@
 (defn sign-contract
       "Sign one contract (contract-type = :proxywatt | :producer | :sepa).
        Transitions to :pending only when all 3 contracts are signed."
-      [c contract-type signed-at]
-      (when-not (= :contract-signature (:consumption/lifecycle c))
-                (throw (ex-info "Can only sign contract from :contract-signature state"
-                                {:lifecycle (:consumption/lifecycle c)})))
-      (let [k  (or (contract-type->key contract-type)
-                    (throw (ex-info "Unknown contract type" {:contract-type contract-type})))
-            c' (assoc c k signed-at)
-            c' (assoc c' :consumption/lifecycle
-                      (if (all-contracts-signed? c') :pending :contract-signature))]
-        (validate (-> BaseConsumption
-                      (mu/merge ConsumerInformation)
-                      (mu/merge LinkyReference)
-                      (mu/merge BillingAddress)
-                      (mu/merge ContractSignature))
-                  c')))
+      ([c contract-type]
+       (sign-contract c contract-type (str (Instant/now))))
+      ([c contract-type signed-at]
+       (let [_ (assert-lifecycle c :contract-signature)
+             k  (or (contract-type->key contract-type)
+                     (throw (ex-info "Unknown contract type" {:contract-type contract-type})))
+             c' (assoc c k signed-at)
+             c' (assoc c' :consumption/lifecycle
+                       (if (all-contracts-signed? c') :pending :contract-signature))]
+         (validate (-> BaseConsumption
+                       (mu/merge ConsumerInformation)
+                       (mu/merge LinkyReference)
+                       (mu/merge BillingAddress)
+                       (mu/merge ContractSignature))
+                   c'))))
