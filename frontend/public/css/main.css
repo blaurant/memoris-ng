@@ -338,6 +338,18 @@ a { color: var(--color-green); }
   border-left-color: var(--color-green);
   font-weight: 600;
 }
+.sidebar__item--separator {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0.5rem 1rem;
+  padding: 0;
+  cursor: default;
+  border-left: none;
+}
+.sidebar__item--separator:hover {
+  background: var(--color-border);
+  color: transparent;
+}
 
 /* ── Dashboard section ── */
 .dashboard h1 {

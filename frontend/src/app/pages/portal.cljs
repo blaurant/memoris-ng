@@ -1,9 +1,11 @@
 (ns app.pages.portal
-  (:require [app.pages.consumptions :as consumptions]
+  (:require [app.pages.admin :as admin]
+            [app.pages.consumptions :as consumptions]
             [re-frame.core :as rf]))
 
 (defn- sidebar []
-  (let [active @(rf/subscribe [:portal/active-section])]
+  (let [active @(rf/subscribe [:portal/active-section])
+        admin? @(rf/subscribe [:auth/admin?])]
     [:nav.sidebar
      [:ul.sidebar__list
       [:li.sidebar__item
@@ -13,7 +15,20 @@
       [:li.sidebar__item
        {:class    (when (= :consumptions active) "sidebar__item--active")
         :on-click #(rf/dispatch [:portal/set-section :consumptions])}
-       "Consommations"]]]))
+       "Consommations"]
+      (when admin?
+        [:<>
+         [:li.sidebar__item.sidebar__item--separator]
+         [:li.sidebar__item
+          {:class    (when (= :admin-users active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-users])
+                          (rf/dispatch [:admin/fetch-users]))}
+          "Utilisateurs"]
+         [:li.sidebar__item
+          {:class    (when (= :admin-networks active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-networks])
+                          (rf/dispatch [:admin/fetch-networks]))}
+          "Réseaux"]])]]))
 
 (defn- dashboard-section []
   (let [user-name @(rf/subscribe [:auth/user-name])
@@ -36,5 +51,7 @@
       [sidebar]]
      [:div.portal__content
       (case active
-        :consumptions [consumptions/consumptions-page]
+        :consumptions  [consumptions/consumptions-page]
+        :admin-users   [admin/users-tab]
+        :admin-networks [admin/networks-tab]
         [dashboard-section])]]))

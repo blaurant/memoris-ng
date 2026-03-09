@@ -8,8 +8,7 @@
    [["/"       {:name :page/home}]
     ["/login"  {:name :page/login}]
     ["/signup" {:name :page/signup}]
-    ["/portal" {:name :page/portal}]
-    ["/admin"  {:name :page/admin}]]))
+    ["/portal" {:name :page/portal}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."
