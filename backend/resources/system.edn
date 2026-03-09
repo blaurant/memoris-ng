@@ -4,13 +4,17 @@
                {:type     :simple-file
                 :filename "log/app.log"}]}
 
- :networks/in-memory-repo {}
-
  :xtdb/node
  {:dir "data/xtdb"}
 
  :users/xtdb-repo
  {:node #ig/ref :xtdb/node}
+
+ :networks/xtdb-repo
+ {:node #ig/ref :xtdb/node}
+
+ :networks/seed
+ {:repo #ig/ref :networks/xtdb-repo}
 
  :consumptions/xtdb-repo
  {:node #ig/ref :xtdb/node}
@@ -27,7 +31,7 @@
  {:cors-origins   #profile {:dev     ["http://localhost:3449"]
                              :staging [#env CORS_ORIGIN]
                              :prod    [#env CORS_ORIGIN]}
-  :network-repo      #ig/ref :networks/in-memory-repo
+  :network-repo      #ig/ref :networks/xtdb-repo
   :user-repo         #ig/ref :users/xtdb-repo
   :consumption-repo  #ig/ref :consumptions/xtdb-repo
   :token-verifier    #ig/ref :auth/token-verifier

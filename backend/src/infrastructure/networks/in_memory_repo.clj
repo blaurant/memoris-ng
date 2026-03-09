@@ -1,42 +1,24 @@
 (ns infrastructure.networks.in-memory-repo
   (:require [domain.network :as network]
+            [domain.network-repo :as network-repo]
             [integrant.core :as ig]))
 
-(defprotocol NetworkRepo
-  (find-all [repo] "Returns all networks."))
+(defrecord InMemoryNetworkRepo [store]
+  network-repo/NetworkRepo
 
-(def ^:private demo-networks
-  [(network/build-network
-    {:network/id         #uuid "11111111-0000-0000-0000-000000000001"
-     :network/name       "Réseau EnR Bordeaux Métropole"
-     :network/center-lat 44.8378
-     :network/center-lng -0.5792
-     :network/radius-km  10.0})
-   (network/build-network
-    {:network/id         #uuid "22222222-0000-0000-0000-000000000002"
-     :network/name       "Réseau Solaire Lyon Sud"
-     :network/center-lat 45.7597
-     :network/center-lng 4.8422
-     :network/radius-km  10.0})
-   (network/build-network
-     {:network/id         #uuid "33333333-0000-0000-0000-000000000003"
-      :network/name       "Réseau élec de L'Erdre"
-      :network/center-lat 47.3466,
-      :network/center-lng -1.5213
-      :network/radius-km  10.0})
-   (network/build-network
-     {:network/id         #uuid "44444444-0000-0000-0000-000000000004"
-      :network/name       "Réseau des Génices de la Nièvre"
-      :network/center-lat 47.3054,
-      :network/center-lng 3.2537
-      :network/radius-km  10.0})])
+  (find-all [_]
+    (mapv network/build-network (vals @store)))
 
-(defrecord InMemoryNetworkRepo [networks]
-  NetworkRepo
-  (find-all [_] networks))
+  (find-by-id [_ id]
+    (when-let [n (get @store id)]
+      (network/build-network n)))
+
+  (save! [_ n]
+    (swap! store assoc (:network/id n) n)
+    n))
 
 (defmethod ig/init-key :networks/in-memory-repo
   [_ _]
-  (->InMemoryNetworkRepo demo-networks))
+  (->InMemoryNetworkRepo (atom {})))
 
 (defmethod ig/halt-key! :networks/in-memory-repo [_ _] nil)

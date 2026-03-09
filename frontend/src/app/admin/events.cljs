@@ -49,6 +49,28 @@
     (js/console.error "Failed to fetch admin networks")
     (assoc db :admin/networks-loading? false)))
 
+;; ── Create network ────────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/create-network
+  (fn [{:keys [db]} [_ params]]
+    {:http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/admin/networks")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          params
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/create-network-ok]
+                  :on-failure      [:admin/create-network-err]}}))
+
+(rf/reg-event-db :admin/create-network-ok
+  (fn [db [_ network]]
+    (update db :admin/networks conj network)))
+
+(rf/reg-event-db :admin/create-network-err
+  (fn [db _]
+    (js/console.error "Failed to create network")
+    db))
+
 ;; ── Tab switch ────────────────────────────────────────────────────────────────
 
 (rf/reg-event-db :admin/set-tab

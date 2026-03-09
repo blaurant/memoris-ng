@@ -1,6 +1,6 @@
 (ns application.network-scenarios
   (:require [domain.geo :as geo]
-            [infrastructure.networks.in-memory-repo :as repo]))
+            [domain.network-repo :as repo]))
 
 (defn list-networks
   "Returns all networks from the repository."
