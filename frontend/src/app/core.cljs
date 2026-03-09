@@ -1,5 +1,7 @@
 (ns app.core
-  (:require [app.auth.events]
+  (:require [app.admin.events]
+            [app.admin.subs]
+            [app.auth.events]
             [app.auth.subs]
             [app.consumptions.events]
             [app.consumptions.subs]

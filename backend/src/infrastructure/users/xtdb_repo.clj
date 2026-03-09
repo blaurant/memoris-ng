@@ -27,6 +27,12 @@
       (when-let [eid (ffirst results)]
         (doc->user (xt/entity (xt/db node) eid)))))
 
+  (find-all [_]
+    (let [results (xt/q (xt/db node)
+                        '{:find  [(pull e [*])]
+                          :where [[e :user/id _]]})]
+      (mapv (fn [[doc]] (doc->user doc)) results)))
+
   (save! [_ u]
     (xt/submit-tx node [[::xt/put (user->doc u)]])
     (xt/sync node)

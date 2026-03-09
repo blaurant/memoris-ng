@@ -24,3 +24,7 @@
 (rf/reg-sub :auth/user-role
   :<- [:auth/user]
   (fn [user _] (:role user)))
+
+(rf/reg-sub :auth/admin?
+  :<- [:auth/user-role]
+  (fn [role _] (= "admin" role)))

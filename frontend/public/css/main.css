@@ -713,6 +713,57 @@ a { color: var(--color-green); }
   }
 }
 
+/* ── Admin table ── */
+.admin__tab-title {
+  font-size: 1.3rem;
+  color: var(--color-green);
+  margin-bottom: 1rem;
+}
+.admin__empty {
+  color: var(--color-muted);
+  padding: 2rem 0;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.admin-table th {
+  background: var(--color-green-pale);
+  color: var(--color-green);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--color-border);
+}
+.admin-table td {
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+.admin-table tr:hover td {
+  background: var(--color-bg);
+}
+.admin-table__role--admin {
+  color: var(--color-green);
+  font-weight: 600;
+}
+.dashboard__title {
+  font-size: 1.8rem;
+  color: var(--color-green);
+  margin-bottom: 1.5rem;
+}
+
 /* ── Footer ── */
 .footer {
   text-align: center;

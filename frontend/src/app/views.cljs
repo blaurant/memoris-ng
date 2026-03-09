@@ -1,5 +1,6 @@
 (ns app.views
   (:require [app.config :as config]
+            [app.pages.admin :as admin]
             [app.pages.home :as home]
             [app.pages.login :as login]
             [app.pages.portal :as portal]
@@ -16,13 +17,18 @@
 
 (defn- navbar []
   (let [logged-in? @(rf/subscribe [:auth/logged-in?])
-        user-name  @(rf/subscribe [:auth/user-name])]
+        user-name  @(rf/subscribe [:auth/user-name])
+        admin?     @(rf/subscribe [:auth/admin?])]
     [:nav.navbar
      [:a.navbar__logo {:href "/"} "⚡ ProxyWatt"]
      [:span.navbar__tagline "Énergie locale partagée"]
      [:div.navbar__auth
       (if logged-in?
         [:div.navbar__user
+         (when admin?
+           [:a.btn.btn--small.btn--outline
+            {:href (rfee/href :page/admin)}
+            "Admin"])
          [:span user-name]
          [:button.btn.btn--small
           {:on-click #(rf/dispatch [:auth/logout])}
@@ -37,7 +43,8 @@
 
 (defn- current-page []
   (let [page       @(rf/subscribe [:router/current-page])
-        logged-in? @(rf/subscribe [:auth/logged-in?])]
+        logged-in? @(rf/subscribe [:auth/logged-in?])
+        admin?     @(rf/subscribe [:auth/admin?])]
     (case page
       :page/login  (if logged-in?
                      (do (rf/dispatch [:router/navigate :page/portal]) nil)
@@ -47,6 +54,9 @@
                      [login/login-page {:signup? true}])
       :page/portal (if logged-in?
                      [portal/portal-page]
+                     (do (rf/dispatch [:router/navigate :page/home]) nil))
+      :page/admin  (if (and logged-in? admin?)
+                     [admin/admin-page]
                      (do (rf/dispatch [:router/navigate :page/home]) nil))
       [home/home-page])))
 

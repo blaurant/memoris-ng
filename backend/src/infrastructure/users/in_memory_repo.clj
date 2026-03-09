@@ -16,6 +16,9 @@
               (user/build-user u)))
           (vals @store)))
 
+  (find-all [_]
+    (mapv user/build-user (vals @store)))
+
   (save! [_ user]
     (swap! store assoc (:user/id user) user)
     user))

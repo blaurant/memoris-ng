@@ -20,4 +20,10 @@
 
    :consumptions/list     []
    :consumptions/loading? false
-   :portal/active-section :dashboard})
+   :portal/active-section :dashboard
+
+   :admin/users           []
+   :admin/users-loading?  false
+   :admin/networks        []
+   :admin/networks-loading? false
+   :admin/active-tab      :users})
