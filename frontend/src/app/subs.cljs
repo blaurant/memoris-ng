@@ -44,3 +44,11 @@
 
 (rf/reg-sub :eligibility/join-network
   (fn [db _] (:eligibility/join-network db)))
+
+;; ── Alert banner ────────────────────────────────────────────────────────────
+
+(rf/reg-sub :alert/message
+  (fn [db _] (:alert/message db)))
+
+(rf/reg-sub :alert/active?
+  (fn [db _] (:alert/active? db)))

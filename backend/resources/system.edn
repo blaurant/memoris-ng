@@ -22,6 +22,9 @@
  :eligibility-checks/xtdb-repo
  {:node #ig/ref :xtdb/node}
 
+ :alerts/xtdb-repo
+ {:node #ig/ref :xtdb/node}
+
  :auth/token-verifier
  {:client-ids {:google   #env GOOGLE_CLIENT_ID
                :apple    #env APPLE_CLIENT_ID
@@ -56,7 +59,8 @@
   :password-hasher       #ig/ref :auth/password-hasher
   :email-sender          #ig/ref :email/resend-sender
   :verification-token-repo #ig/ref :verification-tokens/xtdb-repo
-  :jwt-secret            #ig/ref :auth/jwt-secret}
+  :jwt-secret            #ig/ref :auth/jwt-secret
+  :alert-banner-repo     #ig/ref :alerts/xtdb-repo}
 
  :http/server
  {:port    #profile {:dev 3000 :staging 8080 :prod 8080}

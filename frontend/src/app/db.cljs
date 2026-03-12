@@ -32,4 +32,7 @@
    :admin/networks-loading? false
    :admin/eligibility-checks []
    :admin/eligibility-checks-loading? false
-   :admin/active-tab      :users})
+   :admin/active-tab      :users
+
+   :alert/message  nil
+   :alert/active?  false})

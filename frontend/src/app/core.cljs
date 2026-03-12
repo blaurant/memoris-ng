@@ -24,6 +24,7 @@
 (defn init []
   (rf/dispatch-sync [:app/initialize])
   (rf/dispatch-sync [:auth/restore-session])
+  (rf/dispatch [:alert/fetch])
   ;; Resolve initial route synchronously before first render
   (let [match (rfe/match-by-path routes/router (.-pathname js/location))
         page  (or (-> match :data :name) :page/home)]

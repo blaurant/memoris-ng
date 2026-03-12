@@ -124,6 +124,26 @@
     (js/console.error "Failed to subscribe notification")
     db))
 
+;; ── Alert banner ────────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :alert/fetch
+  (fn [{:keys [db]} _]
+    {:http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/alert")
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:alert/fetch-ok]
+                  :on-failure      [:alert/fetch-err]}}))
+
+(rf/reg-event-db :alert/fetch-ok
+  (fn [db [_ {:keys [message active]}]]
+    (-> db
+        (assoc :alert/message message)
+        (assoc :alert/active? active))))
+
+(rf/reg-event-db :alert/fetch-err
+  (fn [db _]
+    db))
+
 ;; ── Portal ──────────────────────────────────────────────────────────────────
 
 (rf/reg-event-db :portal/set-section

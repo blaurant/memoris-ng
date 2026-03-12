@@ -1,6 +1,7 @@
 (ns infrastructure.rest-api.admin-handler
   (:require [application.network-scenarios :as network-scenarios]
             [application.user-scenarios :as user-scenarios]
+            [domain.alert-banner :as alert]
             [domain.id :as id]
             [infrastructure.rest-api.admin-middleware :as admin-mw]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
@@ -67,8 +68,39 @@
      :body   (mapv serialize-eligibility-check
                    (network-scenarios/list-eligibility-checks ec-repo user-repo (user-id request)))}))
 
-(defn routes [user-repo network-repo ec-repo jwt-secret]
-  [["/api/v1/admin/users"
+(defn- get-alert-handler [alert-banner-repo]
+  (fn [_request]
+    (let [banner (or (alert/find-current alert-banner-repo) (alert/default-alert-banner))]
+      {:status 200
+       :body   {:message (:alert-banner/message banner)
+                :active  (:alert-banner/active? banner)}})))
+
+(defn- update-alert-handler [alert-banner-repo]
+  (fn [request]
+    (try
+      (let [{:keys [message active]} (:body-params request)
+            current (or (alert/find-current alert-banner-repo) (alert/default-alert-banner))
+            updated (alert/build-alert-banner
+                      (assoc current
+                             :alert-banner/message (or message "")
+                             :alert-banner/active? (boolean active)))]
+        (alert/save! alert-banner-repo updated)
+        {:status 200
+         :body   {:message (:alert-banner/message updated)
+                  :active  (:alert-banner/active? updated)}})
+      (catch Exception e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
+(defn routes [user-repo network-repo ec-repo alert-banner-repo jwt-secret]
+  [["/api/v1/alert"
+    {:get (get-alert-handler alert-banner-repo)}]
+   ["/api/v1/admin/alert"
+    {:get        (get-alert-handler alert-banner-repo)
+     :put        (update-alert-handler alert-banner-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/users"
     {:get        (list-users-handler user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]

@@ -3,6 +3,51 @@
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
+;; ── Alert tab ──────────────────────────────────────────────────────────────
+
+(defn alert-tab []
+  (let [msg     @(rf/subscribe [:admin/alert-message])
+        active? @(rf/subscribe [:admin/alert-active?])
+        draft   (r/atom {:message (or msg "") :active (boolean active?)})]
+    (fn []
+      (let [{:keys [message active]} @draft]
+        [:div
+         [:h2.admin__tab-title "Bandeau d'alerte"]
+         [:div.onboarding__form {:style {:max-width "600px"}}
+          [:label {:style {:font-weight "600" :margin-bottom "4px"}} "Message du bandeau"]
+          [:textarea.onboarding__input
+           {:rows        3
+            :placeholder "Message d'alerte à afficher..."
+            :value       message
+            :on-change   #(swap! draft assoc :message (.. % -target -value))
+            :style       {:resize "vertical" :min-height "80px"}}]
+          [:button.btn.btn--green.btn--small
+           {:style    {:margin-top "16px"}
+            :on-click #(rf/dispatch [:admin/update-alert
+                                      {:message message :active active}])}
+           "Enregistrer"]
+          [:label.onboarding__radio-label
+           {:style {:display "flex" :align-items "center" :gap "8px" :margin-top "16px"}}
+           [:input {:type      "checkbox"
+                    :checked   active
+                    :on-change (fn [e]
+                                 (let [new-active (.. e -target -checked)]
+                                   (swap! draft assoc :active new-active)
+                                   (rf/dispatch [:admin/toggle-alert new-active])))}]
+           "Afficher le bandeau sur le site"]
+          (when active
+            [:div {:style {:background "#d32f2f" :color "#fff" :padding "10px 16px"
+                           :border-radius "var(--radius)" :margin-top "12px"
+                           :display "flex" :align-items "center" :gap "8px"
+                           :font-weight "600"}}
+             [:svg {:width "20" :height "20" :viewBox "0 0 24 24"
+                    :fill "none" :stroke "currentColor" :stroke-width "2"
+                    :stroke-linecap "round" :stroke-linejoin "round"}
+              [:path {:d "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"}]
+              [:line {:x1 "12" :y1 "9" :x2 "12" :y2 "13"}]
+              [:line {:x1 "12" :y1 "17" :x2 "12.01" :y2 "17"}]]
+             [:span (if (seq message) message "(aperçu vide)")]])]]))))
+
 ;; ── Users table ───────────────────────────────────────────────────────────────
 
 (defn users-tab []

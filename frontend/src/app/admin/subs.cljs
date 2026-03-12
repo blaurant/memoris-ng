@@ -21,3 +21,9 @@
 
 (rf/reg-sub :admin/active-tab
   (fn [db _] (:admin/active-tab db)))
+
+(rf/reg-sub :admin/alert-message
+  (fn [db _] (:admin/alert-message db)))
+
+(rf/reg-sub :admin/alert-active?
+  (fn [db _] (:admin/alert-active? db)))

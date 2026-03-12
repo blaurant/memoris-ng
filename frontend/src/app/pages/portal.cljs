@@ -33,7 +33,12 @@
           {:class    (when (= :admin-eligibility active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-eligibility])
                           (rf/dispatch [:admin/fetch-eligibility-checks]))}
-          "Visiteurs"]])]]))
+          "Visiteurs"]
+         [:li.sidebar__item
+          {:class    (when (= :admin-alert active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-alert])
+                          (rf/dispatch [:admin/fetch-alert]))}
+          "Alerte"]])]]))
 
 (defn- dashboard-section []
   (let [user-name @(rf/subscribe [:auth/user-name])
@@ -60,4 +65,5 @@
         :admin-users       [admin/users-tab]
         :admin-networks    [admin/networks-tab]
         :admin-eligibility [admin/eligibility-checks-tab]
+        :admin-alert       [admin/alert-tab]
         [dashboard-section])]]))

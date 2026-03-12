@@ -118,6 +118,63 @@
     (js/console.error "Failed to fetch eligibility checks")
     (assoc db :admin/eligibility-checks-loading? false)))
 
+;; ── Alert banner admin ──────────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/fetch-alert
+  (fn [{:keys [db]} _]
+    {:http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/admin/alert")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/fetch-alert-ok]
+                  :on-failure      [:admin/fetch-alert-err]}}))
+
+(rf/reg-event-db :admin/fetch-alert-ok
+  (fn [db [_ {:keys [message active]}]]
+    (-> db
+        (assoc :admin/alert-message message)
+        (assoc :admin/alert-active? active))))
+
+(rf/reg-event-db :admin/fetch-alert-err
+  (fn [db _]
+    (js/console.error "Failed to fetch alert")
+    db))
+
+(rf/reg-event-fx :admin/toggle-alert
+  (fn [{:keys [db]} [_ active?]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/alert")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:active active? :message (or (:admin/alert-message db) "")}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-alert-ok]
+                  :on-failure      [:admin/update-alert-err]}}))
+
+(rf/reg-event-fx :admin/update-alert
+  (fn [{:keys [db]} [_ params]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/alert")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          params
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-alert-ok]
+                  :on-failure      [:admin/update-alert-err]}}))
+
+(rf/reg-event-db :admin/update-alert-ok
+  (fn [db [_ {:keys [message active]}]]
+    (-> db
+        (assoc :admin/alert-message message)
+        (assoc :admin/alert-active? active)
+        (assoc :alert/message message)
+        (assoc :alert/active? active))))
+
+(rf/reg-event-db :admin/update-alert-err
+  (fn [db _]
+    (js/console.error "Failed to update alert")
+    db))
+
 ;; ── Tab switch ────────────────────────────────────────────────────────────────
 
 (rf/reg-event-db :admin/set-tab
