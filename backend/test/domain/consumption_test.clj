@@ -142,7 +142,7 @@
                  (consumption/register-consumer-information "addr" (id/build-id))
                  (consumption/associate-linky-reference "LINKY-12345")
                  (consumption/complete-billing-address "456 avenue de Lyon"))
-          c' (consumption/sign-contract c :proxywatt "2026-03-04T10:00:00Z")]
+          c' (consumption/sign-contract c :elinkco "2026-03-04T10:00:00Z")]
       (is (= :contract-signature (:consumption/lifecycle c')))
       (is (= "2026-03-04T10:00:00Z" (:consumption/contract-signed-at c')))))
 
@@ -152,7 +152,7 @@
                  (consumption/associate-linky-reference "LINKY-12345")
                  (consumption/complete-billing-address "456 avenue de Lyon"))
           c' (-> c
-                 (consumption/sign-contract :proxywatt "2026-03-04T10:00:00Z")
+                 (consumption/sign-contract :elinkco "2026-03-04T10:00:00Z")
                  (consumption/sign-contract :producer "2026-03-04T10:01:00Z"))]
       (is (= :contract-signature (:consumption/lifecycle c')))
       (is (= "2026-03-04T10:01:00Z" (:consumption/producer-contract-signed-at c')))))
@@ -163,7 +163,7 @@
                  (consumption/associate-linky-reference "LINKY-12345")
                  (consumption/complete-billing-address "456 avenue de Lyon"))
           c' (-> c
-                 (consumption/sign-contract :proxywatt "2026-03-04T10:00:00Z")
+                 (consumption/sign-contract :elinkco "2026-03-04T10:00:00Z")
                  (consumption/sign-contract :producer "2026-03-04T10:01:00Z")
                  (consumption/sign-contract :sepa "2026-03-04T10:02:00Z"))]
       (is (= :pending (:consumption/lifecycle c')))
@@ -174,4 +174,4 @@
   (testing "throws when not in :contract-signature state"
     (let [c (consumption/create-new-consumption (id/build-id) user-id)]
       (is (thrown? clojure.lang.ExceptionInfo
-                  (consumption/sign-contract c :proxywatt "2026-03-04T10:00:00Z"))))))
+                  (consumption/sign-contract c :elinkco "2026-03-04T10:00:00Z"))))))

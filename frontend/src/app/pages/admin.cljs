@@ -96,9 +96,10 @@
 ;; ── Networks export ──────────────────────────────────────────────────────────
 
 (defn- export-networks-csv [networks]
-  (let [header "Nom;Latitude;Longitude;Rayon (km);Statut"
+  (let [header "ID;Nom;Latitude;Longitude;Rayon (km);Statut"
         rows   (map (fn [n]
-                      (str/join ";" [(:network/name n)
+                      (str/join ";" [(:network/id n)
+                                     (:network/name n)
                                      (:network/center-lat n)
                                      (:network/center-lng n)
                                      (:network/radius-km n)
@@ -194,9 +195,10 @@
         s))))
 
 (defn- export-eligibility-checks-csv [checks]
-  (let [header "Date;Adresse;Lat;Lng;Éligible;Réseau;Email notification"
+  (let [header "ID;Date;Adresse;Lat;Lng;Éligible;Réseau;Email notification"
         rows   (map (fn [c]
-                      (str/join ";" [(or (:eligibility-check/checked-at c) "")
+                      (str/join ";" [(:eligibility-check/id c)
+                                     (or (:eligibility-check/checked-at c) "")
                                      (or (:eligibility-check/address c) "")
                                      (:eligibility-check/lat c)
                                      (:eligibility-check/lng c)

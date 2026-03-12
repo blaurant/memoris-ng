@@ -1,6 +1,7 @@
 (ns app.components.eligibility-form
   (:require [re-frame.core :as rf]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [reitit.frontend.easy :as rfee]))
 
 (defn- draw-network-circles!
   "Draws a circle for each network on the given map."
@@ -92,7 +93,7 @@
          [:button.btn.btn--small {:on-click on-close} "X"]]
         [:div.modal__body
          [:p {:style {:margin-bottom "1rem"}}
-          "Laissez-nous votre email, nous vous préviendrons dès qu'un réseau ProxyWatt ouvrira dans votre zone."]
+          "Laissez-nous votre email, nous vous préviendrons dès qu'un réseau Elinkco ouvrira dans votre zone."]
          [:input.onboarding__input
           {:type        "email"
            :placeholder "votre@email.com"
@@ -148,10 +149,16 @@
                               "eligibility-result eligibility-result--ok"
                               "eligibility-result eligibility-result--ko")}
                (if eligible?
-                 [:span "Bonne nouvelle — " address " est éligible au réseau "
-                  [:strong (:network/name network)] " !"]
                  [:<>
-                  [:span address " n'est pas dans la zone d'un réseau ProxyWatt pour le moment."]
+                  [:span "Bonne nouvelle — " address " est éligible au réseau "
+                   [:strong (:network/name network)] " !"]
+                  [:div {:style {:margin-top "0.75rem" :text-align "center"}}
+                   [:a.btn.btn--green
+                    {:href     (rfee/href :page/signup)
+                     :on-click #(rf/dispatch [:eligibility/set-join-network (:network/name network)])}
+                    "Adhérer et rejoindre ce réseau"]]]
+                 [:<>
+                  [:span address " n'est pas dans la zone d'un réseau Elinkco pour le moment."]
                   (if notified?
                     [:p {:style {:color "var(--color-success)" :margin-top "0.75rem" :font-size "0.95rem"}}
                      "Vous serez averti dès qu'un réseau ouvrira dans votre zone."]

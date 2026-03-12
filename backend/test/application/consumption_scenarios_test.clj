@@ -52,11 +52,11 @@
   (THEN "the consumption is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 
-  (WHEN "the user signs the ProxyWatt contract" [ctx]
+  (WHEN "the user signs the Elinkco contract" [ctx]
     (assoc ctx :consumption
            (scenarios/sign-contract
              (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-             :proxywatt)))
+             :elinkco)))
 
   (THEN "the consumption is still in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))

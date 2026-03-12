@@ -26,7 +26,7 @@
 (defn- map-section []
   [:section.section
    [:div.container
-    [:h2.section__title "Les réseaux ProxyWatt"]
+    [:h2.section__title "Les réseaux Elinkco"]
     [:p.section__subtitle
      "Découvrez les zones couvertes par nos réseaux d'énergie partagée en France."]
     [google-map/network-map]]])
@@ -36,7 +36,7 @@
    [:div.container
     [:h2.section__title "Vérifiez votre éligibilité"]
     [:p.section__subtitle
-     "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau ProxyWatt."]
+     "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau Elinkco."]
     [eligibility-form/eligibility-form]]])
 
 (defn home-page []

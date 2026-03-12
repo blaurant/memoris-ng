@@ -227,8 +227,8 @@
           "Suivant"]]))))
 
 (def ^:private contract-configs
-  [{:type     :proxywatt
-    :label    "Contrat ProxyWatt"
+  [{:type     :elinkco
+    :label    "Contrat Elinkco"
     :text     contract/contract-text
     :signed-key :consumption/contract-signed-at}
    {:type     :producer

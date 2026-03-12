@@ -4,7 +4,7 @@
             [reagent.core :as r]))
 
 (def ^:private contract-links
-  [{:label      "Contrat ProxyWatt"
+  [{:label      "Contrat Elinkco"
     :text       contract/contract-text
     :signed-key :consumption/contract-signed-at}
    {:label      "Contrat Producteur"

@@ -56,7 +56,7 @@
         c'))
 
 (defn sign-contract
-      "Sign one contract (contract-type = :proxywatt | :producer | :sepa)."
+      "Sign one contract (contract-type = :elinkco | :producer | :sepa)."
       [consumption-repo user-id consumption-id contract-type]
       (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
             c' (consumption/sign-contract c contract-type)

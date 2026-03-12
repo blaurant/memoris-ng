@@ -41,3 +41,6 @@
 
 (rf/reg-sub :eligibility/notification-sent?
   (fn [db _] (:eligibility/notification-sent? db)))
+
+(rf/reg-sub :eligibility/join-network
+  (fn [db _] (:eligibility/join-network db)))

@@ -20,7 +20,7 @@
   (let [logged-in? @(rf/subscribe [:auth/logged-in?])
         user-name  @(rf/subscribe [:auth/user-name])]
     [:nav.navbar
-     [:a.navbar__logo {:href "/"} "⚡ ProxyWatt"]
+     [:a.navbar__logo {:href "/"} "⚡ Elinkco"]
      [:span.navbar__tagline "Énergie locale partagée"]
      [:div.navbar__auth
       (if logged-in?
@@ -31,7 +31,8 @@
           "Déconnexion"]]
         [:div.navbar__buttons
          [:a.btn.btn--green.btn--small
-          {:href (rfee/href :page/signup)}
+          {:href     (rfee/href :page/signup)
+           :on-click #(rf/dispatch [:eligibility/set-join-network nil])}
           "Nouvel utilisateur"]
          [:a.btn.btn--small
           {:href (rfee/href :page/login)}
@@ -59,4 +60,4 @@
    [env-banner]
    [navbar]
    [current-page]
-   [:footer.footer "© 2026 ProxyWatt — Énergie locale partagée"]])
+   [:footer.footer "© 2026 Elinkco — Énergie locale partagée"]])

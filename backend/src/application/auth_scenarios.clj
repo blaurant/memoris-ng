@@ -28,12 +28,15 @@
       3. Checks lifecycle is :alive (throws otherwise)
       4. Promotes to admin if eligible
       5. Returns the user"
-      [user-repo token-verifier provider id-token]
+      [user-repo token-verifier email-sender provider id-token]
       (let [{:keys [subject-id email name]} (tv/verify-provider-token token-verifier provider id-token)
-            u (or (user/find-by-provider user-repo provider subject-id)
+            existing (user/find-by-provider user-repo provider subject-id)
+            u (or existing
                   (user/save! user-repo (user/create-new-user subject-id provider email name)))
             u (user/check-alive u)
             u (maybe-promote-admin user-repo u)]
+        (when-not existing
+          (email-sender/send-welcome-email! email-sender email name))
         u))
 
 ;; ── Email/password authentication ─────────────────────────────────────────────
@@ -67,7 +70,7 @@
       3. Mark user email as verified
       4. Delete token
       5. Return the user"
-      [user-repo vt-repo token-string]
+      [user-repo vt-repo email-sender token-string]
       (let [token (vt/find-by-token vt-repo token-string)]
         (when-not token
           (throw (ex-info "Invalid verification token" {:token token-string})))
@@ -79,6 +82,7 @@
           (let [u' (user/verify-email u)]
             (user/save! user-repo u')
             (vt/delete! vt-repo (:verification-token/id token))
+            (email-sender/send-welcome-email! email-sender (:user/email u') (:user/name u'))
             (mu/log ::email-verified :user-id (:user/id u'))
             u'))))
 

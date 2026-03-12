@@ -68,18 +68,23 @@
           (if loading? "Inscription..." "S'inscrire")]]))))
 
 (defn login-page [{:keys [signup?]}]
-  [:div.login-container
-   (if signup?
-     [:<>
-      [:h1 "Inscription"]
-      [:p "Créez votre compte pour accéder à votre espace client."]
-      [email-register-form]
-      [:div.auth-separator
-       [:span "ou"]]]
-     [:<>
-      [:h1 "Connexion"]
-      [:p "Connectez-vous pour accéder à votre espace client."]
-      [email-login-form]
-      [:div.auth-separator
-       [:span "ou"]]])
-   [auth-buttons/sign-in-buttons]])
+  (let [join-network @(rf/subscribe [:eligibility/join-network])]
+    [:div.login-container
+     (if signup?
+       [:<>
+        [:h1 (if join-network
+               (str "Pour adhérer et rejoindre le réseau " join-network)
+               "Inscription")]
+        [:p (if join-network
+              "Créez votre compte pour finaliser votre adhésion."
+              "Créez votre compte pour accéder à votre espace client.")]
+        [email-register-form]
+        [:div.auth-separator
+         [:span "ou"]]]
+       [:<>
+        [:h1 "Connexion"]
+        [:p "Connectez-vous pour accéder à votre espace client."]
+        [email-login-form]
+        [:div.auth-separator
+         [:span "ou"]]])
+     [auth-buttons/sign-in-buttons]]))

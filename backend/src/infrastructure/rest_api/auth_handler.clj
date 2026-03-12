@@ -16,14 +16,14 @@
   "POST /api/v1/auth/login — body {:provider \"google\" :id-token \"...\"}
   or {:provider \"email\" :email \"...\" :password \"...\"}
   Returns {:token \"jwt\" :user {...}}"
-  [user-repo token-verifier password-hasher jwt-secret]
+  [user-repo token-verifier password-hasher email-sender jwt-secret]
   (fn [request]
     (let [{:keys [provider id-token email password]} (:body-params request)
           provider-kw (keyword provider)]
       (try
         (let [user (if (= :email provider-kw)
                      (auth/login-with-email user-repo password-hasher email password)
-                     (auth/login-with-provider user-repo token-verifier provider-kw id-token))
+                     (auth/login-with-provider user-repo token-verifier email-sender provider-kw id-token))
               token (jwt/issue-token jwt-secret user)]
           {:status 200
            :body   {:token token
@@ -53,11 +53,11 @@
 
 (defn- verify-email-handler
   "POST /api/v1/auth/verify-email — body {:token \"...\"}"
-  [user-repo vt-repo]
+  [user-repo vt-repo email-sender]
   (fn [request]
     (try
       (let [token-string (get-in request [:body-params :token])]
-        (auth/verify-email user-repo vt-repo token-string)
+        (auth/verify-email user-repo vt-repo email-sender token-string)
         {:status 200
          :body   {:message "Email verified successfully. You can now sign in."}})
       (catch clojure.lang.ExceptionInfo e
@@ -89,11 +89,11 @@
   "Returns Reitit route vectors for auth endpoints."
   [user-repo token-verifier password-hasher email-sender vt-repo jwt-secret]
   [["/api/v1/auth/login"
-    {:post (login-handler user-repo token-verifier password-hasher jwt-secret)}]
+    {:post (login-handler user-repo token-verifier password-hasher email-sender jwt-secret)}]
    ["/api/v1/auth/register"
     {:post (register-handler user-repo password-hasher email-sender vt-repo)}]
    ["/api/v1/auth/verify-email"
-    {:post (verify-email-handler user-repo vt-repo)}]
+    {:post (verify-email-handler user-repo vt-repo email-sender)}]
    ["/api/v1/auth/resend-verification"
     {:post (resend-verification-handler user-repo email-sender vt-repo)}]
    ["/api/v1/auth/me"

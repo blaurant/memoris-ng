@@ -12,8 +12,8 @@
     (let [verification-url (str app-base-url "/verify-email?token=" token)
           body {:from    from-email
                 :to      email
-                :subject "ProxyWatt — Vérifiez votre adresse email"
-                :html    (str "<h2>Bienvenue sur ProxyWatt !</h2>"
+                :subject "Elinkco — Vérifiez votre adresse email"
+                :html    (str "<h2>Bienvenue sur Elinkco !</h2>"
                               "<p>Cliquez sur le lien ci-dessous pour vérifier votre adresse email :</p>"
                               "<p><a href=\"" verification-url "\">Vérifier mon email</a></p>"
                               "<p>Ce lien expire dans 24 heures.</p>"
@@ -36,7 +36,28 @@
                     :response-body resp
                     :error (.getMessage e)))
           (throw (ex-info "Failed to send verification email"
-                          {:to email :cause (.getMessage e)})))))))
+                          {:to email :cause (.getMessage e)}))))))
+
+  (send-welcome-email! [_ email name]
+    (let [body {:from    from-email
+                :to      email
+                :subject "Bienvenue sur Elinkco !"
+                :html    (str "<h2>Bienvenue " name " !</h2>"
+                              "<p>Votre compte Elinkco est maintenant actif.</p>"
+                              "<p>Vous pouvez dès à présent vous connecter et rejoindre "
+                              "un réseau d'énergie locale partagée près de chez vous.</p>"
+                              "<p><a href=\"" app-base-url "/login\">Accéder à mon espace</a></p>"
+                              "<p>À bientôt,<br>L'équipe Elinkco</p>")}]
+      (try
+        (http/post "https://api.resend.com/emails"
+                   {:headers      {"Authorization" (str "Bearer " api-key)
+                                   "Content-Type"  "application/json"}
+                    :body         (json/write-str body)
+                    :as           :json
+                    :content-type :json})
+        (mu/log ::welcome-email-sent :to email)
+        (catch clojure.lang.ExceptionInfo e
+          (mu/log ::welcome-email-send-failed :to email :error (.getMessage e)))))))
 
 (defmethod ig/init-key :email/resend-sender [_ {:keys [api-key from-email app-base-url]}]
   (->ResendSender api-key from-email app-base-url))

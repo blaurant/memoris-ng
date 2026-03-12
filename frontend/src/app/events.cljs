@@ -37,7 +37,8 @@
 
 (rf/reg-event-db :router/navigated
   (fn [db [_ page-name]]
-    (assoc db :router/current-page page-name)))
+    (cond-> (assoc db :router/current-page page-name)
+      (not= page-name :page/signup) (dissoc :eligibility/join-network))))
 
 (rf/reg-event-fx :router/navigate
   (fn [_ [_ page-name]]
@@ -97,6 +98,10 @@
   (fn [db _]
     (js/console.error "Failed to check eligibility")
     (assoc db :eligibility/loading? false)))
+
+(rf/reg-event-db :eligibility/set-join-network
+  (fn [db [_ network-name]]
+    (assoc db :eligibility/join-network network-name)))
 
 ;; ── Eligibility notification ─────────────────────────────────────────────────
 

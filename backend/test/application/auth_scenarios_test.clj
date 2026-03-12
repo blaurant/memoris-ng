@@ -27,10 +27,12 @@
 
 ;; ── Mock Email Sender ───────────────────────────────────────────────────────
 
-(defrecord MockEmailSender [sent]
+(defrecord MockEmailSender [sent welcome-sent]
   email-sender/EmailSender
   (send-verification-email! [_ email token]
-    (swap! sent conj {:email email :token token})))
+    (swap! sent conj {:email email :token token}))
+  (send-welcome-email! [_ email name]
+    (swap! welcome-sent conj {:email email :name name})))
 
 ;; ── In-memory Verification Token Repo ───────────────────────────────────────
 
@@ -58,7 +60,7 @@
   (->MockPasswordHasher))
 
 (defn- fresh-email-sender []
-  (->MockEmailSender (atom [])))
+  (->MockEmailSender (atom []) (atom [])))
 
 (defn- fresh-vt-repo []
   (->InMemoryVtRepo (atom {})))
@@ -69,17 +71,19 @@
   (GIVEN "a fresh repo and verifier" [ctx]
     (assoc ctx
            :repo     (fresh-repo)
-           :verifier (mock-verifier)))
+           :verifier (mock-verifier)
+           :sender   (fresh-email-sender)))
 
   (WHEN "a new user signs in with Google" [ctx]
     (assoc ctx :user
-           (auth/login-with-provider (:repo ctx) (:verifier ctx)
+           (auth/login-with-provider (:repo ctx) (:verifier ctx) (:sender ctx)
                                      :google "fake-id-token")))
 
-  (THEN "user is created with role customer and lifecycle alive" [ctx]
+  (THEN "user is created with role customer and lifecycle alive, welcome email sent" [ctx]
     (assert (= :customer (:user/role (:user ctx))))
     (assert (= :alive    (:user/lifecycle (:user ctx))))
-    (assert (= "alice@example.com" (:user/email (:user ctx)))))
+    (assert (= "alice@example.com" (:user/email (:user ctx))))
+    (assert (= 1 (count @(:welcome-sent (:sender ctx))))))
 
 )
 
@@ -87,12 +91,13 @@
   (GIVEN "an existing user in the repo" [ctx]
     (let [repo     (fresh-repo)
           verifier (mock-verifier)
-          user1    (auth/login-with-provider repo verifier :google "token1")]
-      (assoc ctx :repo repo :verifier verifier :first-user user1)))
+          sender   (fresh-email-sender)
+          user1    (auth/login-with-provider repo verifier sender :google "token1")]
+      (assoc ctx :repo repo :verifier verifier :sender sender :first-user user1)))
 
   (WHEN "the same user signs in again" [ctx]
     (assoc ctx :user
-           (auth/login-with-provider (:repo ctx) (:verifier ctx)
+           (auth/login-with-provider (:repo ctx) (:verifier ctx) (:sender ctx)
                                      :google "token2")))
 
   (THEN "the same user is returned" [ctx]
@@ -102,14 +107,15 @@
   (GIVEN "a suspended user in the repo" [ctx]
     (let [repo     (fresh-repo)
           verifier (mock-verifier)
-          u        (auth/login-with-provider repo verifier :google "token1")
+          sender   (fresh-email-sender)
+          u        (auth/login-with-provider repo verifier sender :google "token1")
           suspended (user/suspend u)]
       (user/save! repo suspended)
-      (assoc ctx :repo repo :verifier verifier)))
+      (assoc ctx :repo repo :verifier verifier :sender sender)))
 
   (WHEN "the suspended user tries to sign in" [ctx]
     (try
-      (auth/login-with-provider (:repo ctx) (:verifier ctx)
+      (auth/login-with-provider (:repo ctx) (:verifier ctx) (:sender ctx)
                                 :google "token2")
       (assoc ctx :exception nil)
       (catch clojure.lang.ExceptionInfo e
@@ -183,7 +189,7 @@
   (THEN "an error is thrown" [ctx]
     (assert (= "An account with this email already exists" (:exception ctx)))))
 
-(defscenario "Verify email — user becomes verified"
+(defscenario "Verify email — user becomes verified and welcome email sent"
   (GIVEN "a registered unverified user" [ctx]
     (let [repo    (fresh-repo)
           hasher  (fresh-hasher)
@@ -191,14 +197,15 @@
           vt-repo (fresh-vt-repo)]
       (auth/register-with-email repo hasher sender vt-repo
                                 (id/build-id) "bob@example.com" "Bob" "password123")
-      (assoc ctx :repo repo :vt-repo vt-repo
+      (assoc ctx :repo repo :vt-repo vt-repo :sender sender
              :token (:token (first @(:sent sender))))))
 
   (WHEN "the user verifies their email" [ctx]
-    (assoc ctx :user (auth/verify-email (:repo ctx) (:vt-repo ctx) (:token ctx))))
+    (assoc ctx :user (auth/verify-email (:repo ctx) (:vt-repo ctx) (:sender ctx) (:token ctx))))
 
-  (THEN "user is marked as verified" [ctx]
-    (assert (= true (:user/email-verified? (:user ctx))))))
+  (THEN "user is marked as verified and welcome email is sent" [ctx]
+    (assert (= true (:user/email-verified? (:user ctx))))
+    (assert (= 1 (count @(:welcome-sent (:sender ctx)))))))
 
 (defscenario "Login with email — verified user can sign in"
   (GIVEN "a verified email user" [ctx]
@@ -209,7 +216,7 @@
       (auth/register-with-email repo hasher sender vt-repo
                                 (id/build-id) "bob@example.com" "Bob" "password123")
       (let [token (:token (first @(:sent sender)))]
-        (auth/verify-email repo vt-repo token))
+        (auth/verify-email repo vt-repo sender token))
       (assoc ctx :repo repo :hasher hasher)))
 
   (WHEN "the user logs in with correct password" [ctx]
@@ -228,7 +235,7 @@
       (auth/register-with-email repo hasher sender vt-repo
                                 (id/build-id) "bob@example.com" "Bob" "password123")
       (let [token (:token (first @(:sent sender)))]
-        (auth/verify-email repo vt-repo token))
+        (auth/verify-email repo vt-repo sender token))
       (assoc ctx :repo repo :hasher hasher)))
 
   (WHEN "the user logs in with wrong password" [ctx]

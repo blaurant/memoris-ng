@@ -131,7 +131,7 @@
                          :consumption/billing-address billing-addr))))
 
 (def ^:private contract-type->key
-  {:proxywatt :consumption/contract-signed-at
+  {:elinkco :consumption/contract-signed-at
    :producer  :consumption/producer-contract-signed-at
    :sepa      :consumption/sepa-mandate-signed-at})
 
@@ -141,7 +141,7 @@
        (some? (:consumption/sepa-mandate-signed-at c))))
 
 (defn sign-contract
-      "Sign one contract (contract-type = :proxywatt | :producer | :sepa).
+      "Sign one contract (contract-type = :elinkco | :producer | :sepa).
        Transitions to :pending only when all 3 contracts are signed."
       ([c contract-type]
        (sign-contract c contract-type (str (Instant/now))))
