@@ -34,6 +34,8 @@
 
 (defmethod ig/init-key :auth/jwt-secret
   [_ {:keys [secret]}]
-  (or secret "dev-jwt-secret-change-in-production"))
+  (when-not (seq secret)
+    (throw (ex-info "JWT_SECRET environment variable is required" {})))
+  secret)
 
 (defmethod ig/halt-key! :auth/jwt-secret [_ _] nil)

@@ -141,6 +141,28 @@
     (assert (= :email (:user/provider (:user ctx))))
     (assert (= 1 (count @(:sent (:sender ctx)))))))
 
+(defscenario "Register with duplicate user ID — throws"
+  (GIVEN "an existing user" [ctx]
+    (let [repo    (fresh-repo)
+          hasher  (fresh-hasher)
+          sender  (fresh-email-sender)
+          vt-repo (fresh-vt-repo)
+          uid     (id/build-id)]
+      (auth/register-with-email repo hasher sender vt-repo
+                                uid "bob@example.com" "Bob" "password123")
+      (assoc ctx :repo repo :hasher hasher :sender sender :vt-repo vt-repo :uid uid)))
+
+  (WHEN "registering with the same user ID" [ctx]
+    (try
+      (auth/register-with-email (:repo ctx) (:hasher ctx) (:sender ctx) (:vt-repo ctx)
+                                (:uid ctx) "other@example.com" "Other" "password456")
+      (assoc ctx :exception nil)
+      (catch clojure.lang.ExceptionInfo e
+        (assoc ctx :exception (.getMessage e)))))
+
+  (THEN "an error is thrown" [ctx]
+    (assert (= "User ID already exists" (:exception ctx)))))
+
 (defscenario "Register with duplicate email — throws"
   (GIVEN "an existing email user" [ctx]
     (let [repo    (fresh-repo)

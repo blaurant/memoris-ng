@@ -49,6 +49,8 @@
       5. Send verification email
       6. Return the user"
       [user-repo password-hasher email-sender vt-repo user-id email name raw-password]
+      (when (user-repo/find-by-id user-repo user-id)
+        (throw (ex-info "User ID already exists" {:user-id user-id})))
       (when (user-repo/find-by-email user-repo :email email)
         (throw (ex-info "An account with this email already exists" {:email email})))
       (let [hashed (password-hasher/hash-password password-hasher raw-password)
