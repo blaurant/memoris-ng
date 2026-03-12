@@ -28,7 +28,12 @@
           {:class    (when (= :admin-networks active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-networks])
                           (rf/dispatch [:admin/fetch-networks]))}
-          "Réseaux"]])]]))
+          "Réseaux"]
+         [:li.sidebar__item
+          {:class    (when (= :admin-eligibility active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-eligibility])
+                          (rf/dispatch [:admin/fetch-eligibility-checks]))}
+          "Visiteurs"]])]]))
 
 (defn- dashboard-section []
   (let [user-name @(rf/subscribe [:auth/user-name])
@@ -51,7 +56,8 @@
       [sidebar]]
      [:div.portal__content
       (case active
-        :consumptions  [consumptions/consumptions-page]
-        :admin-users   [admin/users-tab]
-        :admin-networks [admin/networks-tab]
+        :consumptions      [consumptions/consumptions-page]
+        :admin-users       [admin/users-tab]
+        :admin-networks    [admin/networks-tab]
+        :admin-eligibility [admin/eligibility-checks-tab]
         [dashboard-section])]]))

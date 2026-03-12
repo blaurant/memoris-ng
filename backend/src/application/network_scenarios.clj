@@ -1,5 +1,10 @@
 (ns application.network-scenarios
-  (:require [domain.geo :as geo]
+  (:require [com.brunobonacci.mulog :as mu]
+            [domain.datetime :as dt]
+            [domain.eligibility-check :as ec]
+            [domain.eligibility-check-repo :as ec-repo]
+            [domain.geo :as geo]
+            [domain.id :as id]
             [domain.network :as network]
             [domain.network-repo :as repo]
             [domain.user-repo :as user-repo]))
@@ -12,19 +17,37 @@
       (throw (ex-info "Admin access required" {:user-id user-id})))))
 
 (defn list-networks
-  "Returns all networks from the repository."
+  "Returns all public networks from the repository."
   [network-repo]
-  (repo/find-all network-repo))
+  (filterv #(= :public (:network/lifecycle %)) (repo/find-all network-repo)))
 
 (defn check-eligibility
   "Checks whether the point (lat, lng) falls within any network.
+  Persists the check with address for admin review.
   Returns {:eligible? true  :network <network>} or
           {:eligible? false :network nil}."
-  [network-repo lat lng]
-  (let [networks (repo/find-all network-repo)
-        match    (some #(when (geo/within-network? % lat lng) %) networks)]
-    {:eligible? (some? match)
-     :network   match}))
+  [network-repo ec-repo lat lng address]
+  (let [networks (filter #(= :public (:network/lifecycle %)) (repo/find-all network-repo))
+        match    (some #(when (geo/within-network? % lat lng) %) networks)
+        result   {:eligible? (some? match)
+                  :network   match}
+        check    (ec/build-eligibility-check
+                   {:eligibility-check/id           (id/build-id)
+                    :eligibility-check/address      (or address "")
+                    :eligibility-check/lat          lat
+                    :eligibility-check/lng          lng
+                    :eligibility-check/eligible?    (some? match)
+                    :eligibility-check/network-name (when match (:network/name match))
+                    :eligibility-check/checked-at   (dt/now)})]
+    (ec-repo/save! ec-repo check)
+    (mu/log ::eligibility-checked :address address :eligible? (some? match))
+    result))
+
+(defn list-eligibility-checks
+  "Returns all eligibility checks. Requires admin role."
+  [ec-repo user-repo user-id]
+  (assert-admin user-repo user-id)
+  (ec-repo/find-all ec-repo))
 
 (defn create-network
   "Create a new network with the given attributes. Requires admin role."
@@ -36,3 +59,24 @@
                                   :network/center-lng center-lng
                                   :network/radius-km  radius-km})]
     (repo/save! network-repo n)))
+
+(defn list-all-networks
+  "Returns all networks (private and public). Requires admin role."
+  [network-repo user-repo user-id]
+  (assert-admin user-repo user-id)
+  (repo/find-all network-repo))
+
+(defn toggle-network-visibility
+  "Toggle a network between :private and :public. Requires admin role."
+  [network-repo user-repo user-id network-id]
+  (assert-admin user-repo user-id)
+  (let [n (repo/find-by-id network-repo network-id)]
+    (when-not n
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (let [n' (if (= :public (:network/lifecycle n))
+               (network/unpublish n)
+               (network/publish n))]
+      (repo/save! network-repo n')
+      (mu/log ::network-visibility-toggled :network-id network-id
+              :lifecycle (:network/lifecycle n'))
+      n')))

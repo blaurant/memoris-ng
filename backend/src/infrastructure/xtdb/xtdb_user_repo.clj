@@ -1,4 +1,4 @@
-(ns infrastructure.users.xtdb-repo
+(ns infrastructure.xtdb.xtdb-user-repo
   (:require [domain.user :as user]
             [domain.user-repo :as user-repo]
             [integrant.core :as ig]
@@ -16,6 +16,16 @@
 
   (find-by-id [_ id]
     (doc->user (xt/entity (xt/db node) id)))
+
+  (find-by-email [_ provider email]
+    (let [results (xt/q (xt/db node)
+                        '{:find  [e]
+                          :where [[e :user/provider p]
+                                  [e :user/email em]]
+                          :in    [p em]}
+                        provider email)]
+      (when-let [eid (ffirst results)]
+        (doc->user (xt/entity (xt/db node) eid)))))
 
   (find-by-provider [_ provider provider-subject-identifier]
     (let [results (xt/q (xt/db node)

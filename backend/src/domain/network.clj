@@ -1,21 +1,41 @@
-(ns domain.network
-  (:require [malli.core :as m]))
+(ns ^{:domain/type :entity} domain.network
+  (:require [domain.id :as id]
+            [malli.core :as m]))
+
+(def lifecycle-states #{:private :public})
 
 (def Network
   [:map
-   [:network/id   uuid?]
+   [:network/id   [:fn {:error/message "must be a valid ID"} id/id?]]
    [:network/name string?]
    [:network/center-lat double?]
    [:network/center-lng double?]
-   [:network/radius-km  {:optional true} double?]])
+   [:network/radius-km  {:optional true} double?]
+   [:network/lifecycle [:enum :private :public]]])
 
 (defn build-network
   "Validates attrs against the Network schema and returns the network map.
   Throws ex-info if attrs are invalid.
-  Defaults :network/radius-km to 10.0 when not provided."
+  Defaults :network/radius-km to 10.0 and :network/lifecycle to :private."
   [attrs]
-  (let [with-defaults (update attrs :network/radius-km #(or % 10.0))]
+  (let [with-defaults (-> attrs
+                          (update :network/radius-km #(or % 10.0))
+                          (update :network/lifecycle #(or % :private)))]
     (if (m/validate Network with-defaults)
       with-defaults
       (throw (ex-info "Invalid network" {:attrs attrs
                                          :errors (m/explain Network with-defaults)})))))
+
+(defn publish
+  "Transition a network from :private to :public."
+  [network]
+  (when (not= :private (:network/lifecycle network))
+    (throw (ex-info "Network is not private" {:lifecycle (:network/lifecycle network)})))
+  (assoc network :network/lifecycle :public))
+
+(defn unpublish
+  "Transition a network from :public to :private."
+  [network]
+  (when (not= :public (:network/lifecycle network))
+    (throw (ex-info "Network is not public" {:lifecycle (:network/lifecycle network)})))
+  (assoc network :network/lifecycle :private))

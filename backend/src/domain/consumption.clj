@@ -1,4 +1,4 @@
-(ns domain.consumption
+(ns ^{:domain/type :entity} domain.consumption
     (:require [clojure.string]
               [domain.id :as id]
               [malli.core :as m]

@@ -1,4 +1,4 @@
-(ns infrastructure.networks.in-memory-repo
+(ns infrastructure.in-memory-repo.mem-network-repo
   (:require [domain.network :as network]
             [domain.network-repo :as network-repo]
             [integrant.core :as ig]))

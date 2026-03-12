@@ -5,10 +5,12 @@
 
 (def router
   (rfe/router
-   [["/"       {:name :page/home}]
-    ["/login"  {:name :page/login}]
-    ["/signup" {:name :page/signup}]
-    ["/portal" {:name :page/portal}]]))
+   [["/"              {:name :page/home}]
+    ["/login"          {:name :page/login}]
+    ["/signup"         {:name :page/signup}]
+    ["/portal"         {:name :page/portal}]
+    ["/verify-email"   {:name :page/verify-email}]
+    ["/check-email"    {:name :page/check-email}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."

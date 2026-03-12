@@ -1,4 +1,4 @@
-(ns infrastructure.networks.xtdb-repo
+(ns infrastructure.xtdb.xtdb-network-repo
   (:require [domain.network :as network]
             [domain.network-repo :as network-repo]
             [integrant.core :as ig]

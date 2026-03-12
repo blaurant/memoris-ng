@@ -3,18 +3,23 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [integrant.core :as ig]
+            [infrastructure.auth.bcrypt-hasher]
             [infrastructure.auth.jwt]
             [infrastructure.auth.token-verifier]
-            [infrastructure.networks.seed]
-            [infrastructure.networks.xtdb-repo]
+            [infrastructure.email.console-sender]
+            [infrastructure.email.resend-sender]
+            [infrastructure.init-seed.network]
+            [infrastructure.xtdb.xtdb-network-repo]
             [infrastructure.rest-api.handler]
             [infrastructure.rest-api.logging]
             [infrastructure.rest-api.server]
-            [infrastructure.users.in-memory-repo]
+            [infrastructure.in-memory-repo.mem-user-repo]
+            [infrastructure.xtdb.xtdb-verification-token-repo]
             [infrastructure.xtdb.node]
-            [infrastructure.users.xtdb-repo]
-            [infrastructure.consumptions.in-memory-repo]
-            [infrastructure.consumptions.xtdb-repo]))
+            [infrastructure.xtdb.xtdb-user-repo]
+            [infrastructure.in-memory-repo.mem-consumption-repo]
+            [infrastructure.xtdb.xtdb-consumption-repo]
+            [infrastructure.xtdb.xtdb-eligibility-check-repo]))
 
 ;; Teach aero how to read #ig/ref tags from system.edn
 (defmethod aero/reader 'ig/ref [_ _ value] (ig/ref value))

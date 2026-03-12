@@ -79,7 +79,7 @@
                      (assoc :eligibility/lng lng))
      :http-xhrio {:method          :post
                   :uri             (str config/API_BASE "/api/v1/networks/check-eligibility")
-                  :params          {:lat lat :lng lng}
+                  :params          {:lat lat :lng lng :address address}
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
                   :on-success      [:eligibility/check-ok address]

@@ -1,8 +1,10 @@
 (ns app.views
   (:require [app.config :as config]
+            [app.pages.check-email :as check-email]
             [app.pages.home :as home]
             [app.pages.login :as login]
             [app.pages.portal :as portal]
+            [app.pages.verify-email :as verify-email]
             [re-frame.core :as rf]
             [reitit.frontend.easy :as rfee]))
 
@@ -39,15 +41,17 @@
   (let [page       @(rf/subscribe [:router/current-page])
         logged-in? @(rf/subscribe [:auth/logged-in?])]
     (case page
-      :page/login  (if logged-in?
-                     (do (rf/dispatch [:router/navigate :page/portal]) nil)
-                     [login/login-page {:signup? false}])
-      :page/signup (if logged-in?
-                     (do (rf/dispatch [:router/navigate :page/portal]) nil)
-                     [login/login-page {:signup? true}])
-      :page/portal (if logged-in?
-                     [portal/portal-page]
-                     (do (rf/dispatch [:router/navigate :page/home]) nil))
+      :page/login        (if logged-in?
+                           (do (rf/dispatch [:router/navigate :page/portal]) nil)
+                           [login/login-page {:signup? false}])
+      :page/signup       (if logged-in?
+                           (do (rf/dispatch [:router/navigate :page/portal]) nil)
+                           [login/login-page {:signup? true}])
+      :page/portal       (if logged-in?
+                           [portal/portal-page]
+                           (do (rf/dispatch [:router/navigate :page/home]) nil))
+      :page/verify-email [verify-email/verify-email-page]
+      :page/check-email  [check-email/check-email-page]
       [home/home-page])))
 
 (defn main-panel []

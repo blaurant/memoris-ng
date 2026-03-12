@@ -16,20 +16,23 @@
   {:status 200
    :body   {:message "Hello you !"}})
 
-(defn- build-router [network-repo user-repo consumption-repo token-verifier jwt-secret]
+(defn- build-router [network-repo user-repo consumption-repo ec-repo token-verifier
+                     password-hasher email-sender vt-repo jwt-secret]
   (ring/router
     (concat [["/api/v1/hello" {:get hello-handler}]]
-            (network-handler/routes network-repo)
-            (auth-handler/routes user-repo token-verifier jwt-secret)
+            (network-handler/routes network-repo ec-repo)
+            (auth-handler/routes user-repo token-verifier password-hasher email-sender vt-repo jwt-secret)
             (consumption-handler/routes consumption-repo jwt-secret)
-            (admin-handler/routes user-repo network-repo jwt-secret))
+            (admin-handler/routes user-repo network-repo ec-repo jwt-secret))
     {:data {:muuntaja   m/instance
             :middleware [muuntaja/format-middleware]}}))
 
 (defmethod ig/init-key :http/handler
-  [_ {:keys [cors-origins network-repo user-repo consumption-repo token-verifier jwt-secret]}]
+  [_ {:keys [cors-origins network-repo user-repo consumption-repo eligibility-check-repo
+             token-verifier password-hasher email-sender verification-token-repo jwt-secret]}]
   (-> (ring/ring-handler
-        (build-router network-repo user-repo consumption-repo token-verifier jwt-secret)
+        (build-router network-repo user-repo consumption-repo eligibility-check-repo
+                      token-verifier password-hasher email-sender verification-token-repo jwt-secret)
         (ring/create-default-handler))
       (logging/wrap-request-logging)
       (wrap-cors

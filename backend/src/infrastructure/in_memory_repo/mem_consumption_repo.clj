@@ -1,4 +1,4 @@
-(ns infrastructure.consumptions.in-memory-repo
+(ns infrastructure.in-memory-repo.mem-consumption-repo
   (:require [domain.consumption :as consumption]
             [domain.consumption-repo :as consumption-repo]
             [integrant.core :as ig]))

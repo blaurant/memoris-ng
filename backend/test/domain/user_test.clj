@@ -53,6 +53,47 @@
     (is (thrown? clojure.lang.ExceptionInfo
                 (user/build-user (assoc valid-attrs :user/name (apply str (repeat 101 "a"))))))))
 
+(deftest create-email-user-test
+  (testing "creates an email user with email-verified? false"
+    (let [uid (id/build-id)
+          u   (user/create-email-user uid "bob@example.com" "Bob" "$2a$hash")]
+      (is (= :email (:user/provider u)))
+      (is (= false (:user/email-verified? u)))
+      (is (= "$2a$hash" (:user/password-hash u)))
+      (is (= :customer (:user/role u)))))
+
+  (testing "throws on invalid email"
+    (is (thrown? clojure.lang.ExceptionInfo
+                (user/create-email-user (id/build-id) "bad" "Bob" "hash"))))
+
+  (testing "throws on blank name"
+    (is (thrown? clojure.lang.ExceptionInfo
+                (user/create-email-user (id/build-id) "bob@example.com" "" "hash")))))
+
+(deftest email-verified?-test
+  (testing "returns true for OAuth users (no email-verified? key)"
+    (is (user/email-verified? (user/build-user valid-attrs))))
+
+  (testing "returns false for email user not yet verified"
+    (let [u (user/create-email-user (id/build-id) "bob@example.com" "Bob" "hash")]
+      (is (not (user/email-verified? u))))))
+
+(deftest verify-email-test
+  (testing "marks user as verified"
+    (let [u  (user/create-email-user (id/build-id) "bob@example.com" "Bob" "hash")
+          u' (user/verify-email u)]
+      (is (true? (:user/email-verified? u'))))))
+
+(deftest assert-email-verified-test
+  (testing "returns user if verified"
+    (let [u (user/verify-email (user/create-email-user (id/build-id) "bob@example.com" "Bob" "hash"))]
+      (is (= u (user/assert-email-verified u)))))
+
+  (testing "throws if not verified"
+    (let [u (user/create-email-user (id/build-id) "bob@example.com" "Bob" "hash")]
+      (is (thrown? clojure.lang.ExceptionInfo
+                  (user/assert-email-verified u))))))
+
 (deftest alive?-test
   (testing "returns true for alive user"
     (is (user/alive? (user/build-user valid-attrs))))

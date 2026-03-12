@@ -28,3 +28,15 @@
 (rf/reg-sub :auth/admin?
   :<- [:auth/user-role]
   (fn [role _] (= "admin" role)))
+
+(rf/reg-sub :auth/register-success?
+  (fn [db _] (:auth/register-success? db)))
+
+(rf/reg-sub :auth/register-email
+  (fn [db _] (:auth/register-email db)))
+
+(rf/reg-sub :auth/verification-status
+  (fn [db _] (:auth/verification-status db)))
+
+(rf/reg-sub :auth/resend-success?
+  (fn [db _] (:auth/resend-success? db)))

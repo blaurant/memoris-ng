@@ -38,6 +38,98 @@
         (assoc :auth/error (or (get-in response [:response :error])
                                "Erreur de connexion")))))
 
+;; ── Login with email ────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/login-with-email
+  (fn [{:keys [db]} [_ email password]]
+    {:db         (-> db
+                     (assoc :auth/loading? true)
+                     (dissoc :auth/error))
+     :http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/login")
+                  :params          {:provider "email" :email email :password password}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/login-ok]
+                  :on-failure      [:auth/login-err]}}))
+
+;; ── Register with email ─────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/register
+  (fn [{:keys [db]} [_ name email password]]
+    {:db         (-> db
+                     (assoc :auth/loading? true)
+                     (dissoc :auth/error)
+                     (dissoc :auth/register-success?)
+                     (assoc :auth/register-email email))
+     :http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/register")
+                  :params          {:id (str (random-uuid)) :email email :name name :password password}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/register-ok]
+                  :on-failure      [:auth/register-err]}}))
+
+(rf/reg-event-fx :auth/register-ok
+  (fn [{:keys [db]} _]
+    {:db       (-> db
+                   (assoc :auth/loading? false)
+                   (assoc :auth/register-success? true))
+     :navigate :page/check-email}))
+
+(rf/reg-event-db :auth/register-err
+  (fn [db [_ response]]
+    (-> db
+        (assoc :auth/loading? false)
+        (assoc :auth/error (or (get-in response [:response :error])
+                               "Erreur lors de l'inscription")))))
+
+;; ── Verify email ────────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/verify-email
+  (fn [{:keys [db]} [_ token]]
+    {:db         (-> db
+                     (assoc :auth/verification-status :loading)
+                     (dissoc :auth/error))
+     :http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/verify-email")
+                  :params          {:token token}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/verify-email-ok]
+                  :on-failure      [:auth/verify-email-err]}}))
+
+(rf/reg-event-db :auth/verify-email-ok
+  (fn [db _]
+    (assoc db :auth/verification-status :success)))
+
+(rf/reg-event-db :auth/verify-email-err
+  (fn [db [_ response]]
+    (-> db
+        (assoc :auth/verification-status :error)
+        (assoc :auth/error (or (get-in response [:response :error])
+                               "Erreur de vérification")))))
+
+;; ── Resend verification ─────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/resend-verification
+  (fn [{:keys [db]} [_ email]]
+    {:http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/resend-verification")
+                  :params          {:email email}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/resend-ok]
+                  :on-failure      [:auth/resend-err]}}))
+
+(rf/reg-event-db :auth/resend-ok
+  (fn [db _]
+    (assoc db :auth/resend-success? true)))
+
+(rf/reg-event-db :auth/resend-err
+  (fn [db _]
+    (assoc db :auth/error "Erreur lors du renvoi de l'email")))
+
 ;; ── Logout ───────────────────────────────────────────────────────────────────
 
 (rf/reg-event-fx :auth/logout

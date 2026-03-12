@@ -1,4 +1,4 @@
-(ns infrastructure.consumptions.xtdb-repo
+(ns infrastructure.xtdb.xtdb-consumption-repo
   (:require [domain.consumption :as consumption]
             [domain.consumption-repo :as consumption-repo]
             [integrant.core :as ig]

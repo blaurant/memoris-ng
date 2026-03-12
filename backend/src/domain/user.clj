@@ -1,4 +1,4 @@
-(ns domain.user
+(ns ^{:domain/type :entity} domain.user
     (:require [domain.id :as id]
       [malli.core :as m]))
 
@@ -15,15 +15,22 @@
    [:fn {:error/message "must not be blank"} #(not (clojure.string/blank? %))]
    [:fn {:error/message "must be at most 100 characters"} #(<= (count %) 100)]])
 
+(def password?
+  [:and
+   string?
+   [:fn {:error/message "must be at least 8 characters"} #(>= (count %) 8)]])
+
 (def User
   [:map
    [:user/id [:fn {:error/message "must be a valid ID"} id/id?]]
    [:user/email email?]
    [:user/name name?]
-   [:user/provider [:enum :google :apple :facebook]]
+   [:user/provider [:enum :google :apple :facebook :email]]
    [:user/provider-subject-identifier string?]
    [:user/role [:enum :customer :admin]]
-   [:user/lifecycle [:enum :alive :suspended :deactivated]]])
+   [:user/lifecycle [:enum :alive :suspended :deactivated]]
+   [:user/password-hash {:optional true} [:maybe string?]]
+   [:user/email-verified? {:optional true} boolean?]])
 
 
 (defn build-user
@@ -45,6 +52,37 @@
                    :user/provider-subject-identifier provider-subject-id
                    :user/role                        :customer
                    :user/lifecycle                   :alive}))
+
+(defn create-email-user
+      "Create a new user with email/password authentication."
+      [id email name password-hash]
+      (build-user {:user/id                          id
+                   :user/email                       email
+                   :user/name                        name
+                   :user/provider                    :email
+                   :user/provider-subject-identifier email
+                   :user/password-hash               password-hash
+                   :user/email-verified?             false
+                   :user/role                        :customer
+                   :user/lifecycle                   :alive}))
+
+(defn email-verified?
+      "Returns true if the user's email is verified.
+       OAuth users (no :user/email-verified? key) are considered verified."
+      [user]
+      (get user :user/email-verified? true))
+
+(defn verify-email
+      "Marks the user's email as verified."
+      [user]
+      (assoc user :user/email-verified? true))
+
+(defn assert-email-verified
+      "Throws if the user's email is not verified."
+      [user]
+      (when-not (email-verified? user)
+        (throw (ex-info "Email not verified" {:user-id (:user/id user)})))
+      user)
 
 (defn alive?
       "Returns true if the user's lifecycle is :alive."

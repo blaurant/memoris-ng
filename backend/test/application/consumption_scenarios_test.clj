@@ -2,7 +2,7 @@
   (:require [bdd.test-gwt :refer [defscenario GIVEN WHEN THEN]]
             [application.consumption-scenarios :as scenarios]
             [domain.id :as id]
-            [infrastructure.consumptions.in-memory-repo :as mem-repo]))
+            [infrastructure.in-memory-repo.mem-consumption-repo :as mem-repo]))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -16,11 +16,9 @@
     (assoc ctx
            :repo    (fresh-repo)
            :user-id (id/build-id)))
-
   (WHEN "the user creates a consumption" [ctx]
     (assoc ctx :consumption
            (scenarios/create-consumption (:repo ctx) (id/build-id) (:user-id ctx))))
-
   (THEN "the consumption is in :consumer-information state" [ctx]
     (assert (= :consumer-information (:consumption/lifecycle (:consumption ctx))))
     (assert (= (:user-id ctx) (:consumption/user-id (:consumption ctx))))))
@@ -31,32 +29,26 @@
           user-id (id/build-id)
           c       (scenarios/create-consumption repo (id/build-id) user-id)]
       (assoc ctx :repo repo :user-id user-id :consumption c)))
-
   (WHEN "the user submits step 1 (consumer informations)" [ctx]
     (let [network-id (id/build-id)
           c' (scenarios/register-consumer-information
                (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
                "10 rue de Paris" network-id)]
       (assoc ctx :consumption c' :network-id network-id)))
-
   (THEN "the consumption is in :linky-reference state" [ctx]
     (assert (= :linky-reference (:consumption/lifecycle (:consumption ctx)))))
-
   (WHEN "the user submits step 2 (linky reference)" [ctx]
     (assoc ctx :consumption
            (scenarios/associate-linky-reference
              (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
              "LINKY-98765")))
-
   (THEN "the consumption is in :billing-address state" [ctx]
     (assert (= :billing-address (:consumption/lifecycle (:consumption ctx)))))
-
   (WHEN "the user submits step 3 (billing address)" [ctx]
     (assoc ctx :consumption
            (scenarios/complete-billing-address
              (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
              "20 avenue de Lyon")))
-
   (THEN "the consumption is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 

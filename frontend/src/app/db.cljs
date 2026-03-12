@@ -17,6 +17,10 @@
    :auth/user     nil
    :auth/loading? false
    :auth/error    nil
+   :auth/register-success? false
+   :auth/register-email    nil
+   :auth/verification-status nil
+   :auth/resend-success?   false
 
    :consumptions/list     []
    :consumptions/loading? false
@@ -26,4 +30,6 @@
    :admin/users-loading?  false
    :admin/networks        []
    :admin/networks-loading? false
+   :admin/eligibility-checks []
+   :admin/eligibility-checks-loading? false
    :admin/active-tab      :users})

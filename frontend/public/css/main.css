@@ -296,6 +296,37 @@ a { color: var(--color-green); }
   margin-bottom: 2rem;
 }
 
+/* ── Email auth form ── */
+.email-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.email-auth-form .btn--green {
+  margin-top: 0.5rem;
+}
+.auth-separator {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.auth-separator::before,
+.auth-separator::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--color-border);
+}
+.auth-success {
+  color: var(--color-success);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
 /* ── Portal layout (sidebar + content) ── */
 .portal {
   display: flex;
@@ -769,6 +800,10 @@ a { color: var(--color-green); }
 .admin-table__role--admin {
   color: var(--color-green);
   font-weight: 600;
+}
+.admin-table__row--disabled td {
+  color: #9e9e9e;
+  background: #f5f5f5;
 }
 .dashboard__title {
   font-size: 1.8rem;
