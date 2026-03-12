@@ -38,6 +38,27 @@
           (throw (ex-info "Failed to send verification email"
                           {:to email :cause (.getMessage e)}))))))
 
+  (send-password-reset-email! [_ email token]
+    (let [reset-url (str app-base-url "/reset-password?token=" token)
+          body {:from    from-email
+                :to      email
+                :subject "Elinkco — Réinitialisation de votre mot de passe"
+                :html    (str "<h2>Réinitialisation de mot de passe</h2>"
+                              "<p>Vous avez demandé la réinitialisation de votre mot de passe.</p>"
+                              "<p><a href=\"" reset-url "\">Cliquez ici pour choisir un nouveau mot de passe</a></p>"
+                              "<p>Ce lien expire dans 24 heures.</p>"
+                              "<p>Si vous n'avez pas fait cette demande, ignorez cet email.</p>")}]
+      (try
+        (http/post "https://api.resend.com/emails"
+                   {:headers      {"Authorization" (str "Bearer " api-key)
+                                   "Content-Type"  "application/json"}
+                    :body         (json/write-str body)
+                    :as           :json
+                    :content-type :json})
+        (mu/log ::password-reset-email-sent :to email)
+        (catch clojure.lang.ExceptionInfo e
+          (mu/log ::password-reset-email-send-failed :to email :error (.getMessage e))))))
+
   (send-welcome-email! [_ email name]
     (let [body {:from    from-email
                 :to      email

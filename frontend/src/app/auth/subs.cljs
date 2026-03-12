@@ -40,3 +40,12 @@
 
 (rf/reg-sub :auth/resend-success?
   (fn [db _] (:auth/resend-success? db)))
+
+(rf/reg-sub :auth/forgot-email
+  (fn [db _] (:auth/forgot-email db)))
+
+(rf/reg-sub :auth/forgot-password-sent?
+  (fn [db _] (:auth/forgot-password-sent? db)))
+
+(rf/reg-sub :auth/reset-password-success?
+  (fn [db _] (:auth/reset-password-success? db)))

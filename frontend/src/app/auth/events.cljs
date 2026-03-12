@@ -130,6 +130,64 @@
   (fn [db _]
     (assoc db :auth/error "Erreur lors du renvoi de l'email")))
 
+;; ── Forgot password ─────────────────────────────────────────────────────────
+
+(rf/reg-event-db :auth/set-forgot-email
+  (fn [db [_ email]]
+    (-> db
+        (assoc :auth/forgot-email email)
+        (dissoc :auth/forgot-password-sent?))))
+
+
+(rf/reg-event-fx :auth/forgot-password
+  (fn [{:keys [db]} [_ email]]
+    {:db         (-> db
+                     (assoc :auth/loading? true)
+                     (dissoc :auth/error))
+     :http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/forgot-password")
+                  :params          {:email email}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/forgot-password-ok]
+                  :on-failure      [:auth/forgot-password-ok]}}))
+
+(rf/reg-event-fx :auth/forgot-password-ok
+  (fn [{:keys [db]} _]
+    {:db       (-> db
+                   (assoc :auth/loading? false)
+                   (assoc :auth/forgot-password-sent? true))
+     :dispatch-later [{:ms 3000 :dispatch [:router/navigate :page/login]}]}))
+
+;; ── Reset password ──────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/reset-password
+  (fn [{:keys [db]} [_ token password]]
+    {:db         (-> db
+                     (assoc :auth/loading? true)
+                     (dissoc :auth/error))
+     :http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/reset-password")
+                  :params          {:token token :password password}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/reset-password-ok]
+                  :on-failure      [:auth/reset-password-err]}}))
+
+(rf/reg-event-fx :auth/reset-password-ok
+  (fn [{:keys [db]} _]
+    {:db       (-> db
+                   (assoc :auth/loading? false)
+                   (assoc :auth/reset-password-success? true))
+     :dispatch-later [{:ms 3000 :dispatch [:router/navigate :page/login]}]}))
+
+(rf/reg-event-db :auth/reset-password-err
+  (fn [db [_ response]]
+    (-> db
+        (assoc :auth/loading? false)
+        (assoc :auth/error (or (get-in response [:response :error])
+                               "Lien invalide ou expiré")))))
+
 ;; ── Logout ───────────────────────────────────────────────────────────────────
 
 (rf/reg-event-fx :auth/logout

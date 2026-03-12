@@ -50,11 +50,43 @@
 
 ;; ── Users table ───────────────────────────────────────────────────────────────
 
+(defn- export-users-csv [users]
+  (let [header "ID;Nom;Email;Fournisseur;Role;Statut"
+        rows   (map (fn [u]
+                      (str/join ";" [(:user/id u)
+                                     (or (:user/name u) "")
+                                     (or (:user/email u) "")
+                                     (or (:user/provider u) "")
+                                     (or (:user/role u) "")
+                                     (or (:user/lifecycle u) "")]))
+                    users)
+        csv    (str/join "\n" (cons header rows))
+        blob   (js/Blob. #js [csv] #js {:type "text/csv;charset=utf-8;"})
+        url    (.createObjectURL js/URL blob)
+        a      (.createElement js/document "a")]
+    (set! (.-href a) url)
+    (set! (.-download a) "utilisateurs.csv")
+    (.click a)
+    (.revokeObjectURL js/URL url)))
+
 (defn users-tab []
   (let [users    @(rf/subscribe [:admin/users])
         loading? @(rf/subscribe [:admin/users-loading?])]
     [:div
-     [:h2.admin__tab-title "Utilisateurs"]
+     [:div.consumptions__header
+      [:h2.admin__tab-title "Utilisateurs"]
+      [:button.btn.btn--small
+       {:on-click #(export-users-csv users)
+        :disabled (empty? users)
+        :title    "Exporter en CSV"}
+       [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+              :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+              :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+              :style {:vertical-align "middle" :margin-right "4px"}}
+        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+        [:polyline {:points "7 10 12 15 17 10"}]
+        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+       "Exporter"]]
      (cond
        loading?
        [:p.loading "Chargement..."]

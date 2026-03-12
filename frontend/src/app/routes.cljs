@@ -10,7 +10,9 @@
     ["/signup"         {:name :page/signup}]
     ["/portal"         {:name :page/portal}]
     ["/verify-email"   {:name :page/verify-email}]
-    ["/check-email"    {:name :page/check-email}]]))
+    ["/check-email"       {:name :page/check-email}]
+    ["/forgot-password"   {:name :page/forgot-password}]
+    ["/reset-password"    {:name :page/reset-password}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."

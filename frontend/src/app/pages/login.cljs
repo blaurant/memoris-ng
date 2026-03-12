@@ -1,7 +1,8 @@
 (ns app.pages.login
   (:require [app.components.auth-buttons :as auth-buttons]
             [re-frame.core :as rf]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [reitit.frontend.easy :as rfee]))
 
 (defn- email-login-form []
   (let [email    (r/atom "")
@@ -25,7 +26,12 @@
          [:button.btn.btn--green
           {:disabled (or loading? (empty? @email) (empty? @password))
            :on-click #(rf/dispatch [:auth/login-with-email @email @password])}
-          (if loading? "Connexion..." "Se connecter")]]))))
+          (if loading? "Connexion..." "Se connecter")]
+         [:a {:href     (rfee/href :page/forgot-password)
+              :on-click #(rf/dispatch [:auth/set-forgot-email @email])
+              :style    {:display "block" :text-align "right" :margin-top "8px"
+                         :font-size "0.85rem" :color "var(--color-muted)"}}
+          "Mot de passe oublié ?"]]))))
 
 (defn- email-register-form []
   (let [name*    (r/atom "")

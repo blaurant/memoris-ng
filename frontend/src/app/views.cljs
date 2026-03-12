@@ -1,9 +1,11 @@
 (ns app.views
   (:require [app.config :as config]
             [app.pages.check-email :as check-email]
+            [app.pages.forgot-password :as forgot-password]
             [app.pages.home :as home]
             [app.pages.login :as login]
             [app.pages.portal :as portal]
+            [app.pages.reset-password :as reset-password]
             [app.pages.verify-email :as verify-email]
             [re-frame.core :as rf]
             [reitit.frontend.easy :as rfee]))
@@ -69,8 +71,10 @@
       :page/portal       (if logged-in?
                            [portal/portal-page]
                            (do (rf/dispatch [:router/navigate :page/home]) nil))
-      :page/verify-email [verify-email/verify-email-page]
-      :page/check-email  [check-email/check-email-page]
+      :page/verify-email    [verify-email/verify-email-page]
+      :page/check-email     [check-email/check-email-page]
+      :page/forgot-password [forgot-password/forgot-password-page]
+      :page/reset-password  [reset-password/reset-password-page]
       [home/home-page])))
 
 (defn main-panel []

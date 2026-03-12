@@ -77,6 +77,28 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
+(defn- forgot-password-handler
+  "POST /api/v1/auth/forgot-password — body {:email \"...\"}"
+  [user-repo email-sender vt-repo]
+  (fn [request]
+    (let [email (get-in request [:body-params :email])]
+      (auth/request-password-reset user-repo email-sender vt-repo email)
+      {:status 200
+       :body   {:message "If this email exists, a reset link has been sent."}})))
+
+(defn- reset-password-handler
+  "POST /api/v1/auth/reset-password — body {:token \"...\" :password \"...\"}"
+  [user-repo password-hasher vt-repo]
+  (fn [request]
+    (try
+      (let [{:keys [token password]} (:body-params request)]
+        (auth/reset-password user-repo password-hasher vt-repo token password)
+        {:status 200
+         :body   {:message "Password reset successfully. You can now sign in."}})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
 (defn- me-handler
   "GET /api/v1/auth/me — protected, returns the current user from JWT claims."
   []
@@ -96,6 +118,10 @@
     {:post (verify-email-handler user-repo vt-repo email-sender)}]
    ["/api/v1/auth/resend-verification"
     {:post (resend-verification-handler user-repo email-sender vt-repo)}]
+   ["/api/v1/auth/forgot-password"
+    {:post (forgot-password-handler user-repo email-sender vt-repo)}]
+   ["/api/v1/auth/reset-password"
+    {:post (reset-password-handler user-repo password-hasher vt-repo)}]
    ["/api/v1/auth/me"
     {:get        (me-handler)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])

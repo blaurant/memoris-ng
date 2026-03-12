@@ -104,6 +104,40 @@
         (user/assert-email-verified u)
         (maybe-promote-admin user-repo u)))
 
+(defn request-password-reset
+      "Request a password reset email.
+      Always succeeds silently (no user enumeration).
+      If the email exists and is an email-provider user, sends a reset link."
+      [user-repo email-sender vt-repo email]
+      (let [u (user/find-by-email user-repo :email email)]
+        (when (and u (= :email (:user/provider u)))
+          (let [token (vt/make-1d-token (id/build-id) (:user/id u) (str (id/build-id)))]
+            (vt/save! vt-repo token)
+            (email-sender/send-password-reset-email! email-sender email (:verification-token/token token))
+            (mu/log ::password-reset-requested :email email)))))
+
+(defn reset-password
+      "Reset a user's password using a verification token.
+      1. Find and validate token
+      2. Hash new password
+      3. Update user
+      4. Delete token"
+      [user-repo password-hasher vt-repo token-string new-password]
+      (let [token (vt/find-by-token vt-repo token-string)]
+        (when-not token
+          (throw (ex-info "Invalid or expired reset link" {:token token-string})))
+        (when (vt/expired? token (Instant/now))
+          (throw (ex-info "Invalid or expired reset link" {:token token-string})))
+        (let [u (user/find-by-id user-repo (:verification-token/user-id token))]
+          (when-not u
+            (throw (ex-info "User not found" {})))
+          (let [hashed (password-hasher/hash-password password-hasher new-password)
+                u'     (assoc u :user/password-hash hashed)]
+            (user/save! user-repo u')
+            (vt/delete! vt-repo (:verification-token/id token))
+            (mu/log ::password-reset :user-id (:user/id u'))
+            u'))))
+
 (defn resend-verification-email
       "Resend the verification email to a user."
       [user-repo email-sender vt-repo email]
