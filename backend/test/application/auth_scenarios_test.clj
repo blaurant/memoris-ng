@@ -6,8 +6,7 @@
             [domain.password-hasher :as password-hasher]
             [domain.token-verifier :as tv]
             [domain.user :as user]
-            [domain.user-repo :as user-repo]
-            [domain.verification-token-repo :as vt-repo]
+            [domain.verification-token :as vt]
             [infrastructure.in-memory-repo.mem-user-repo :as mem-repo]))
 
 ;; ── Mock Token Verifier ──────────────────────────────────────────────────────
@@ -36,7 +35,7 @@
 ;; ── In-memory Verification Token Repo ───────────────────────────────────────
 
 (defrecord InMemoryVtRepo [store]
-  vt-repo/VerificationTokenRepo
+  vt/VerificationTokenRepo
   (save! [_ token]
     (swap! store assoc (:verification-token/id token) token)
     token)
@@ -105,7 +104,7 @@
           verifier (mock-verifier)
           u        (auth/login-with-provider repo verifier :google "token1")
           suspended (user/suspend u)]
-      (user-repo/save! repo suspended)
+      (user/save! repo suspended)
       (assoc ctx :repo repo :verifier verifier)))
 
   (WHEN "the suspended user tries to sign in" [ctx]

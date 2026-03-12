@@ -1,10 +1,9 @@
 (ns infrastructure.in-memory-repo.mem-network-repo
   (:require [domain.network :as network]
-            [domain.network-repo :as network-repo]
             [integrant.core :as ig]))
 
 (defrecord InMemoryNetworkRepo [store]
-  network-repo/NetworkRepo
+  network/NetworkRepo
 
   (find-all [_]
     (mapv network/build-network (vals @store)))

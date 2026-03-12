@@ -1,10 +1,9 @@
 (ns infrastructure.in-memory-repo.mem-consumption-repo
   (:require [domain.consumption :as consumption]
-            [domain.consumption-repo :as consumption-repo]
             [integrant.core :as ig]))
 
 (defrecord InMemoryConsumptionRepo [store]
-  consumption-repo/ConsumptionRepo
+  consumption/ConsumptionRepo
 
   (find-by-id [_ id]
     (when-let [c (get @store id)]

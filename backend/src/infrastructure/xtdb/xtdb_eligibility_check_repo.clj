@@ -1,7 +1,6 @@
 (ns infrastructure.xtdb.xtdb-eligibility-check-repo
   (:require [domain.datetime :as dt]
             [domain.eligibility-check :as ec]
-            [domain.eligibility-check-repo :as ec-repo]
             [integrant.core :as ig]
             [xtdb.api :as xt]))
 
@@ -17,12 +16,15 @@
         (ec/build-eligibility-check))))
 
 (defrecord XtdbEligibilityCheckRepo [node]
-  ec-repo/EligibilityCheckRepo
+  ec/EligibilityCheckRepo
 
   (save! [_ check]
     (xt/submit-tx node [[::xt/put (check->doc check)]])
     (xt/sync node)
     check)
+
+  (find-by-id [_ id]
+    (doc->check (xt/entity (xt/db node) id)))
 
   (find-all [_]
     (let [results (xt/q (xt/db node)

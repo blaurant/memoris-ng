@@ -1,6 +1,5 @@
 (ns infrastructure.xtdb.xtdb-user-repo
   (:require [domain.user :as user]
-            [domain.user-repo :as user-repo]
             [integrant.core :as ig]
             [xtdb.api :as xt]))
 
@@ -12,7 +11,7 @@
     (user/build-user (dissoc doc :xt/id))))
 
 (defrecord XtdbUserRepo [node]
-  user-repo/UserRepo
+  user/UserRepo
 
   (find-by-id [_ id]
     (doc->user (xt/entity (xt/db node) id)))

@@ -1,6 +1,5 @@
 (ns infrastructure.init-seed.network
   (:require [domain.network :as network]
-            [domain.network-repo :as network-repo]
             [integrant.core :as ig]))
 
 (def ^:private seed-networks
@@ -34,9 +33,9 @@
       :network/lifecycle :public})])
 
 (defmethod ig/init-key :networks/seed [_ {:keys [repo]}]
-  (when (empty? (network-repo/find-all repo))
+  (when (empty? (network/find-all repo))
     (doseq [n seed-networks]
-      (network-repo/save! repo n))
+      (network/save! repo n))
     (count seed-networks)))
 
 (defmethod ig/halt-key! :networks/seed [_ _] nil)

@@ -38,3 +38,6 @@
 
 (rf/reg-sub :eligibility/lng
   (fn [db _] (:eligibility/lng db)))
+
+(rf/reg-sub :eligibility/notification-sent?
+  (fn [db _] (:eligibility/notification-sent? db)))

@@ -39,3 +39,10 @@
   (when (not= :public (:network/lifecycle network))
     (throw (ex-info "Network is not public" {:lifecycle (:network/lifecycle network)})))
   (assoc network :network/lifecycle :private))
+
+;; ── Repository protocol ───────────────────────────────────────────────────
+
+(defprotocol NetworkRepo
+  (find-all   [repo]         "Returns all networks.")
+  (find-by-id [repo id]      "Find a network by ID.")
+  (save!      [repo network] "Persist a network (insert or update)."))

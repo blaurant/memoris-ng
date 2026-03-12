@@ -16,12 +16,17 @@
      [:span.hero__value "Circuit court"]
      [:span.hero__value "Tarifs transparents"]
      [:span.hero__value "Communauté locale"]]
-    [:a.btn.btn--primary {:href "#eligibility"} "Vérifier mon éligibilité"]]])
+    [:a.btn.btn--primary {:href     "#eligibility"
+                          :on-click (fn [e]
+                                     (.preventDefault e)
+                                     (when-let [el (.getElementById js/document "eligibility")]
+                                       (.scrollIntoView el #js {:behavior "smooth"})))}
+     "Vérifier mon éligibilité"]]])
 
 (defn- map-section []
   [:section.section
    [:div.container
-    [:h2.section__title "Les réseaux Wattprox"]
+    [:h2.section__title "Les réseaux ProxyWatt"]
     [:p.section__subtitle
      "Découvrez les zones couvertes par nos réseaux d'énergie partagée en France."]
     [google-map/network-map]]])
@@ -31,7 +36,7 @@
    [:div.container
     [:h2.section__title "Vérifiez votre éligibilité"]
     [:p.section__subtitle
-     "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau Wattprox."]
+     "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau ProxyWatt."]
     [eligibility-form/eligibility-form]]])
 
 (defn home-page []

@@ -1,10 +1,9 @@
 (ns infrastructure.in-memory-repo.mem-user-repo
   (:require [domain.user :as user]
-            [domain.user-repo :as user-repo]
             [integrant.core :as ig]))
 
 (defrecord InMemoryUserRepo [store]
-  user-repo/UserRepo
+  user/UserRepo
   (find-by-id [_ id]
     (some (fn [u] (when (= id (:user/id u)) (user/build-user u)))
           (vals @store)))

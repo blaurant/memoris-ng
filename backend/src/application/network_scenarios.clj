@@ -2,15 +2,13 @@
   (:require [com.brunobonacci.mulog :as mu]
             [domain.datetime :as dt]
             [domain.eligibility-check :as ec]
-            [domain.eligibility-check-repo :as ec-repo]
             [domain.geo :as geo]
             [domain.id :as id]
             [domain.network :as network]
-            [domain.network-repo :as repo]
-            [domain.user-repo :as user-repo]))
+            [domain.user :as user]))
 
 (defn- assert-admin [user-repo user-id]
-  (let [caller (user-repo/find-by-id user-repo user-id)]
+  (let [caller (user/find-by-id user-repo user-id)]
     (when-not caller
       (throw (ex-info "User not found" {:user-id user-id})))
     (when (not= :admin (:user/role caller))
@@ -19,7 +17,7 @@
 (defn list-networks
   "Returns all public networks from the repository."
   [network-repo]
-  (filterv #(= :public (:network/lifecycle %)) (repo/find-all network-repo)))
+  (filterv #(= :public (:network/lifecycle %)) (network/find-all network-repo)))
 
 (defn check-eligibility
   "Checks whether the point (lat, lng) falls within any network.
@@ -27,7 +25,7 @@
   Returns {:eligible? true  :network <network>} or
           {:eligible? false :network nil}."
   [network-repo ec-repo lat lng address]
-  (let [networks (filter #(= :public (:network/lifecycle %)) (repo/find-all network-repo))
+  (let [networks (filter #(= :public (:network/lifecycle %)) (network/find-all network-repo))
         match    (some #(when (geo/within-network? % lat lng) %) networks)
         result   {:eligible? (some? match)
                   :network   match}
@@ -39,15 +37,26 @@
                     :eligibility-check/eligible?    (some? match)
                     :eligibility-check/network-name (when match (:network/name match))
                     :eligibility-check/checked-at   (dt/now)})]
-    (ec-repo/save! ec-repo check)
+    (ec/save! ec-repo check)
     (mu/log ::eligibility-checked :address address :eligible? (some? match))
-    result))
+    (assoc result :check-id (str (:eligibility-check/id check)))))
+
+(defn subscribe-notification
+  "Add a notification email to an existing eligibility check."
+  [ec-repo check-id email]
+  (let [check (ec/find-by-id ec-repo (id/build-id check-id))]
+    (when-not check
+      (throw (ex-info "Eligibility check not found" {:check-id check-id})))
+    (let [updated (assoc check :eligibility-check/notification-email email)]
+      (ec/save! ec-repo updated)
+      (mu/log ::notification-subscribed :check-id check-id :email email)
+      :ok)))
 
 (defn list-eligibility-checks
   "Returns all eligibility checks. Requires admin role."
   [ec-repo user-repo user-id]
   (assert-admin user-repo user-id)
-  (ec-repo/find-all ec-repo))
+  (ec/find-all ec-repo))
 
 (defn create-network
   "Create a new network with the given attributes. Requires admin role."
@@ -58,25 +67,25 @@
                                   :network/center-lat center-lat
                                   :network/center-lng center-lng
                                   :network/radius-km  radius-km})]
-    (repo/save! network-repo n)))
+    (network/save! network-repo n)))
 
 (defn list-all-networks
   "Returns all networks (private and public). Requires admin role."
   [network-repo user-repo user-id]
   (assert-admin user-repo user-id)
-  (repo/find-all network-repo))
+  (network/find-all network-repo))
 
 (defn toggle-network-visibility
   "Toggle a network between :private and :public. Requires admin role."
   [network-repo user-repo user-id network-id]
   (assert-admin user-repo user-id)
-  (let [n (repo/find-by-id network-repo network-id)]
+  (let [n (network/find-by-id network-repo network-id)]
     (when-not n
       (throw (ex-info "Network not found" {:network-id network-id})))
     (let [n' (if (= :public (:network/lifecycle n))
                (network/unpublish n)
                (network/publish n))]
-      (repo/save! network-repo n')
+      (network/save! network-repo n')
       (mu/log ::network-visibility-toggled :network-id network-id
               :lifecycle (:network/lifecycle n'))
       n')))

@@ -1,6 +1,5 @@
 (ns infrastructure.xtdb.xtdb-consumption-repo
   (:require [domain.consumption :as consumption]
-            [domain.consumption-repo :as consumption-repo]
             [integrant.core :as ig]
             [xtdb.api :as xt]))
 
@@ -12,7 +11,7 @@
     (consumption/build-consumption (dissoc doc :xt/id))))
 
 (defrecord XtdbConsumptionRepo [node]
-  consumption-repo/ConsumptionRepo
+  consumption/ConsumptionRepo
 
   (find-by-id [_ id]
     (doc->consumption (xt/entity (xt/db node) id)))

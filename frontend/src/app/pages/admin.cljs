@@ -193,11 +193,44 @@
         (str (first parts) " " (subs (second parts) 0 (min 8 (count (second parts)))))
         s))))
 
+(defn- export-eligibility-checks-csv [checks]
+  (let [header "Date;Adresse;Lat;Lng;Éligible;Réseau;Email notification"
+        rows   (map (fn [c]
+                      (str/join ";" [(or (:eligibility-check/checked-at c) "")
+                                     (or (:eligibility-check/address c) "")
+                                     (:eligibility-check/lat c)
+                                     (:eligibility-check/lng c)
+                                     (if (:eligibility-check/eligible? c) "Oui" "Non")
+                                     (or (:eligibility-check/network-name c) "")
+                                     (or (:eligibility-check/notification-email c) "")]))
+                    checks)
+        csv    (str/join "\n" (cons header rows))
+        blob   (js/Blob. #js [csv] #js {:type "text/csv;charset=utf-8;"})
+        url    (.createObjectURL js/URL blob)
+        a      (.createElement js/document "a")]
+    (set! (.-href a) url)
+    (set! (.-download a) "visiteurs.csv")
+    (.click a)
+    (.revokeObjectURL js/URL url)))
+
 (defn eligibility-checks-tab []
   (let [checks   @(rf/subscribe [:admin/eligibility-checks])
         loading? @(rf/subscribe [:admin/eligibility-checks-loading?])]
     [:div
-     [:h2.admin__tab-title "Vérifications d'éligibilité"]
+     [:div.consumptions__header
+      [:h2.admin__tab-title "Vérifications d'éligibilité"]
+      [:button.btn.btn--small
+       {:on-click #(export-eligibility-checks-csv checks)
+        :disabled (empty? checks)
+        :title    "Exporter en CSV"}
+       [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+              :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+              :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+              :style {:vertical-align "middle" :margin-right "4px"}}
+        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+        [:polyline {:points "7 10 12 15 17 10"}]
+        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+       "Exporter"]]
      (cond
        loading?
        [:p.loading "Chargement..."]
@@ -214,7 +247,8 @@
           [:th "Lat"]
           [:th "Lng"]
           [:th "Éligible"]
-          [:th "Réseau"]]]
+          [:th "Réseau"]
+          [:th "Email notification"]]]
         [:tbody
          (for [c checks]
            ^{:key (:eligibility-check/id c)}
@@ -227,4 +261,5 @@
                            "admin-table__eligible--yes"
                            "admin-table__eligible--no")}
              (if (:eligibility-check/eligible? c) "Oui" "Non")]
-            [:td (or (:eligibility-check/network-name c) "-")]])]])]))
+            [:td (or (:eligibility-check/network-name c) "-")]
+            [:td (or (:eligibility-check/notification-email c) "-")]])]])]))

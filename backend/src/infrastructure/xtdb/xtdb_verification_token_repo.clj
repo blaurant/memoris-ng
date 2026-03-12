@@ -1,6 +1,5 @@
 (ns infrastructure.xtdb.xtdb-verification-token-repo
   (:require [domain.verification-token :as vt]
-            [domain.verification-token-repo :as vt-repo]
             [integrant.core :as ig]
             [xtdb.api :as xt]))
 
@@ -12,7 +11,7 @@
     (vt/build-verification-token (dissoc doc :xt/id))))
 
 (defrecord XtdbVerificationTokenRepo [node]
-  vt-repo/VerificationTokenRepo
+  vt/VerificationTokenRepo
 
   (save! [_ token]
     (xt/submit-tx node [[::xt/put (token->doc token)]])

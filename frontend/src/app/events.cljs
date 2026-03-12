@@ -76,7 +76,8 @@
     {:db         (-> db
                      (assoc :eligibility/loading? true)
                      (assoc :eligibility/lat lat)
-                     (assoc :eligibility/lng lng))
+                     (assoc :eligibility/lng lng)
+                     (dissoc :eligibility/notification-sent?))
      :http-xhrio {:method          :post
                   :uri             (str config/API_BASE "/api/v1/networks/check-eligibility")
                   :params          {:lat lat :lng lng :address address}
@@ -96,6 +97,27 @@
   (fn [db _]
     (js/console.error "Failed to check eligibility")
     (assoc db :eligibility/loading? false)))
+
+;; ── Eligibility notification ─────────────────────────────────────────────────
+
+(rf/reg-event-fx :eligibility/subscribe-notification
+  (fn [{:keys [db]} [_ check-id email]]
+    {:http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/networks/eligibility-checks/" check-id "/notify")
+                  :params          {:email email}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:eligibility/subscribe-notification-ok]
+                  :on-failure      [:eligibility/subscribe-notification-err]}}))
+
+(rf/reg-event-db :eligibility/subscribe-notification-ok
+  (fn [db _]
+    (assoc db :eligibility/notification-sent? true)))
+
+(rf/reg-event-db :eligibility/subscribe-notification-err
+  (fn [db _]
+    (js/console.error "Failed to subscribe notification")
+    db))
 
 ;; ── Portal ──────────────────────────────────────────────────────────────────
 

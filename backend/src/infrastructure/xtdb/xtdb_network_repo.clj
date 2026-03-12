@@ -1,6 +1,5 @@
 (ns infrastructure.xtdb.xtdb-network-repo
   (:require [domain.network :as network]
-            [domain.network-repo :as network-repo]
             [integrant.core :as ig]
             [xtdb.api :as xt]))
 
@@ -12,7 +11,7 @@
     (network/build-network (dissoc doc :xt/id))))
 
 (defrecord XtdbNetworkRepo [node]
-  network-repo/NetworkRepo
+  network/NetworkRepo
 
   (find-all [_]
     (let [results (xt/q (xt/db node)

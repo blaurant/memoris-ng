@@ -11,7 +11,8 @@
    [:eligibility-check/lng double?]
    [:eligibility-check/eligible? boolean?]
    [:eligibility-check/network-name {:optional true} [:maybe string?]]
-   [:eligibility-check/checked-at [:fn {:error/message "must be a datetime"} dt/datetime?]]])
+   [:eligibility-check/checked-at [:fn {:error/message "must be a datetime"} dt/datetime?]]
+   [:eligibility-check/notification-email {:optional true} [:maybe string?]]])
 
 (defn build-eligibility-check
   "Build and validate an eligibility check record."
@@ -19,3 +20,10 @@
   (if (m/validate EligibilityCheck attrs)
     attrs
     (throw (ex-info "Invalid eligibility check" {:attrs attrs}))))
+
+;; ── Repository protocol ───────────────────────────────────────────────────
+
+(defprotocol EligibilityCheckRepo
+  (save! [repo check] "Persist an eligibility check.")
+  (find-by-id [repo id] "Find an eligibility check by ID.")
+  (find-all [repo] "Return all eligibility checks."))

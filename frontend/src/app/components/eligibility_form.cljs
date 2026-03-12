@@ -82,18 +82,45 @@
           (.catch (fn [_err]
                     (on-error "Adresse introuvable.")))))))
 
+(defn- notify-modal [check-id on-close]
+  (let [email (r/atom "")]
+    (fn [check-id on-close]
+      [:div.modal-overlay {:on-click on-close}
+       [:div.modal {:on-click #(.stopPropagation %)}
+        [:div.modal__header
+         [:span "Être averti de l'ouverture d'un réseau"]
+         [:button.btn.btn--small {:on-click on-close} "X"]]
+        [:div.modal__body
+         [:p {:style {:margin-bottom "1rem"}}
+          "Laissez-nous votre email, nous vous préviendrons dès qu'un réseau ProxyWatt ouvrira dans votre zone."]
+         [:input.onboarding__input
+          {:type        "email"
+           :placeholder "votre@email.com"
+           :value       @email
+           :on-change   #(reset! email (-> % .-target .-value))}]]
+        [:div.modal__actions
+         [:button.btn.btn--small {:on-click on-close} "Annuler"]
+         [:button.btn.btn--green.btn--small
+          {:disabled (empty? @email)
+           :on-click (fn []
+                       (rf/dispatch [:eligibility/subscribe-notification check-id @email])
+                       (on-close))}
+          "M'avertir"]]]])))
+
 (defn eligibility-form
   "Form-2 component that geocodes an address and checks eligibility."
   []
-  (let [input-val (r/atom "")
-        geo-error (r/atom nil)]
+  (let [input-val   (r/atom "")
+        geo-error   (r/atom nil)
+        show-modal? (r/atom false)]
     (fn []
-      (let [result   @(rf/subscribe [:eligibility/result])
-            loading? @(rf/subscribe [:eligibility/loading?])
-            address  @(rf/subscribe [:eligibility/address])
-            lat      @(rf/subscribe [:eligibility/lat])
-            lng      @(rf/subscribe [:eligibility/lng])
-            networks @(rf/subscribe [:networks/list])]
+      (let [result     @(rf/subscribe [:eligibility/result])
+            loading?   @(rf/subscribe [:eligibility/loading?])
+            address    @(rf/subscribe [:eligibility/address])
+            lat        @(rf/subscribe [:eligibility/lat])
+            lng        @(rf/subscribe [:eligibility/lng])
+            networks   @(rf/subscribe [:networks/list])
+            notified?  @(rf/subscribe [:eligibility/notification-sent?])]
         [:div.eligibility-form
          [:div.eligibility-form__group
           [:input.eligibility-form__input
@@ -114,7 +141,8 @@
 
          (when result
            (let [eligible? (:eligible? result)
-                 network   (:network result)]
+                 network   (:network result)
+                 check-id  (:check-id result)]
              [:<>
               [:div {:class (if eligible?
                               "eligibility-result eligibility-result--ok"
@@ -122,6 +150,16 @@
                (if eligible?
                  [:span "Bonne nouvelle — " address " est éligible au réseau "
                   [:strong (:network/name network)] " !"]
-                 [:span address " n'est pas dans la zone d'un réseau Wattprox pour le moment."])]
+                 [:<>
+                  [:span address " n'est pas dans la zone d'un réseau ProxyWatt pour le moment."]
+                  (if notified?
+                    [:p {:style {:color "var(--color-success)" :margin-top "0.75rem" :font-size "0.95rem"}}
+                     "Vous serez averti dès qu'un réseau ouvrira dans votre zone."]
+                    [:div {:style {:margin-top "0.75rem" :text-align "center"}}
+                     [:button.btn.btn--green
+                      {:on-click #(reset! show-modal? true)}
+                      "M'avertir quand un réseau ouvre dans ma zone"]])])]
               (when (and lat lng)
-                [eligibility-mini-map lat lng networks])]))]))))
+                [eligibility-mini-map lat lng networks])
+              (when @show-modal?
+                [notify-modal check-id #(reset! show-modal? false)])]))]))))
