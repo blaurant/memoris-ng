@@ -193,8 +193,33 @@
 
 ;; ── Networks table ────────────────────────────────────────────────────────────
 
+(defn- confirm-unpublish-modal [network on-confirm on-cancel]
+  [:div.modal-overlay {:on-click on-cancel}
+   [:div.modal {:on-click #(.stopPropagation %)}
+    [:div.modal__header
+     [:span "Rendre le réseau privé"]
+     [:button.btn.btn--small {:on-click on-cancel
+                              :style {:background "transparent" :color "var(--color-muted)"
+                                      :border "none" :font-size "1.2rem" :padding "0"}}
+      "\u00D7"]]
+    [:div.modal__body
+     [:p {:style {:margin-bottom "0.5rem"}}
+      (str "Le réseau \"" (:network/name network) "\" contient "
+           (:network/consumption-count network)
+           " consommation(s) en cours.")]
+     [:p {:style {:margin-bottom "0.5rem"}}
+      "En le rendant privé, il n'apparaîtra plus sur la carte et ne sera plus visible pour les nouveaux visiteurs."]
+     [:p {:style {:font-weight "600"}}
+      "Les abonnements et contrats des consommateurs existants ne sont pas affectés."]]
+    [:div.modal__actions
+     [:button.btn.btn--small {:on-click on-cancel} "Annuler"]
+     [:button.btn.btn--small {:on-click on-confirm
+                              :style {:background "#d32f2f" :color "#fff"}}
+      "Confirmer"]]]])
+
 (defn networks-tab []
-  (let [show-modal? (r/atom false)]
+  (let [show-modal?       (r/atom false)
+        confirm-network   (r/atom nil)]
     (fn []
       (let [networks @(rf/subscribe [:admin/networks])
             loading? @(rf/subscribe [:admin/networks-loading?])]
@@ -255,12 +280,22 @@
                  (if (= "public" (:network/lifecycle n)) "Public" "Privé")]
                 [:td
                  [:button.btn.btn--small
-                  {:on-click #(rf/dispatch [:admin/toggle-network-visibility (:network/id n)])}
+                  {:on-click (fn []
+                               (if (and (= "public" (:network/lifecycle n))
+                                        (pos? (or (:network/consumption-count n) 0)))
+                                 (reset! confirm-network n)
+                                 (rf/dispatch [:admin/toggle-network-visibility (:network/id n)])))}
                   (if (= "public" (:network/lifecycle n))
                     "Rendre privé"
                     "Rendre public")]]])]])
          (when @show-modal?
-           [create-network-modal #(reset! show-modal? false)])]))))
+           [create-network-modal #(reset! show-modal? false)])
+         (when-let [net @confirm-network]
+           [confirm-unpublish-modal net
+            (fn []
+              (rf/dispatch [:admin/toggle-network-visibility (:network/id net)])
+              (reset! confirm-network nil))
+            #(reset! confirm-network nil)])]))))
 
 ;; ── Eligibility checks table ────────────────────────────────────────────────
 

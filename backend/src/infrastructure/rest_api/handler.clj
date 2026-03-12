@@ -23,7 +23,7 @@
             (network-handler/routes network-repo ec-repo)
             (auth-handler/routes user-repo token-verifier password-hasher email-sender vt-repo jwt-secret)
             (consumption-handler/routes consumption-repo jwt-secret)
-            (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo jwt-secret))
+            (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo consumption-repo jwt-secret))
     {:data {:muuntaja   m/instance
             :middleware [muuntaja/format-middleware]}}))
 

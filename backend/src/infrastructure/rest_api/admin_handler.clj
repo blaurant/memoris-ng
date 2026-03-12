@@ -2,6 +2,7 @@
   (:require [application.network-scenarios :as network-scenarios]
             [application.user-scenarios :as user-scenarios]
             [domain.alert-banner :as alert]
+            [domain.consumption :as consumption]
             [domain.id :as id]
             [infrastructure.rest-api.admin-middleware :as admin-mw]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
@@ -24,11 +25,15 @@
 (defn- serialize-network [n]
   (update n :network/lifecycle name))
 
-(defn- list-networks-handler [user-repo network-repo]
+(defn- list-networks-handler [user-repo network-repo consumption-repo]
   (fn [request]
-    {:status 200
-     :body   (mapv serialize-network
-                   (network-scenarios/list-all-networks network-repo user-repo (user-id request)))}))
+    (let [networks (network-scenarios/list-all-networks network-repo user-repo (user-id request))]
+      {:status 200
+       :body   (mapv (fn [n]
+                       (-> (serialize-network n)
+                           (assoc :network/consumption-count
+                                  (consumption/count-by-network-id consumption-repo (:network/id n)))))
+                     networks)})))
 
 (defn- create-network-handler [user-repo network-repo]
   (fn [request]
@@ -92,7 +97,7 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
-(defn routes [user-repo network-repo ec-repo alert-banner-repo jwt-secret]
+(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo jwt-secret]
   [["/api/v1/alert"
     {:get (get-alert-handler alert-banner-repo)}]
    ["/api/v1/admin/alert"
@@ -105,7 +110,7 @@
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/networks"
-    {:get        (list-networks-handler user-repo network-repo)
+    {:get        (list-networks-handler user-repo network-repo consumption-repo)
      :post       (create-network-handler user-repo network-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]

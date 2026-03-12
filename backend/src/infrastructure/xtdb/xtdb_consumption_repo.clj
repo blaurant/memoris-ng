@@ -24,6 +24,14 @@
                         user-id)]
       (mapv (fn [[doc]] (doc->consumption doc)) results)))
 
+  (count-by-network-id [_ network-id]
+    (let [results (xt/q (xt/db node)
+                        '{:find  [(count e)]
+                          :where [[e :consumption/network-id nid]]
+                          :in    [nid]}
+                        network-id)]
+      (or (ffirst results) 0)))
+
   (save! [_ c]
     (xt/submit-tx node [[::xt/put (consumption->doc c)]])
     (xt/sync node)

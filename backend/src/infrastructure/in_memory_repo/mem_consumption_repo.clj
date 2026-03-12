@@ -15,6 +15,9 @@
                    (consumption/build-consumption c)))
                (vals @store))))
 
+  (count-by-network-id [_ network-id]
+    (count (filter #(= network-id (:consumption/network-id %)) (vals @store))))
+
   (save! [_ c]
     (swap! store assoc (:consumption/id c) c)
     c)
