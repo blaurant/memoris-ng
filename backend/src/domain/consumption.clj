@@ -159,6 +159,17 @@
                        (mu/merge ContractSignature))
                    c'))))
 
+(def ^:private onboarding-states
+  #{:consumer-information :linky-reference :billing-address :contract-signature})
+
+(defn abandon
+      "Abandon a consumption during onboarding. Transitions to :abandoned."
+      [c]
+      (when-not (contains? onboarding-states (:consumption/lifecycle c))
+        (throw (ex-info "Can only abandon a consumption during onboarding"
+                        {:lifecycle (:consumption/lifecycle c)})))
+      (assoc c :consumption/lifecycle :abandoned))
+
 ;; ── Repository protocol ───────────────────────────────────────────────────
 
 (defprotocol ConsumptionRepo

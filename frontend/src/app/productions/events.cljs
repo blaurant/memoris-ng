@@ -39,7 +39,21 @@
                   :on-success      [:productions/step-ok]
                   :on-failure      [:productions/fetch-err]}}))
 
-;; ── Submit step 1 ───────────────────────────────────────────────────────────
+;; ── Submit step 0 — producer information (address + network) ──────────────
+
+(rf/reg-event-fx :productions/submit-step0
+  (fn [{:keys [db]} [_ production-id producer-address network-opts]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/step/producer-information")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          (merge {:producer-address producer-address}
+                                          network-opts)
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/step-ok]
+                  :on-failure      [:productions/fetch-err]}}))
+
+;; ── Submit step 1 — installation info ──────────────────────────────────────
 
 (rf/reg-event-fx :productions/submit-step1
   (fn [{:keys [db]} [_ production-id pdl-prm installed-power energy-type linky-meter]]
@@ -55,7 +69,7 @@
                   :on-success      [:productions/step-ok]
                   :on-failure      [:productions/fetch-err]}}))
 
-;; ── Submit step 2 ───────────────────────────────────────────────────────────
+;; ── Submit step 2 — payment info ───────────────────────────────────────────
 
 (rf/reg-event-fx :productions/submit-step2
   (fn [{:keys [db]} [_ production-id iban]]
@@ -68,7 +82,7 @@
                   :on-success      [:productions/step-ok]
                   :on-failure      [:productions/fetch-err]}}))
 
-;; ── Submit step 3 ───────────────────────────────────────────────────────────
+;; ── Submit step 3 — contract signature ─────────────────────────────────────
 
 (rf/reg-event-fx :productions/submit-step3
   (fn [{:keys [db]} [_ production-id]]
@@ -80,6 +94,38 @@
                   :response-format (ajax/json-response-format {:keywords? true})
                   :on-success      [:productions/step-ok]
                   :on-failure      [:productions/fetch-err]}}))
+
+;; ── Go back to previous step ───────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/go-back
+  (fn [{:keys [db]} [_ production-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/go-back")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/step-ok]
+                  :on-failure      [:productions/fetch-err]}}))
+
+;; ── Abandon production ─────────────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/abandon
+  (fn [{:keys [db]} [_ production-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/abandon")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/abandon-ok]
+                  :on-failure      [:productions/fetch-err]}}))
+
+(rf/reg-event-db :productions/abandon-ok
+  (fn [db [_ abandoned]]
+    (update db :productions/list
+            (fn [items]
+              (filterv #(not= (:production/id %) (:production/id abandoned)) items)))))
 
 ;; ── Step success — upsert production in the list ───────────────────────────
 

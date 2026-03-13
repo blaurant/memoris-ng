@@ -217,19 +217,61 @@
                               :style {:background "#d32f2f" :color "#fff"}}
       "Confirmer"]]]])
 
+(defn- network-status-label [lifecycle]
+  (case lifecycle
+    "public"              "Public"
+    "private"             "Privé"
+    "pending-validation"  "À valider"
+    lifecycle))
+
+(defn- network-status-class [lifecycle]
+  (case lifecycle
+    "public"              "admin-table__status--public"
+    "pending-validation"  "admin-table__status--pending"
+    "admin-table__status--private"))
+
+(defn- pending-networks-table [pending-networks]
+  (when (seq pending-networks)
+    [:div {:style {:margin-bottom "2rem"}}
+     [:h3 {:style {:font-size "1rem" :font-weight "600" :margin-bottom "0.5rem"
+                    :color "#e65100"}}
+      "Réseaux à valider (" (count pending-networks) ")"]
+     [:table.admin-table
+      [:thead
+       [:tr
+        [:th "Nom"]
+        [:th "Latitude"]
+        [:th "Longitude"]
+        [:th "Rayon (km)"]
+        [:th ""]]]
+      [:tbody
+       (for [n pending-networks]
+         ^{:key (:network/id n)}
+         [:tr.admin-table__row--pending
+          [:td (:network/name n)]
+          [:td (:network/center-lat n)]
+          [:td (:network/center-lng n)]
+          [:td (:network/radius-km n)]
+          [:td
+           [:button.btn.btn--small.btn--green
+            {:on-click #(rf/dispatch [:admin/validate-network (:network/id n)])}
+            "Valider"]]])]]]))
+
 (defn networks-tab []
   (let [show-modal?       (r/atom false)
         confirm-network   (r/atom nil)]
     (fn []
-      (let [networks @(rf/subscribe [:admin/networks])
-            loading? @(rf/subscribe [:admin/networks-loading?])]
+      (let [all-networks @(rf/subscribe [:admin/networks])
+            loading?     @(rf/subscribe [:admin/networks-loading?])
+            pending      (filterv #(= "pending-validation" (:network/lifecycle %)) all-networks)
+            networks     (filterv #(not= "pending-validation" (:network/lifecycle %)) all-networks)]
         [:div
          [:div.consumptions__header
           [:h2.admin__tab-title "Réseaux"]
           [:div {:style {:display "flex" :gap "0.5rem"}}
            [:button.btn.btn--small
-            {:on-click #(export-networks-csv networks)
-             :disabled (empty? networks)
+            {:on-click #(export-networks-csv all-networks)
+             :disabled (empty? all-networks)
              :title    "Exporter en CSV"}
             [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
                    :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
@@ -253,41 +295,42 @@
            loading?
            [:p.loading "Chargement..."]
 
-           (empty? networks)
+           (and (empty? pending) (empty? networks))
            [:p.admin__empty "Aucun réseau."]
 
            :else
-           [:table.admin-table
-            [:thead
-             [:tr
-              [:th "Nom"]
-              [:th "Latitude"]
-              [:th "Longitude"]
-              [:th "Rayon (km)"]
-              [:th "Statut"]
-              [:th ""]]]
-            [:tbody
-             (for [n networks]
-               ^{:key (:network/id n)}
-               [:tr {:class (when (not= "public" (:network/lifecycle n)) "admin-table__row--disabled")}
-                [:td (:network/name n)]
-                [:td (:network/center-lat n)]
-                [:td (:network/center-lng n)]
-                [:td (:network/radius-km n)]
-                [:td {:class (if (= "public" (:network/lifecycle n))
-                               "admin-table__status--public"
-                               "admin-table__status--private")}
-                 (if (= "public" (:network/lifecycle n)) "Public" "Privé")]
-                [:td
-                 [:button.btn.btn--small
-                  {:on-click (fn []
-                               (if (and (= "public" (:network/lifecycle n))
-                                        (pos? (or (:network/consumption-count n) 0)))
-                                 (reset! confirm-network n)
-                                 (rf/dispatch [:admin/toggle-network-visibility (:network/id n)])))}
-                  (if (= "public" (:network/lifecycle n))
-                    "Rendre privé"
-                    "Rendre public")]]])]])
+           [:<>
+            [pending-networks-table pending]
+            (when (seq networks)
+              [:table.admin-table
+               [:thead
+                [:tr
+                 [:th "Nom"]
+                 [:th "Latitude"]
+                 [:th "Longitude"]
+                 [:th "Rayon (km)"]
+                 [:th "Statut"]
+                 [:th ""]]]
+               [:tbody
+                (for [n networks]
+                  ^{:key (:network/id n)}
+                  [:tr {:class (when (not= "public" (:network/lifecycle n)) "admin-table__row--disabled")}
+                   [:td (:network/name n)]
+                   [:td (:network/center-lat n)]
+                   [:td (:network/center-lng n)]
+                   [:td (:network/radius-km n)]
+                   [:td {:class (network-status-class (:network/lifecycle n))}
+                    (network-status-label (:network/lifecycle n))]
+                   [:td
+                    [:button.btn.btn--small
+                     {:on-click (fn []
+                                  (if (and (= "public" (:network/lifecycle n))
+                                           (pos? (or (:network/consumption-count n) 0)))
+                                    (reset! confirm-network n)
+                                    (rf/dispatch [:admin/toggle-network-visibility (:network/id n)])))}
+                     (if (= "public" (:network/lifecycle n))
+                       "Rendre privé"
+                       "Rendre public")]]])]])])
          (when @show-modal?
            [create-network-modal #(reset! show-modal? false)])
          (when-let [net @confirm-network]
@@ -307,10 +350,12 @@
    "cogeneration" "Cogeneration"})
 
 (defn- export-productions-csv [productions]
-  (let [header "ID;Utilisateur;PDL/PRM;Puissance (kWc);Type;Compteur Linky;IBAN;Statut"
+  (let [header "ID;Utilisateur;Adresse;Réseau;PDL/PRM;Puissance (kWc);Type;Compteur Linky;IBAN;Statut"
         rows   (map (fn [p]
                       (str/join ";" [(:production/id p)
                                      (:production/user-id p)
+                                     (or (:production/producer-address p) "")
+                                     (or (:production/network-id p) "")
                                      (or (:production/pdl-prm p) "")
                                      (or (:production/installed-power p) "")
                                      (or (get energy-type-labels (:production/energy-type p)) (:production/energy-type p))
@@ -357,6 +402,7 @@
         [:thead
          [:tr
           [:th "Utilisateur"]
+          [:th "Adresse"]
           [:th "PDL/PRM"]
           [:th "Puissance"]
           [:th "Type"]
@@ -367,6 +413,7 @@
            ^{:key (:production/id p)}
            [:tr
             [:td (subs (str (:production/user-id p)) 0 8)]
+            [:td (or (:production/producer-address p) "-")]
             [:td (or (:production/pdl-prm p) "-")]
             [:td (when-let [pw (:production/installed-power p)] (str pw " kWc"))]
             [:td (get energy-type-labels (:production/energy-type p) "-")]

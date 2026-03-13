@@ -55,6 +55,15 @@
         (mu/log ::billing-address-completed :consumption-id consumption-id)
         c'))
 
+(defn abandon-consumption
+      "Abandon a consumption during onboarding."
+      [consumption-repo user-id consumption-id]
+      (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
+            c' (consumption/abandon c)
+            c' (consumption/save! consumption-repo c c')]
+        (mu/log ::consumption-abandoned :consumption-id consumption-id)
+        c'))
+
 (defn sign-contract
       "Sign one contract (contract-type = :elinkco | :producer | :sepa)."
       [consumption-repo user-id consumption-id contract-type]

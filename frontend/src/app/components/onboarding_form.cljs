@@ -304,7 +304,15 @@
   (let [lifecycle (keyword (:consumption/lifecycle consumption))
         cid       (:consumption/id consumption)]
     [:div.consumption-block.consumption-block--onboarding
-     [:div.consumption-block__header "Nouvelle Consommation"]
+     [:div.consumption-block__header
+      [:span "Nouvelle Consommation"]
+      [:button {:on-click #(when (js/confirm "Annuler cette consommation ?")
+                              (rf/dispatch [:consumptions/abandon cid]))
+               :title    "Annuler cette consommation"
+               :style    {:background "transparent" :border "none" :cursor "pointer"
+                          :color "var(--color-muted)" :font-size "1.3rem"
+                          :padding "0 0.25rem" :line-height "1"}}
+       "\u00D7"]]
      [stepper lifecycle]
      (case lifecycle
        :consumer-information  [step1-form cid]

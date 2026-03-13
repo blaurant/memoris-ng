@@ -2,7 +2,7 @@
   (:require [domain.id :as id]
             [malli.core :as m]))
 
-(def lifecycle-states #{:private :public})
+(def lifecycle-states #{:private :public :pending-validation})
 
 (def Network
   [:map
@@ -11,7 +11,7 @@
    [:network/center-lat double?]
    [:network/center-lng double?]
    [:network/radius-km  {:optional true} double?]
-   [:network/lifecycle [:enum :private :public]]])
+   [:network/lifecycle [:enum :private :public :pending-validation]]])
 
 (defn build-network
   "Validates attrs against the Network schema and returns the network map.
@@ -38,6 +38,13 @@
   [network]
   (when (not= :public (:network/lifecycle network))
     (throw (ex-info "Network is not public" {:lifecycle (:network/lifecycle network)})))
+  (assoc network :network/lifecycle :private))
+
+(defn validate-network
+  "Transition a network from :pending-validation to :private."
+  [network]
+  (when (not= :pending-validation (:network/lifecycle network))
+    (throw (ex-info "Network is not pending validation" {:lifecycle (:network/lifecycle network)})))
   (assoc network :network/lifecycle :private))
 
 ;; ── Repository protocol ───────────────────────────────────────────────────

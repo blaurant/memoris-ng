@@ -26,7 +26,7 @@
       :network/lifecycle :public})
    (network/build-network
      {:network/id         #uuid "44444444-0000-0000-0000-000000000004"
-      :network/name       "Réseau des Génices de la Nièvre"
+      :network/name       "Réseau des Génisses de la Nièvre"
       :network/center-lat 47.3054
       :network/center-lng 3.2537
       :network/radius-km  10.0

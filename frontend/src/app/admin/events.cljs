@@ -95,6 +95,30 @@
     (js/console.error "Failed to toggle network visibility")
     db))
 
+;; ── Validate network (pending-validation → private) ─────────────────────────
+
+(rf/reg-event-fx :admin/validate-network
+  (fn [{:keys [db]} [_ network-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/networks/" network-id "/validate")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/validate-network-ok]
+                  :on-failure      [:admin/validate-network-err]}}))
+
+(rf/reg-event-db :admin/validate-network-ok
+  (fn [db [_ updated-network]]
+    (let [nid (:network/id updated-network)]
+      (update db :admin/networks
+              (fn [networks]
+                (mapv #(if (= nid (:network/id %)) updated-network %) networks))))))
+
+(rf/reg-event-db :admin/validate-network-err
+  (fn [db _]
+    (js/console.error "Failed to validate network")
+    db))
+
 ;; ── Fetch eligibility checks ─────────────────────────────────────────────────
 
 (rf/reg-event-fx :admin/fetch-eligibility-checks

@@ -3,6 +3,7 @@
             [application.user-scenarios :as user-scenarios]
             [domain.alert-banner :as alert]
             [domain.consumption :as consumption]
+            [domain.network :as network]
             [domain.production :as production]
             [domain.id :as id]
             [infrastructure.rest-api.admin-middleware :as admin-mw]
@@ -63,6 +64,18 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
+(defn- validate-network-handler [user-repo network-repo]
+  (fn [request]
+    (try
+      (let [network-id (id/build-id (get-in request [:path-params :id]))
+            n (network-scenarios/validate-network
+                network-repo user-repo (user-id request) network-id)]
+        {:status 200
+         :body   (serialize-network n)})
+      (catch Exception e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
 (defn- serialize-eligibility-check [check]
   (-> check
       (update :eligibility-check/id str)
@@ -98,18 +111,26 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
-(defn- serialize-production [p]
-  (-> p
-      (update :production/id str)
-      (update :production/user-id str)
-      (update :production/lifecycle name)
-      (cond-> (:production/energy-type p)
-              (update :production/energy-type name))))
+(defn- serialize-production [p network-repo]
+  (let [nid (:production/network-id p)
+        net-name (when nid
+                   (some-> (network/find-by-id network-repo nid)
+                           :network/name))]
+    (-> p
+        (update :production/id str)
+        (update :production/user-id str)
+        (update :production/lifecycle name)
+        (cond-> (:production/energy-type p)
+                (update :production/energy-type name)
+                nid
+                (update :production/network-id str)
+                net-name
+                (assoc :production/network-name net-name)))))
 
-(defn- list-productions-handler [production-repo]
+(defn- list-productions-handler [production-repo network-repo]
   (fn [_request]
     {:status 200
-     :body   (mapv serialize-production (production/find-all production-repo))}))
+     :body   (mapv #(serialize-production % network-repo) (production/find-all production-repo))}))
 
 (defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo jwt-secret]
   [["/api/v1/alert"
@@ -132,11 +153,15 @@
     {:put        (toggle-network-visibility-handler user-repo network-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/networks/:id/validate"
+    {:put        (validate-network-handler user-repo network-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/eligibility-checks"
     {:get        (list-eligibility-checks-handler ec-repo user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions"
-    {:get        (list-productions-handler production-repo)
+    {:get        (list-productions-handler production-repo network-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]])

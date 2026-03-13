@@ -5,7 +5,7 @@
             [reagent.core :as r]))
 
 (def ^:private onboarding-states
-  #{"installation-info" "payment-info" "contract-signature"})
+  #{"producer-information" "installation-info" "payment-info" "contract-signature"})
 
 (defn- onboarding? [production]
   (contains? onboarding-states (:production/lifecycle production)))

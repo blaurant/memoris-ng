@@ -4,18 +4,19 @@
             [domain.production :as production]))
 
 (def user-id (id/build-id))
+(def network-id (id/build-id))
 
 (def valid-attrs
   {:production/id        (id/build-id)
    :production/user-id   user-id
-   :production/lifecycle :installation-info})
+   :production/lifecycle :producer-information})
 
 ;; ── build-production ──────────────────────────────────────────────────────
 
 (deftest build-production-valid
   (testing "builds a production with valid minimal attributes"
     (let [p (production/build-production valid-attrs)]
-      (is (= :installation-info (:production/lifecycle p)))
+      (is (= :producer-information (:production/lifecycle p)))
       (is (= user-id (:production/user-id p))))))
 
 (deftest build-production-invalid
@@ -38,12 +39,12 @@
 ;; ── create-new-production ──────────────────────────────────────────────────
 
 (deftest create-new-production-test
-  (testing "creates a production in :installation-info state"
+  (testing "creates a production in :producer-information state"
     (let [pid (id/build-id)
           p   (production/create-new-production pid user-id)]
       (is (= pid (:production/id p)))
       (is (= user-id (:production/user-id p)))
-      (is (= :installation-info (:production/lifecycle p)))))
+      (is (= :producer-information (:production/lifecycle p)))))
 
   (testing "throws when id is invalid"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid production"
@@ -64,8 +65,12 @@
 ;; ── onboarding? ────────────────────────────────────────────────────────────
 
 (deftest onboarding?-test
-  (testing "returns true for installation-info"
+  (testing "returns true for producer-information"
     (is (production/onboarding? (production/build-production valid-attrs))))
+
+  (testing "returns true for installation-info"
+    (is (production/onboarding?
+          (production/build-production (assoc valid-attrs :production/lifecycle :installation-info)))))
 
   (testing "returns true for payment-info"
     (is (production/onboarding?
@@ -83,11 +88,27 @@
     (is (not (production/onboarding?
                (production/build-production (assoc valid-attrs :production/lifecycle :active)))))))
 
+;; ── register-producer-information ────────────────────────────────────────
+
+(deftest register-producer-information-test
+  (testing "transitions from :producer-information to :installation-info"
+    (let [p  (production/create-new-production (id/build-id) user-id)
+          p' (production/register-producer-information p "12 rue de la Paix, Paris" network-id)]
+      (is (= :installation-info (:production/lifecycle p')))
+      (is (= "12 rue de la Paix, Paris" (:production/producer-address p')))
+      (is (= network-id (:production/network-id p')))))
+
+  (testing "throws when not in :producer-information state"
+    (let [p (production/build-production (assoc valid-attrs :production/lifecycle :installation-info))]
+      (is (thrown? clojure.lang.ExceptionInfo
+                  (production/register-producer-information p "addr" network-id))))))
+
 ;; ── register-installation-info ────────────────────────────────────────────
 
 (deftest register-installation-info-test
   (testing "transitions from :installation-info to :payment-info"
-    (let [p  (production/create-new-production (id/build-id) user-id)
+    (let [p  (-> (production/create-new-production (id/build-id) user-id)
+                 (production/register-producer-information "12 rue de la Paix" network-id))
           p' (production/register-installation-info p "PRM-123456" 9.0 :solar "LINKY-789")]
       (is (= :payment-info (:production/lifecycle p')))
       (is (= "PRM-123456" (:production/pdl-prm p')))
@@ -105,6 +126,7 @@
 (deftest submit-payment-info-test
   (testing "transitions from :payment-info to :contract-signature"
     (let [p  (-> (production/create-new-production (id/build-id) user-id)
+                 (production/register-producer-information "addr" network-id)
                  (production/register-installation-info "PRM-123" 9.0 :solar "LK-1"))
           p' (production/submit-payment-info p "FR76 3000 6000 0112 3456 7890 189")]
       (is (= :contract-signature (:production/lifecycle p')))
@@ -120,6 +142,7 @@
 (deftest sign-contract-test
   (testing "signing the adhesion contract transitions to :pending"
     (let [p  (-> (production/create-new-production (id/build-id) user-id)
+                 (production/register-producer-information "addr" network-id)
                  (production/register-installation-info "PRM-123" 9.0 :solar "LK-1")
                  (production/submit-payment-info "FR76 3000 6000 0112 3456 7890 189"))
           p' (production/sign-contract p "2026-03-13T10:00:00Z")]

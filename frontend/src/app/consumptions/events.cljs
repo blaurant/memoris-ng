@@ -91,6 +91,25 @@
                   :on-success      [:consumptions/step-ok]
                   :on-failure      [:consumptions/fetch-err]}}))
 
+;; ── Abandon consumption ────────────────────────────────────────────────────
+
+(rf/reg-event-fx :consumptions/abandon
+  (fn [{:keys [db]} [_ consumption-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/abandon")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/abandon-ok]
+                  :on-failure      [:consumptions/fetch-err]}}))
+
+(rf/reg-event-db :consumptions/abandon-ok
+  (fn [db [_ abandoned]]
+    (update db :consumptions/list
+            (fn [items]
+              (filterv #(not= (:consumption/id %) (:consumption/id abandoned)) items)))))
+
 ;; ── Step success — upsert consumption in the list ───────────────────────────
 
 (rf/reg-event-db :consumptions/step-ok

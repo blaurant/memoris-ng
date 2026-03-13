@@ -89,3 +89,15 @@
       (mu/log ::network-visibility-toggled :network-id network-id
               :lifecycle (:network/lifecycle n'))
       n')))
+
+(defn validate-network
+  "Validate a pending-validation network (transitions to :private). Requires admin role."
+  [network-repo user-repo user-id network-id]
+  (assert-admin user-repo user-id)
+  (let [n (network/find-by-id network-repo network-id)]
+    (when-not n
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (let [n' (network/validate-network n)]
+      (network/save! network-repo n')
+      (mu/log ::network-validated :network-id network-id)
+      n')))
