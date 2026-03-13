@@ -175,6 +175,29 @@
     (js/console.error "Failed to update alert")
     db))
 
+;; ── Fetch productions (admin) ────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/fetch-productions
+  (fn [{:keys [db]} _]
+    {:db         (assoc db :admin/productions-loading? true)
+     :http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/admin/productions")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/fetch-productions-ok]
+                  :on-failure      [:admin/fetch-productions-err]}}))
+
+(rf/reg-event-db :admin/fetch-productions-ok
+  (fn [db [_ productions]]
+    (-> db
+        (assoc :admin/productions productions)
+        (assoc :admin/productions-loading? false))))
+
+(rf/reg-event-db :admin/fetch-productions-err
+  (fn [db _]
+    (js/console.error "Failed to fetch admin productions")
+    (assoc db :admin/productions-loading? false)))
+
 ;; ── Tab switch ────────────────────────────────────────────────────────────────
 
 (rf/reg-event-db :admin/set-tab

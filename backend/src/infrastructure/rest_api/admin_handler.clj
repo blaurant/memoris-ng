@@ -3,6 +3,7 @@
             [application.user-scenarios :as user-scenarios]
             [domain.alert-banner :as alert]
             [domain.consumption :as consumption]
+            [domain.production :as production]
             [domain.id :as id]
             [infrastructure.rest-api.admin-middleware :as admin-mw]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
@@ -97,7 +98,20 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
-(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo jwt-secret]
+(defn- serialize-production [p]
+  (-> p
+      (update :production/id str)
+      (update :production/user-id str)
+      (update :production/lifecycle name)
+      (cond-> (:production/energy-type p)
+              (update :production/energy-type name))))
+
+(defn- list-productions-handler [production-repo]
+  (fn [_request]
+    {:status 200
+     :body   (mapv serialize-production (production/find-all production-repo))}))
+
+(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo jwt-secret]
   [["/api/v1/alert"
     {:get (get-alert-handler alert-banner-repo)}]
    ["/api/v1/admin/alert"
@@ -120,5 +134,9 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/eligibility-checks"
     {:get        (list-eligibility-checks-handler ec-repo user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/productions"
+    {:get        (list-productions-handler production-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]])

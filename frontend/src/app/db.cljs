@@ -24,7 +24,14 @@
 
    :consumptions/list     []
    :consumptions/loading? false
+
+   :productions/list     []
+   :productions/loading? false
+
    :portal/active-section :dashboard
+
+   :admin/productions          []
+   :admin/productions-loading? false
 
    :admin/users           []
    :admin/users-loading?  false

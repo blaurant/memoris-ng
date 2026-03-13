@@ -5,6 +5,8 @@
             [app.auth.subs]
             [app.consumptions.events]
             [app.consumptions.subs]
+            [app.productions.events]
+            [app.productions.subs]
             [app.events]
             [app.routes :as routes]
             [app.subs]

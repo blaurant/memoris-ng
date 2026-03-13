@@ -1,6 +1,7 @@
 (ns app.pages.portal
   (:require [app.pages.admin :as admin]
             [app.pages.consumptions :as consumptions]
+            [app.pages.productions :as productions]
             [re-frame.core :as rf]))
 
 (defn- sidebar []
@@ -16,6 +17,10 @@
        {:class    (when (= :consumptions active) "sidebar__item--active")
         :on-click #(rf/dispatch [:portal/set-section :consumptions])}
        "Consommations"]
+      [:li.sidebar__item
+       {:class    (when (= :productions active) "sidebar__item--active")
+        :on-click #(rf/dispatch [:portal/set-section :productions])}
+       "Productions"]
       (when admin?
         [:<>
          [:li.sidebar__item.sidebar__item--separator]
@@ -34,6 +39,11 @@
            :on-click #(do (rf/dispatch [:portal/set-section :admin-eligibility])
                           (rf/dispatch [:admin/fetch-eligibility-checks]))}
           "Visiteurs"]
+         [:li.sidebar__item
+          {:class    (when (= :admin-productions active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-productions])
+                          (rf/dispatch [:admin/fetch-productions]))}
+          "Productions"]
          [:li.sidebar__item
           {:class    (when (= :admin-alert active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-alert])
@@ -62,8 +72,10 @@
      [:div.portal__content
       (case active
         :consumptions      [consumptions/consumptions-page]
+        :productions       [productions/productions-page]
         :admin-users       [admin/users-tab]
         :admin-networks    [admin/networks-tab]
         :admin-eligibility [admin/eligibility-checks-tab]
+        :admin-productions [admin/productions-tab]
         :admin-alert       [admin/alert-tab]
         [dashboard-section])]]))

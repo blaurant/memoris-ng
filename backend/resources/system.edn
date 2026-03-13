@@ -19,6 +19,9 @@
  :consumptions/xtdb-repo
  {:node #ig/ref :xtdb/node}
 
+ :productions/xtdb-repo
+ {:node #ig/ref :xtdb/node}
+
  :eligibility-checks/xtdb-repo
  {:node #ig/ref :xtdb/node}
 
@@ -54,6 +57,7 @@
   :network-repo          #ig/ref :networks/xtdb-repo
   :user-repo             #ig/ref :users/xtdb-repo
   :consumption-repo      #ig/ref :consumptions/xtdb-repo
+  :production-repo       #ig/ref :productions/xtdb-repo
   :eligibility-check-repo #ig/ref :eligibility-checks/xtdb-repo
   :token-verifier        #ig/ref :auth/token-verifier
   :password-hasher       #ig/ref :auth/password-hasher

@@ -297,6 +297,82 @@
               (reset! confirm-network nil))
             #(reset! confirm-network nil)])]))))
 
+;; ── Productions table ────────────────────────────────────────────────────────
+
+(def ^:private energy-type-labels
+  {"solar"        "Solaire"
+   "wind"         "Eolien"
+   "hydro"        "Hydraulique"
+   "biomass"      "Biomasse"
+   "cogeneration" "Cogeneration"})
+
+(defn- export-productions-csv [productions]
+  (let [header "ID;Utilisateur;PDL/PRM;Puissance (kWc);Type;Compteur Linky;IBAN;Statut"
+        rows   (map (fn [p]
+                      (str/join ";" [(:production/id p)
+                                     (:production/user-id p)
+                                     (or (:production/pdl-prm p) "")
+                                     (or (:production/installed-power p) "")
+                                     (or (get energy-type-labels (:production/energy-type p)) (:production/energy-type p))
+                                     (or (:production/linky-meter p) "")
+                                     (or (:production/iban p) "")
+                                     (or (:production/lifecycle p) "")]))
+                    productions)
+        csv    (str/join "\n" (cons header rows))
+        blob   (js/Blob. #js [csv] #js {:type "text/csv;charset=utf-8;"})
+        url    (.createObjectURL js/URL blob)
+        a      (.createElement js/document "a")]
+    (set! (.-href a) url)
+    (set! (.-download a) "productions.csv")
+    (.click a)
+    (.revokeObjectURL js/URL url)))
+
+(defn productions-tab []
+  (let [productions @(rf/subscribe [:admin/productions])
+        loading?    @(rf/subscribe [:admin/productions-loading?])]
+    [:div
+     [:div.consumptions__header
+      [:h2.admin__tab-title "Productions"]
+      [:button.btn.btn--small
+       {:on-click #(export-productions-csv productions)
+        :disabled (empty? productions)
+        :title    "Exporter en CSV"}
+       [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+              :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+              :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+              :style {:vertical-align "middle" :margin-right "4px"}}
+        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+        [:polyline {:points "7 10 12 15 17 10"}]
+        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+       "Exporter"]]
+     (cond
+       loading?
+       [:p.loading "Chargement..."]
+
+       (empty? productions)
+       [:p.admin__empty "Aucune production."]
+
+       :else
+       [:table.admin-table
+        [:thead
+         [:tr
+          [:th "Utilisateur"]
+          [:th "PDL/PRM"]
+          [:th "Puissance"]
+          [:th "Type"]
+          [:th "Compteur"]
+          [:th "Statut"]]]
+        [:tbody
+         (for [p productions]
+           ^{:key (:production/id p)}
+           [:tr
+            [:td (subs (str (:production/user-id p)) 0 8)]
+            [:td (or (:production/pdl-prm p) "-")]
+            [:td (when-let [pw (:production/installed-power p)] (str pw " kWc"))]
+            [:td (get energy-type-labels (:production/energy-type p) "-")]
+            [:td (or (:production/linky-meter p) "-")]
+            [:td (:production/lifecycle p)]])]])]))
+
 ;; ── Eligibility checks table ────────────────────────────────────────────────
 
 (defn- format-checked-at [s]

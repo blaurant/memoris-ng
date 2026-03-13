@@ -18,7 +18,9 @@
             [infrastructure.xtdb.node]
             [infrastructure.xtdb.xtdb-user-repo]
             [infrastructure.in-memory-repo.mem-consumption-repo]
+            [infrastructure.in-memory-repo.mem-production-repo]
             [infrastructure.xtdb.xtdb-consumption-repo]
+            [infrastructure.xtdb.xtdb-production-repo]
             [infrastructure.xtdb.xtdb-eligibility-check-repo]
             [infrastructure.xtdb.xtdb-alert-banner-repo]))
 

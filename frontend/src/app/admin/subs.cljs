@@ -19,6 +19,12 @@
 (rf/reg-sub :admin/eligibility-checks-loading?
   (fn [db _] (:admin/eligibility-checks-loading? db)))
 
+(rf/reg-sub :admin/productions
+  (fn [db _] (:admin/productions db)))
+
+(rf/reg-sub :admin/productions-loading?
+  (fn [db _] (:admin/productions-loading? db)))
+
 (rf/reg-sub :admin/active-tab
   (fn [db _] (:admin/active-tab db)))
 
