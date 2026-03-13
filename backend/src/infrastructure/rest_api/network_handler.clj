@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.network-handler
-  (:require [application.network-scenarios :as scenarios]))
+  (:require [application.network-scenarios :as scenarios]
+            [domain.network :as network]))
 
 (defn list-networks-handler
   "GET /api/v1/networks — returns all networks serialised as JSON."
@@ -14,10 +15,12 @@
   Persists the check with address for admin review."
   [network-repo ec-repo]
   (fn [request]
-    (let [{:keys [lat lng address]} (:body-params request)]
+    (let [{:keys [lat lng address]} (:body-params request)
+          public-networks (filterv #(= :public (:network/lifecycle %))
+                                   (network/find-all network-repo))]
       (if (and (number? lat) (number? lng))
         {:status 200
-         :body   (scenarios/check-eligibility network-repo ec-repo (double lat) (double lng) address)}
+         :body   (scenarios/check-eligibility public-networks ec-repo (double lat) (double lng) address)}
         {:status 400
          :body   {:error "Missing or invalid lat/lng parameters"}}))))
 

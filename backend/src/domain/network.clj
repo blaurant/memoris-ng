@@ -1,5 +1,6 @@
 (ns ^{:domain/type :entity} domain.network
-  (:require [domain.id :as id]
+  (:require [domain.geo :as geo]
+            [domain.id :as id]
             [malli.core :as m]))
 
 (def lifecycle-states #{:private :public :pending-validation})
@@ -11,7 +12,7 @@
    [:network/center-lat double?]
    [:network/center-lng double?]
    [:network/radius-km  {:optional true} double?]
-   [:network/lifecycle [:enum :private :public :pending-validation]]])
+   [:network/lifecycle [:enum :pending-validation :private :public ]]])
 
 (defn build-network
   "Validates attrs against the Network schema and returns the network map.
@@ -46,6 +47,18 @@
   (when (not= :pending-validation (:network/lifecycle network))
     (throw (ex-info "Network is not pending validation" {:lifecycle (:network/lifecycle network)})))
   (assoc network :network/lifecycle :private))
+
+;; ── Queries ──────────────────────────────────────────────────────────────
+
+(defn contains-point?
+  "Returns true if the point (lat, lng) lies within this network's radius."
+  [network lat lng]
+  (geo/within-network? network lat lng))
+
+(defn find-covering-network
+  "Returns the first network that contains the point (lat, lng), or nil."
+  [networks lat lng]
+  (some #(when (contains-point? % lat lng) %) networks))
 
 ;; ── Repository protocol ───────────────────────────────────────────────────
 

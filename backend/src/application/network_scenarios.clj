@@ -2,7 +2,6 @@
   (:require [com.brunobonacci.mulog :as mu]
             [domain.datetime :as dt]
             [domain.eligibility-check :as ec]
-            [domain.geo :as geo]
             [domain.id :as id]
             [domain.network :as network]
             [domain.user :as user]))
@@ -20,13 +19,12 @@
   (filterv #(= :public (:network/lifecycle %)) (network/find-all network-repo)))
 
 (defn check-eligibility
-  "Checks whether the point (lat, lng) falls within any network.
+  "Checks whether the point (lat, lng) falls within any public network.
   Persists the check with address for admin review.
   Returns {:eligible? true  :network <network>} or
           {:eligible? false :network nil}."
-  [network-repo ec-repo lat lng address]
-  (let [networks (filter #(= :public (:network/lifecycle %)) (network/find-all network-repo))
-        match    (some #(when (geo/within-network? % lat lng) %) networks)
+  [networks ec-repo lat lng address]
+  (let [match    (network/find-covering-network networks lat lng)
         result   {:eligible? (some? match)
                   :network   match}
         check    (ec/build-eligibility-check
