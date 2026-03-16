@@ -9,8 +9,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Carte
 
-- [ ] **MAP-01**: Carte interactive affichant la zone du réseau (cercle centré sur les coordonnées)
-- [ ] **MAP-02**: Marqueurs des sites de production positionnés sur la carte
+- [x] **MAP-01**: Carte interactive affichant la zone du réseau (cercle centré sur les coordonnées)
+- [x] **MAP-02**: Marqueurs des sites de production positionnés sur la carte
 
 ### Statistiques
 
@@ -71,8 +71,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFR-01 | Phase 1 | Complete |
 | INFR-02 | Phase 1 | Complete |
 | INFR-03 | Phase 1 | Complete |
-| MAP-01 | Phase 2 | Pending |
-| MAP-02 | Phase 2 | Pending |
+| MAP-01 | Phase 2 | Complete |
+| MAP-02 | Phase 2 | Complete |
 | STAT-01 | Phase 2 | Pending |
 | STAT-02 | Phase 2 | Pending |
 | CONT-01 | Phase 2 | Pending |
