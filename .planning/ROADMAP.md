@@ -27,8 +27,8 @@ Ajout d'une page publique de détail réseau à l'application memoris-ng existan
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 01-01-PLAN.md — Backend: find-by-network-id + get-network-detail scenario + handler + tests
-- [ ] 01-02-PLAN.md — Frontend: route /reseau/:id + Re-frame events/subs + placeholder page
+- [x] 01-01-PLAN.md — Backend: find-by-network-id + get-network-detail scenario + handler + tests
+- [x] 01-02-PLAN.md — Frontend: route /reseau/:id + Re-frame events/subs + placeholder page
 
 ### Phase 2: Page Visible
 **Goal**: Un visiteur éligible peut voir la page `/reseau/:id` avec la carte géographique du réseau, les statistiques clés, la liste des productions et un bouton pour s'inscrire.
@@ -40,7 +40,11 @@ Plans:
   3. Les statistiques affichées (capacité totale en kWc, mix énergétique en %) correspondent aux données de l'API
   4. La liste des productions affiche nom/raison sociale, type d'énergie et localisation pour chaque production
   5. Le bouton CTA dirige vers le parcours d'inscription / test d'éligibilité
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Extract shared Google Maps utilities + add derived Re-frame subscriptions
+- [ ] 02-02-PLAN.md — Build full network detail page (map, stats, productions, description, CTA) + CSS
 
 ## Progress
 
@@ -50,4 +54,4 @@ Phases execute in numeric order: 1 → 2
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 2/2 | Complete    | 2026-03-16 |
-| 2. Page Visible | 0/TBD | Not started | - |
+| 2. Page Visible | 0/2 | Not started | - |
