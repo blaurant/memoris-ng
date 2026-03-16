@@ -12,7 +12,8 @@
     ["/verify-email"   {:name :page/verify-email}]
     ["/check-email"       {:name :page/check-email}]
     ["/forgot-password"   {:name :page/forgot-password}]
-    ["/reset-password"    {:name :page/reset-password}]]))
+    ["/reset-password"    {:name :page/reset-password}]
+    ["/reseau/:id"        {:name :page/network-detail}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."
@@ -20,6 +21,7 @@
   (rfee/start!
     router
     (fn [match _]
-      (let [page (or (-> match :data :name) :page/home)]
-        (rf/dispatch [:router/navigated page])))
+      (let [page   (or (-> match :data :name) :page/home)
+            params (-> match :parameters :path)]
+        (rf/dispatch [:router/navigated page params])))
     {:use-fragment false}))

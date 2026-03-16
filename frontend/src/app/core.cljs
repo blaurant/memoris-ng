@@ -5,6 +5,8 @@
             [app.auth.subs]
             [app.consumptions.events]
             [app.consumptions.subs]
+            [app.network-detail.events]
+            [app.network-detail.subs]
             [app.productions.events]
             [app.productions.subs]
             [app.events]
@@ -28,8 +30,9 @@
   (rf/dispatch-sync [:auth/restore-session])
   (rf/dispatch [:alert/fetch])
   ;; Resolve initial route synchronously before first render
-  (let [match (rfe/match-by-path routes/router (.-pathname js/location))
-        page  (or (-> match :data :name) :page/home)]
-    (rf/dispatch-sync [:router/navigated page]))
+  (let [match  (rfe/match-by-path routes/router (.-pathname js/location))
+        page   (or (-> match :data :name) :page/home)
+        params (-> match :parameters :path)]
+    (rf/dispatch-sync [:router/navigated page params]))
   (routes/init!)
   (mount-root))

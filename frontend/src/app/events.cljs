@@ -35,10 +35,14 @@
 
 ;; ── Router ───────────────────────────────────────────────────────────────────
 
-(rf/reg-event-db :router/navigated
-  (fn [db [_ page-name]]
-    (cond-> (assoc db :router/current-page page-name)
-      (not= page-name :page/signup) (dissoc :eligibility/join-network))))
+(rf/reg-event-fx :router/navigated
+  (fn [{:keys [db]} [_ page-name path-params]]
+    (let [db' (cond-> (assoc db :router/current-page page-name)
+                (not= page-name :page/signup) (dissoc :eligibility/join-network)
+                (= page-name :page/network-detail) (dissoc :network-detail/data :network-detail/error))]
+      (cond-> {:db db'}
+        (= page-name :page/network-detail)
+        (assoc :dispatch [:network-detail/fetch (:id path-params)])))))
 
 (rf/reg-event-fx :router/navigate
   (fn [_ [_ page-name]]

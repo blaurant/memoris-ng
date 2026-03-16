@@ -42,4 +42,8 @@
    :admin/active-tab      :users
 
    :alert/message  nil
-   :alert/active?  false})
+   :alert/active?  false
+
+   :network-detail/data     nil
+   :network-detail/loading? false
+   :network-detail/error    nil})
