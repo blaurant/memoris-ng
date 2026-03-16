@@ -24,7 +24,11 @@ Ajout d'une page publique de détail réseau à l'application memoris-ng existan
   2. La réponse ne contient aucun champ sensible (IBAN, PRM, user-id) — vérifiable en inspectant le JSON brut
   3. La route `/reseau/:id` est accessible dans le navigateur et déclenche le fetch de l'API sans erreur 404 ou boucle de rechargement
   4. L'état Re-frame est chargé avec les données réseau et le statut de chargement est observable via les subscriptions
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Backend: find-by-network-id + get-network-detail scenario + handler + tests
+- [ ] 01-02-PLAN.md — Frontend: route /reseau/:id + Re-frame events/subs + placeholder page
 
 ### Phase 2: Page Visible
 **Goal**: Un visiteur éligible peut voir la page `/reseau/:id` avec la carte géographique du réseau, les statistiques clés, la liste des productions et un bouton pour s'inscrire.
@@ -45,5 +49,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 0/TBD | Not started | - |
+| 1. Infrastructure | 0/2 | Planned | - |
 | 2. Page Visible | 0/TBD | Not started | - |
