@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.network-handler
   (:require [application.network-scenarios :as scenarios]
+            [domain.id :as id]
             [domain.network :as network]))
 
 (defn list-networks-handler
@@ -42,12 +43,27 @@
         {:status 400
          :body   {:error "Missing check-id or email"}}))))
 
+(defn get-network-detail-handler
+  "GET /api/v1/networks/:id/detail — aggregated network detail for public display."
+  [network-repo production-repo consumption-repo]
+  (fn [request]
+    (try
+      (let [network-id (id/build-id (get-in request [:path-params :id]))]
+        {:status 200
+         :body   (scenarios/get-network-detail
+                   network-repo production-repo consumption-repo network-id)})
+      (catch clojure.lang.ExceptionInfo _e
+        {:status 404
+         :body   {:error "Network not found"}}))))
+
 (defn routes
   "Returns Reitit route vectors for network-related endpoints."
-  [network-repo ec-repo]
+  [network-repo ec-repo production-repo consumption-repo]
   [["/api/v1/networks"
     {:get (list-networks-handler network-repo)}]
    ["/api/v1/networks/check-eligibility"
     {:post (check-eligibility-handler network-repo ec-repo)}]
    ["/api/v1/networks/eligibility-checks/:id/notify"
-    {:post (subscribe-notification-handler ec-repo)}]])
+    {:post (subscribe-notification-handler ec-repo)}]
+   ["/api/v1/networks/:id/detail"
+    {:get (get-network-detail-handler network-repo production-repo consumption-repo)}]])

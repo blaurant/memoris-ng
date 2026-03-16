@@ -1,9 +1,11 @@
 (ns application.network-scenarios
   (:require [com.brunobonacci.mulog :as mu]
+            [domain.consumption :as consumption]
             [domain.datetime :as dt]
             [domain.eligibility-check :as ec]
             [domain.id :as id]
             [domain.network :as network]
+            [domain.production :as production]
             [domain.user :as user]))
 
 (defn- assert-admin [user-repo user-id]
@@ -99,3 +101,41 @@
       (network/save! network-repo n')
       (mu/log ::network-validated :network-id network-id)
       n')))
+
+;; ── Public serialization (whitelist) ─────────────────────────────────────────
+
+(defn- serialize-public-network [n]
+  (select-keys n [:network/id :network/name :network/center-lat
+                  :network/center-lng :network/radius-km :network/lifecycle]))
+
+(defn- serialize-public-production [p]
+  (select-keys p [:production/id :production/energy-type
+                  :production/installed-power :production/producer-address]))
+
+;; ── Network detail (public) ─────────────────────────────────────────────────
+
+(defn get-network-detail
+  "Aggregate a public network with its active productions and consumer count.
+  Throws ex-info if the network does not exist or is not public."
+  [network-repo production-repo consumption-repo network-id]
+  (let [net (network/find-by-id network-repo network-id)]
+    (when-not net
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (when (not= :public (:network/lifecycle net))
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (let [productions    (production/find-by-network-id production-repo network-id)
+          active-prods   (filterv #(= :active (:production/lifecycle %)) productions)
+          consumer-count (consumption/count-by-network-id consumption-repo network-id)
+          total-kwc      (reduce + 0 (map :production/installed-power active-prods))
+          energy-counts  (frequencies (map :production/energy-type active-prods))
+          energy-mix     (when (seq active-prods)
+                           (into {} (map (fn [[k v]] [k (double (/ (* 100 v) (count active-prods)))])
+                                        energy-counts)))]
+      (mu/log ::network-detail-fetched :network-id network-id
+              :production-count (count active-prods)
+              :consumer-count consumer-count)
+      {:network         (serialize-public-network net)
+       :productions     (mapv serialize-public-production active-prods)
+       :consumer-count  consumer-count
+       :total-capacity-kwc total-kwc
+       :energy-mix      (or energy-mix {})})))

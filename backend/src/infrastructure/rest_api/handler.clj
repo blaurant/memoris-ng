@@ -21,7 +21,7 @@
                      password-hasher email-sender vt-repo jwt-secret alert-banner-repo]
   (ring/router
     (concat [["/api/v1/hello" {:get hello-handler}]]
-            (network-handler/routes network-repo ec-repo)
+            (network-handler/routes network-repo ec-repo production-repo consumption-repo)
             (auth-handler/routes user-repo token-verifier password-hasher email-sender vt-repo jwt-secret)
             (consumption-handler/routes consumption-repo jwt-secret)
             (production-handler/routes production-repo network-repo jwt-secret)
