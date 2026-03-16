@@ -25,9 +25,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFR-01**: Endpoint public `GET /api/v1/networks/:id/detail` retournant réseau + productions + stats agrégées
+- [x] **INFR-01**: Endpoint public `GET /api/v1/networks/:id/detail` retournant réseau + productions + stats agrégées
 - [ ] **INFR-02**: Route frontend `/reseau/:id` accessible après vérification d'éligibilité
-- [ ] **INFR-03**: Méthode `find-by-network-id` sur ProductionRepo
+- [x] **INFR-03**: Méthode `find-by-network-id` sur ProductionRepo
 
 ## v2 Requirements
 
@@ -68,9 +68,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | Phase 1 | Pending |
+| INFR-01 | Phase 1 | Complete |
 | INFR-02 | Phase 1 | Pending |
-| INFR-03 | Phase 1 | Pending |
+| INFR-03 | Phase 1 | Complete |
 | MAP-01 | Phase 2 | Pending |
 | MAP-02 | Phase 2 | Pending |
 | STAT-01 | Phase 2 | Pending |
