@@ -3,6 +3,7 @@
             [app.pages.check-email :as check-email]
             [app.pages.forgot-password :as forgot-password]
             [app.pages.home :as home]
+            [app.pages.network-detail :as network-detail]
             [app.pages.login :as login]
             [app.pages.portal :as portal]
             [app.pages.reset-password :as reset-password]
@@ -75,6 +76,7 @@
       :page/check-email     [check-email/check-email-page]
       :page/forgot-password [forgot-password/forgot-password-page]
       :page/reset-password  [reset-password/reset-password-page]
+      :page/network-detail  [network-detail/network-detail-page]
       [home/home-page])))
 
 (defn main-panel []
