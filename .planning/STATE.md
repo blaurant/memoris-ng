@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: Completed 01-02-PLAN.md — Phase 1 Infrastructure complete
+last_updated: "2026-03-16T18:02:29.518Z"
+last_activity: 2026-03-16 — Completed 01-02-PLAN.md (network detail frontend route)
+progress:
+  total_phases: 2
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
+  percent: 100
+---
+
 # Project State
 
 ## Project Reference
@@ -10,28 +26,28 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 1 of 2 (Infrastructure)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-03-16 — Completed 01-01-PLAN.md (network detail backend API)
+Plan: 2 of 2 in current phase
+Status: Phase 1 Complete
+Last activity: 2026-03-16 — Completed 01-02-PLAN.md (network detail frontend route)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 6min
-- Total execution time: 6min
+- Total plans completed: 2
+- Average duration: 7min
+- Total execution time: 14min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-infrastructure | 1 | 6min | 6min |
+| 01-infrastructure | 2 | 14min | 7min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (6min)
-- Trend: baseline
+- Last 5 plans: 01-01 (6min), 01-02 (8min)
+- Trend: stable
 
 *Updated after each plan completion*
 
@@ -49,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 1]: Extraction namespace partagé `app.utils.google-maps` avant de construire le composant carte — deux implémentations quasi-identiques existent déjà
 - [Phase 1-01]: Return 404 (not 403) for non-public networks to avoid leaking existence information
 - [Phase 1-01]: Energy-mix as percentage distribution, empty map {} when zero active productions
+- [Phase 1-02]: Route-driven fetch: navigating to :page/network-detail auto-dispatches :network-detail/fetch
+- [Phase 1-02]: Clear previous network-detail data on navigation to avoid stale state
 - [Phase 2]: Utiliser Form-3 (`r/create-class`) pour le composant carte — jamais re-render conditionnel de la div map
 
 ### Pending Todos
@@ -63,5 +81,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-16
-Stopped at: Completed 01-01-PLAN.md — network detail backend API endpoint
+Stopped at: Completed 01-02-PLAN.md — Phase 1 Infrastructure complete
 Resume file: None

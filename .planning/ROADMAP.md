@@ -10,7 +10,7 @@ Ajout d'une page publique de détail réseau à l'application memoris-ng existan
 - Integer phases (1, 2): Planned milestone work
 - Decimal phases (1.1, 1.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Infrastructure** - Endpoint public sécurisé + route frontend + plomberie état Re-frame
+- [x] **Phase 1: Infrastructure** - Endpoint public sécurisé + route frontend + plomberie état Re-frame (completed 2026-03-16)
 - [ ] **Phase 2: Page Visible** - Carte interactive, statistiques, liste productions, description générée, CTA
 
 ## Phase Details
@@ -24,7 +24,7 @@ Ajout d'une page publique de détail réseau à l'application memoris-ng existan
   2. La réponse ne contient aucun champ sensible (IBAN, PRM, user-id) — vérifiable en inspectant le JSON brut
   3. La route `/reseau/:id` est accessible dans le navigateur et déclenche le fetch de l'API sans erreur 404 ou boucle de rechargement
   4. L'état Re-frame est chargé avec les données réseau et le statut de chargement est observable via les subscriptions
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Backend: find-by-network-id + get-network-detail scenario + handler + tests
@@ -49,5 +49,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 0/2 | Planned | - |
+| 1. Infrastructure | 2/2 | Complete   | 2026-03-16 |
 | 2. Page Visible | 0/TBD | Not started | - |
