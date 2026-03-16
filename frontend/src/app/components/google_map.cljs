@@ -1,54 +1,19 @@
 (ns app.components.google-map
-  (:require [app.config :as config]
+  (:require [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
             [reagent.core :as r]))
-
-(defn load-google-maps-script!
-  "Injects the Google Maps JS API <script> tag once into the document head.
-  Calls on-ready once the API is fully loaded."
-  [on-ready]
-  (when (empty? config/GOOGLE_MAPS_API_KEY)
-    (js/console.warn "GOOGLE_MAPS_API_KEY is not set — map will not load."))
-  (cond
-    (and (exists? js/google) (exists? js/google.maps))
-    (on-ready)
-
-    (.querySelector js/document "script[data-maps]")
-    ;; Script already injected but API not ready yet — poll until available.
-    (let [poll (fn poll []
-                (if (and (exists? js/google) (exists? js/google.maps))
-                  (on-ready)
-                  (js/setTimeout poll 200)))]
-      (poll))
-
-    :else
-    (let [script (.createElement js/document "script")]
-      (set! js/initGoogleMap (fn []
-                               (set! js/initGoogleMap js/undefined)
-                               (on-ready)))
-      (set! (.-src script)
-            (str "https://maps.googleapis.com/maps/api/js?key="
-                 config/GOOGLE_MAPS_API_KEY
-                 "&callback=initGoogleMap"))
-      (.setAttribute script "data-maps" "true")
-      (set! (.-async script) true)
-      (.appendChild (.-head js/document) script))))
 
 (defn- draw-circles!
   "Removes previous circles and draws one per network on the map."
   [gmap circles-atom networks]
-  (doseq [c @circles-atom] (.setMap c nil))
+  (google-maps/clear-overlays! circles-atom)
   (reset! circles-atom
           (mapv (fn [net]
-                  (js/google.maps.Circle.
-                   #js {:map          gmap
-                        :center       #js {:lat (:network/center-lat net)
-                                          :lng (:network/center-lng net)}
-                        :radius       (* (:network/radius-km net) 1000)
-                        :strokeColor  "#2e7d32"
-                        :strokeWeight 2
-                        :fillColor    "#4caf50"
-                        :fillOpacity  0.2}))
+                  (google-maps/draw-circle!
+                   gmap
+                   {:center-lat (:network/center-lat net)
+                    :center-lng (:network/center-lng net)
+                    :radius-km  (:network/radius-km net)}))
                 networks)))
 
 (defn network-map
@@ -65,7 +30,7 @@
 
       :component-did-mount
       (fn [_this]
-        (load-google-maps-script!
+        (google-maps/load-google-maps-script!
          (fn []
            (try
              (let [gmap (js/google.maps.Map.
@@ -85,7 +50,7 @@
 
       :component-will-unmount
       (fn [_this]
-        (doseq [c @circles] (.setMap c nil)))
+        (google-maps/clear-overlays! circles))
 
       :reagent-render
       (fn []

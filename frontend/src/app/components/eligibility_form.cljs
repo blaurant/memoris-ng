@@ -1,23 +1,20 @@
 (ns app.components.eligibility-form
-  (:require [re-frame.core :as rf]
+  (:require [app.utils.google-maps :as google-maps]
+            [re-frame.core :as rf]
             [reagent.core :as r]
             [reitit.frontend.easy :as rfee]))
 
 (defn- draw-network-circles!
   "Draws a circle for each network on the given map."
   [gmap circles-atom networks]
-  (doseq [c @circles-atom] (.setMap ^js c nil))
+  (google-maps/clear-overlays! circles-atom)
   (reset! circles-atom
           (mapv (fn [net]
-                  (js/google.maps.Circle.
-                   #js {:map          gmap
-                        :center       #js {:lat (:network/center-lat net)
-                                           :lng (:network/center-lng net)}
-                        :radius       (* (:network/radius-km net) 1000)
-                        :strokeColor  "#2e7d32"
-                        :strokeWeight 2
-                        :fillColor    "#4caf50"
-                        :fillOpacity  0.2}))
+                  (google-maps/draw-circle!
+                   gmap
+                   {:center-lat (:network/center-lat net)
+                    :center-lng (:network/center-lng net)
+                    :radius-km  (:network/radius-km net)}))
                 networks)))
 
 (defn- eligibility-mini-map

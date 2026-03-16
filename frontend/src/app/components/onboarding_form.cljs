@@ -1,6 +1,6 @@
 (ns app.components.onboarding-form
-  (:require [app.components.google-map :as gmap]
-            [app.consumptions.contract :as contract]
+  (:require [app.consumptions.contract :as contract]
+            [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
@@ -104,7 +104,7 @@
                     (create-map! #js {:lat 46.6 :lng 1.9} 6))))]
           (if (and (exists? js/google) (exists? js/google.maps))
             (init-map!)
-            (gmap/load-google-maps-script! init-map!))))
+            (google-maps/load-google-maps-script! init-map!))))
 
       :component-will-unmount
       (fn [_this]
@@ -187,11 +187,15 @@
          :placeholder "Référence Linky (ex: PRM 12345678901234)"
          :value       @linky-ref
          :on-change   #(reset! linky-ref (.. % -target -value))}]
-       [:button.btn.btn--green.btn--small
-        {:disabled (empty? @linky-ref)
-         :on-click #(rf/dispatch [:consumptions/submit-step2
-                                  consumption-id @linky-ref])}
-        "Suivant"]])))
+       [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
+        [:button.btn.btn--small.btn--outline
+         {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+         "Précédent"]
+        [:button.btn.btn--green.btn--small
+         {:disabled (empty? @linky-ref)
+          :on-click #(rf/dispatch [:consumptions/submit-step2
+                                   consumption-id @linky-ref])}
+         "Suivant"]]])))
 
 (defn- step3-form [consumption-id consumer-address]
   (let [use-same?    (r/atom true)
@@ -220,11 +224,15 @@
            :value       (if same? consumer-address @billing-addr)
            :disabled    same?
            :on-change   #(reset! billing-addr (.. % -target -value))}]
-         [:button.btn.btn--green.btn--small
-          {:disabled (empty? effective-addr)
-           :on-click #(rf/dispatch [:consumptions/submit-step3
-                                    consumption-id effective-addr])}
-          "Suivant"]]))))
+         [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
+        [:button.btn.btn--small.btn--outline
+         {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+         "Précédent"]
+        [:button.btn.btn--green.btn--small
+         {:disabled (empty? effective-addr)
+          :on-click #(rf/dispatch [:consumptions/submit-step3
+                                   consumption-id effective-addr])}
+         "Suivant"]]]))))
 
 (def ^:private contract-configs
   [{:type     :elinkco
@@ -298,7 +306,11 @@
                {:on-click (fn []
                             (reset! open-contract nil)
                             (rf/dispatch [:consumptions/submit-step4 consumption-id ct]))}
-               "Signer le contrat"]]]]))])))
+               "Signer le contrat"]]]]))
+       [:div {:style {:margin-top "0.75rem"}}
+        [:button.btn.btn--small.btn--outline
+         {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+         "Précédent"]]])))
 
 (defn onboarding-form [consumption]
   (let [lifecycle (keyword (:consumption/lifecycle consumption))

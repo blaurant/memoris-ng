@@ -1,6 +1,6 @@
 (ns app.components.production-onboarding-form
-  (:require [app.components.google-map :as gmap]
-            [app.productions.contract :as contract]
+  (:require [app.productions.contract :as contract]
+            [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
@@ -136,7 +136,7 @@
                     (create-map! #js {:lat 46.6 :lng 1.9} 6))))]
           (if (and (exists? js/google) (exists? js/google.maps))
             (init-map!)
-            (gmap/load-google-maps-script! init-map!))))
+            (google-maps/load-google-maps-script! init-map!))))
 
       :component-will-unmount
       (fn [_this]
@@ -241,7 +241,7 @@
                                                    (reset! geo-error "Erreur de géolocalisation."))))))]
                                    (if (and (exists? js/google) (exists? js/google.maps))
                                      (do-geocode!)
-                                     (gmap/load-google-maps-script! do-geocode!))))))}
+                                     (google-maps/load-google-maps-script! do-geocode!))))))}
                 (if @geocoding? "Géolocalisation..." "Valider")])]]]))})))
 
 ;; ── Step 0: Producer information ──────────────────────────────────────────
