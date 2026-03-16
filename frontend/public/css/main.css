@@ -197,6 +197,66 @@ a { color: var(--color-green); }
   margin-bottom: 2rem;
 }
 
+/* ── Autoconsommation ── */
+.acc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.acc-card {
+  background: var(--color-white);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.acc-card--highlight {
+  border-left: 3px solid var(--color-green);
+}
+.acc-card__icon {
+  margin-bottom: 0.75rem;
+}
+.acc-card__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-green);
+  margin-bottom: 0.5rem;
+}
+.acc-card__text {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+.acc-card__example {
+  background: var(--color-green-pale);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+.acc-card__label {
+  display: inline-block;
+  background: var(--color-green);
+  color: var(--color-white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  margin-bottom: 0.4rem;
+}
+.acc-source {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-style: italic;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .acc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Map ── */
 .map-container {
   width: 66%;
