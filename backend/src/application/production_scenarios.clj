@@ -41,7 +41,7 @@
                              :network/name       network-name
                              :network/center-lat (double network-lat)
                              :network/center-lng (double network-lng)
-                             :network/radius-km  (double (or network-radius 10.0))
+                             :network/radius-km  (double (or network-radius 1.0))
                              :network/lifecycle  :pending-validation})]
                     (network/save! network-repo n)
                     (mu/log ::network-created-pending :network-id (:network/id n) :name network-name)

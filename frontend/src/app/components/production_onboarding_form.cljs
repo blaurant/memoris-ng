@@ -176,7 +176,7 @@
 
               @creating?
               [:div {:style {:padding "0.5rem 1rem"}}
-               [:label {:style {:font-weight "600" :font-size "0.9rem"}}
+               [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-right "8px"}}
                 "Nom du nouveau réseau"]
                [:input.onboarding__input
                 {:value       @net-name
@@ -184,7 +184,9 @@
                  :on-change   #(reset! net-name (.-value (.-target %)))
                  :style       {:margin-top "4px"}}]
                [:p {:style {:font-size "0.8rem" :color "var(--color-muted)" :margin-top "4px"}}
-                "Le réseau sera centré sur votre adresse (rayon : 10 km) et soumis à validation."]
+                "Le réseau sera centré sur votre adresse (rayon : 1 km) et soumis à validation. "
+                "La taille et la localisation du réseau pourront être ajustées par l'administrateur. "
+                "Pour les réseaux périurbains (rayon 10 km) et ruraux (rayon 20 km), une validation Enedis sera également requise."]
                (when @geo-error
                  [:p {:style {:font-size "0.85rem" :color "var(--color-error)" :margin-top "4px"}}
                   @geo-error])]
@@ -211,7 +213,7 @@
                                (on-create-new {:network-name   @net-name
                                                :network-lat    @addr-lat
                                                :network-lng    @addr-lng
-                                               :network-radius 10.0})
+                                               :network-radius 1.0})
                                ;; Fallback geocode if lat/lng missing
                                (do
                                  (reset! geocoding? true)
@@ -231,7 +233,7 @@
                                                        (on-create-new {:network-name   @net-name
                                                                        :network-lat    (.lat loc)
                                                                        :network-lng    (.lng loc)
-                                                                       :network-radius 10.0})
+                                                                       :network-radius 1.0})
                                                        (reset! geo-error "Impossible de géolocaliser cette adresse.")))))
                                                (.catch
                                                  (fn [_err]

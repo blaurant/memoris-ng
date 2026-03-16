@@ -12,7 +12,7 @@
 
 (defn- env-banner []
   (when (not= config/APP_ENV "prod")
-    [:div {:style {:background "#ff9800" :color "#000" :text-align "center"
+    [:div {:style {:background "#ffffff" :color "#000" :text-align "center"
                    :padding "4px 0" :font-size "0.75rem" :font-weight "bold"
                    :letter-spacing "0.05em" :text-transform "uppercase"
                    :position "sticky" :top 0 :z-index 9999}}
@@ -40,8 +40,8 @@
   (let [logged-in? @(rf/subscribe [:auth/logged-in?])
         user-name  @(rf/subscribe [:auth/user-name])]
     [:nav.navbar
-     [:a.navbar__logo {:href "/"} "⚡ Elinkco"]
-     [:span.navbar__tagline "Énergie locale partagée"]
+     [:a.navbar__logo {:href "/"}
+      [:img.navbar__logo-img {:src "/img/logo-elinkco.jpg" :alt "elink-co"}]]
      [:div.navbar__auth
       (if logged-in?
         [:div.navbar__user
@@ -83,4 +83,4 @@
    [alert-banner]
    [navbar]
    [current-page]
-   [:footer.footer "© 2026 Elinkco — Énergie locale partagée"]])
+   [:footer.footer "© 2026 elink-co — Énergie locale partagée"]])

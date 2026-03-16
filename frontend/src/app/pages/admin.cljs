@@ -117,7 +117,7 @@
 ;; ── Create network modal ──────────────────────────────────────────────────────
 
 (defn- create-network-modal [on-close]
-  (let [form (r/atom {:name "" :center-lat "" :center-lng "" :radius-km "10"})]
+  (let [form (r/atom {:name "" :center-lat "" :center-lng "" :radius-km "1"})]
     (fn [on-close]
       (let [{:keys [name center-lat center-lng radius-km]} @form
             valid? (and (seq name)

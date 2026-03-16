@@ -17,10 +17,10 @@
 (defn build-network
   "Validates attrs against the Network schema and returns the network map.
   Throws ex-info if attrs are invalid.
-  Defaults :network/radius-km to 10.0 and :network/lifecycle to :private."
+  Defaults :network/radius-km to 1.0 and :network/lifecycle to :private."
   [attrs]
   (let [with-defaults (-> attrs
-                          (update :network/radius-km #(or % 10.0))
+                          (update :network/radius-km #(or % 1.0))
                           (update :network/lifecycle #(or % :private)))]
     (if (m/validate Network with-defaults)
       with-defaults

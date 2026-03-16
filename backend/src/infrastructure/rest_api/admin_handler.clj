@@ -45,7 +45,7 @@
                                                 name
                                                 (double center-lat)
                                                 (double center-lng)
-                                                (double (or radius-km 10.0)))]
+                                                (double (or radius-km 1.0)))]
         {:status 201
          :body   n})
       (catch Exception e

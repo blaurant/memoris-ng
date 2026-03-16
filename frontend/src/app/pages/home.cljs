@@ -148,7 +148,7 @@
 
 (defn home-page []
   (r/with-let [_ (rf/dispatch [:networks/fetch])]
-    [:<>
+    [:div.landing
      [hero-section]
      [autoconsommation-section]
      [map-section]
