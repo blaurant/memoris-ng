@@ -1,7 +1,8 @@
 (ns domain.production-test
   (:require [clojure.test :refer [deftest is testing]]
             [domain.id :as id]
-            [domain.production :as production]))
+            [domain.production :as production]
+            [infrastructure.in-memory-repo.mem-production-repo :as mem-repo]))
 
 (def user-id (id/build-id))
 (def network-id (id/build-id))
@@ -153,3 +154,46 @@
     (let [p (production/create-new-production (id/build-id) user-id)]
       (is (thrown? clojure.lang.ExceptionInfo
                   (production/sign-contract p "2026-03-13T10:00:00Z"))))))
+
+;; ── find-by-network-id (repository) ──────────────────────────────────────
+
+(deftest ^:phase-1 find-by-network-id-test
+  (let [repo       (mem-repo/->InMemoryProductionRepo (atom {}))
+        net-id-a   (id/build-id)
+        net-id-b   (id/build-id)
+        ;; Create two active productions for network A
+        prod-a1    (-> (production/create-new-production (id/build-id) user-id)
+                       (production/register-producer-information "addr A1" net-id-a)
+                       (production/register-installation-info "PRM-A1" 3.0 :solar "LK-A1")
+                       (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 001")
+                       (production/sign-contract "2026-01-01T00:00:00Z"))
+        prod-a2    (-> (production/create-new-production (id/build-id) user-id)
+                       (production/register-producer-information "addr A2" net-id-a)
+                       (production/register-installation-info "PRM-A2" 5.0 :wind "LK-A2")
+                       (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 002")
+                       (production/sign-contract "2026-01-02T00:00:00Z"))
+        ;; One production for network B
+        prod-b1    (-> (production/create-new-production (id/build-id) user-id)
+                       (production/register-producer-information "addr B1" net-id-b)
+                       (production/register-installation-info "PRM-B1" 2.0 :hydro "LK-B1")
+                       (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 003")
+                       (production/sign-contract "2026-01-03T00:00:00Z"))]
+    ;; Save all productions
+    (production/save! repo prod-a1)
+    (production/save! repo prod-a2)
+    (production/save! repo prod-b1)
+
+    (testing "returns all productions for network A"
+      (let [results (production/find-by-network-id repo net-id-a)]
+        (is (= 2 (count results)))
+        (is (every? #(= net-id-a (:production/network-id %)) results))))
+
+    (testing "returns all productions for network B"
+      (let [results (production/find-by-network-id repo net-id-b)]
+        (is (= 1 (count results)))
+        (is (= net-id-b (:production/network-id (first results))))))
+
+    (testing "returns empty vector for unknown network"
+      (let [results (production/find-by-network-id repo (id/build-id))]
+        (is (vector? results))
+        (is (empty? results))))))

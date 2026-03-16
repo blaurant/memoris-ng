@@ -170,6 +170,7 @@
 (defprotocol ProductionRepo
   (find-by-id      [repo id]                    "Find a production by ID.")
   (find-by-user-id [repo user-id]               "Find all productions for a user. Returns a vector.")
+  (find-by-network-id [repo network-id]         "Find all productions for a network. Returns a vector.")
   (find-all        [repo]                        "Find all productions (admin).")
   (save!           [repo production]
                    [repo original updated]       "Persist a production. 2-arity: insert. 3-arity: optimistic update."))

@@ -15,6 +15,12 @@
                    (production/build-production p)))
                (vals @store))))
 
+  (find-by-network-id [_ network-id]
+    (vec (keep (fn [p]
+                 (when (= network-id (:production/network-id p))
+                   (production/build-production p)))
+               (vals @store))))
+
   (find-all [_]
     (mapv production/build-production (vals @store)))
 

@@ -24,6 +24,14 @@
                         user-id)]
       (mapv (fn [[doc]] (doc->production doc)) results)))
 
+  (find-by-network-id [_ network-id]
+    (let [results (xt/q (xt/db node)
+                        '{:find  [(pull e [*])]
+                          :where [[e :production/network-id nid]]
+                          :in    [nid]}
+                        network-id)]
+      (mapv (fn [[doc]] (doc->production doc)) results)))
+
   (find-all [_]
     (let [results (xt/q (xt/db node)
                         '{:find  [(pull e [*])]
