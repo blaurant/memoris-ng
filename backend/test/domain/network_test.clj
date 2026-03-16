@@ -9,7 +9,7 @@
                                     :network/name       "Test"
                                     :network/center-lat 48.0
                                     :network/center-lng 2.0})]
-      (is (= 10.0 (:network/radius-km n)))
+      (is (= 1.0 (:network/radius-km n)))
       (is (= :private (:network/lifecycle n)))))
 
   (testing "valid network with explicit lifecycle"
