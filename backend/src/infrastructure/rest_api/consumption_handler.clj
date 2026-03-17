@@ -102,6 +102,19 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
+(defn- go-back-handler [consumption-repo]
+  (fn [request]
+    (try
+      (let [user-id        (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))]
+        {:status 200
+         :body   (serialize-consumption
+                   (scenarios/go-back-consumption
+                     consumption-repo user-id consumption-id))})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
 (defn- abandon-consumption-handler [consumption-repo]
   (fn [request]
     (try
@@ -138,6 +151,9 @@
       [["/api/v1/consumptions"
         {:get        (list-consumptions-handler consumption-repo)
          :post       (create-consumption-handler consumption-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id/go-back"
+        {:put        (go-back-handler consumption-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/abandon"
         {:put        (abandon-consumption-handler consumption-repo)

@@ -55,6 +55,16 @@
         (mu/log ::billing-address-completed :consumption-id consumption-id)
         c'))
 
+(defn go-back-consumption
+      "Move a consumption back to the previous onboarding step."
+      [consumption-repo user-id consumption-id]
+      (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
+            c' (consumption/go-back c)
+            c' (consumption/save! consumption-repo c c')]
+        (mu/log ::consumption-went-back :consumption-id consumption-id
+                :from (:consumption/lifecycle c) :to (:consumption/lifecycle c'))
+        c'))
+
 (defn abandon-consumption
       "Abandon a consumption during onboarding."
       [consumption-repo user-id consumption-id]

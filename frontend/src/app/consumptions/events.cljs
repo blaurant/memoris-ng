@@ -91,6 +91,19 @@
                   :on-success      [:consumptions/step-ok]
                   :on-failure      [:consumptions/fetch-err]}}))
 
+;; ── Go back to previous step ───────────────────────────────────────────────
+
+(rf/reg-event-fx :consumptions/go-back
+  (fn [{:keys [db]} [_ consumption-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/go-back")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/step-ok]
+                  :on-failure      [:consumptions/fetch-err]}}))
+
 ;; ── Abandon consumption ────────────────────────────────────────────────────
 
 (rf/reg-event-fx :consumptions/abandon

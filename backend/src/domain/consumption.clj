@@ -162,6 +162,21 @@
 (def ^:private onboarding-states
   #{:consumer-information :linky-reference :billing-address :contract-signature})
 
+(def ^:private previous-step
+  {:linky-reference    :consumer-information
+   :billing-address    :linky-reference
+   :contract-signature :billing-address})
+
+(defn go-back
+      "Move a consumption back to the previous onboarding step."
+      [c]
+      (let [current (:consumption/lifecycle c)
+            prev    (previous-step current)]
+        (when-not prev
+          (throw (ex-info "Cannot go back from this state"
+                          {:lifecycle current})))
+        (assoc c :consumption/lifecycle prev)))
+
 (defn abandon
       "Abandon a consumption during onboarding. Transitions to :abandoned."
       [c]
