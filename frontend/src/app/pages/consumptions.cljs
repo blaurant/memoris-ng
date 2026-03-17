@@ -24,22 +24,28 @@
          [:div.consumptions
           [:div.consumptions__header
            [:h2 "Mes consommations"]
-           [:button.btn.btn--green.btn--small
-            {:on-click #(rf/dispatch [:consumptions/create])}
-            [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
-                   :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
-                   :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
-                   :style {:vertical-align "middle" :margin-right "4px"}}
-             [:circle {:cx "12" :cy "12" :r "10"}]
-             [:line {:x1 "12" :y1 "8" :x2 "12" :y2 "16"}]
-             [:line {:x1 "8" :y1 "12" :x2 "16" :y2 "12"}]]
-            "Consommer"]]
+           (when (seq consumptions)
+             [:button.btn.btn--green.btn--small
+              {:on-click #(rf/dispatch [:consumptions/create])}
+              [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+                     :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+                     :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+                     :style {:vertical-align "middle" :margin-right "4px"}}
+               [:circle {:cx "12" :cy "12" :r "10"}]
+               [:line {:x1 "12" :y1 "8" :x2 "12" :y2 "16"}]
+               [:line {:x1 "8" :y1 "12" :x2 "16" :y2 "12"}]]
+              "Consommer"])]
           (cond
             loading?
             [:p.loading "Chargement..."]
 
             (empty? consumptions)
-            [:p.consumptions__empty "Aucune consommation pour le moment."]
+            [:div.consumptions__empty
+             [:p "Aucune consommation pour le moment."]
+             [:button.btn.btn--green
+              {:on-click #(rf/dispatch [:consumptions/create])
+               :style {:margin-top "1rem"}}
+              "Ajouter une consommation"]]
 
             :else
             [:div.consumptions__list

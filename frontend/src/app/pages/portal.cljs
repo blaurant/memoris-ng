@@ -16,11 +16,11 @@
       [:li.sidebar__item
        {:class    (when (= :consumptions active) "sidebar__item--active")
         :on-click #(rf/dispatch [:portal/set-section :consumptions])}
-       "Consommations"]
+       "Mes consommations"]
       [:li.sidebar__item
        {:class    (when (= :productions active) "sidebar__item--active")
         :on-click #(rf/dispatch [:portal/set-section :productions])}
-       "Productions"]
+       "Mes productions"]
       (when admin?
         [:<>
          [:li.sidebar__item.sidebar__item--separator]
@@ -51,18 +51,63 @@
           "Alerte"]])]]))
 
 (defn- dashboard-section []
-  (let [user-name @(rf/subscribe [:auth/user-name])
-        user      @(rf/subscribe [:auth/user])
-        role      @(rf/subscribe [:auth/user-role])]
+  ;; Fetch on mount
+  (rf/dispatch [:consumptions/fetch])
+  (rf/dispatch [:productions/fetch])
+  (fn []
+    (let [user-name     @(rf/subscribe [:auth/user-name])
+          consumptions  @(rf/subscribe [:consumptions/list])
+          productions   @(rf/subscribe [:productions/list])
+          conso-loading? @(rf/subscribe [:consumptions/loading?])
+          prod-loading?  @(rf/subscribe [:productions/loading?])
+          conso-loaded? (some? consumptions)
+          prod-loaded?  (some? productions)
+          has-conso?    (seq consumptions)
+          has-prod?     (seq productions)
+          active-consos (filterv #(= "active" (:consumption/lifecycle %)) consumptions)
+          active-prods  (filterv #(= "active" (:production/lifecycle %)) productions)
+          total-conso-monthly (reduce + 0 (keep :consumption/last-monthly-kwh active-consos))
+          total-prod-monthly  (reduce + 0 (keep :production/last-monthly-kwh active-prods))]
     [:div.dashboard
-     [:h1 "Bienvenue dans l'espace client"]
-     [:h2 user-name]
-     [:div.portal-info
-      [:p [:strong "Email : "] (:email user)]
-      [:p [:strong "Rôle : "] role]]
-     [:button.btn.btn--green.btn--small
-      {:on-click #(rf/dispatch [:auth/logout])}
-      "Déconnexion"]]))
+     [:h1 "Bienvenue, " user-name]
+     (cond
+       (or conso-loading? prod-loading? (not conso-loaded?) (not prod-loaded?))
+       [:p "Chargement..."]
+
+       (and (not has-conso?) (not has-prod?))
+       [:div {:style {:margin-top "2rem"}}
+        [:p {:style {:margin-bottom "1.5rem" :font-size "1.1rem"}}
+         "Vous n'avez pas encore de contrat. Que souhaitez-vous faire ?"]
+        [:div {:style {:display "flex" :gap "1rem" :flex-wrap "wrap"}}
+         [:button.btn.btn--green
+          {:on-click #(rf/dispatch [:portal/set-section :consumptions])}
+          "Je suis consommateur"]
+         [:button.btn.btn--green
+          {:on-click #(rf/dispatch [:portal/set-section :productions])}
+          "Je suis producteur"]]]
+
+       :else
+       [:div {:style {:margin-top "1.5rem" :display "flex" :flex-direction "column" :gap "1.5rem"}}
+        (when has-conso?
+          [:div {:style {:display "flex" :gap "1.5rem" :flex-wrap "wrap"}}
+           [:div.nd-stat-card {:style {:max-width "250px"}}
+            [:span.nd-stat-value (count active-consos)]
+            [:span.nd-stat-label (str "Consommation" (when (> (count active-consos) 1) "s") " active" (when (> (count active-consos) 1) "s"))]]
+           [:div.nd-stat-card {:style {:max-width "250px"}}
+            [:span.nd-stat-value (if (pos? total-conso-monthly)
+                                   (str (.toFixed total-conso-monthly 1) " kWh")
+                                   "-")]
+            [:span.nd-stat-label "Consommation du mois precedent"]]])
+        (when has-prod?
+          [:div {:style {:display "flex" :gap "1.5rem" :flex-wrap "wrap"}}
+           [:div.nd-stat-card {:style {:max-width "250px"}}
+            [:span.nd-stat-value (count active-prods)]
+            [:span.nd-stat-label (str "Production" (when (> (count active-prods) 1) "s") " active" (when (> (count active-prods) 1) "s"))]]
+           [:div.nd-stat-card {:style {:max-width "250px"}}
+            [:span.nd-stat-value (if (pos? total-prod-monthly)
+                                   (str (.toFixed total-prod-monthly 1) " kWh")
+                                   "-")]
+            [:span.nd-stat-label "Production du mois precedent"]]])])])))
 
 (defn portal-page []
   (let [active @(rf/subscribe [:portal/active-section])]
