@@ -2,15 +2,18 @@
   (:require [application.auth-scenarios :as auth]
             [clojure.string :as str]
             [domain.id :as id]
+            [domain.user]
             [infrastructure.auth.jwt :as jwt]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
 
 (defn- serialize-user [user]
-  {:id       (str (:user/id user))
-   :email    (:user/email user)
-   :name     (:user/name user)
-   :role     (name (:user/role user))
-   :provider (name (:user/provider user))})
+  (cond-> {:id       (str (:user/id user))
+           :email    (:user/email user)
+           :name     (:user/name user)
+           :role     (name (:user/role user))
+           :provider (name (:user/provider user))}
+    (:user/adhesion-signed-at user)
+    (assoc :adhesion-signed-at (:user/adhesion-signed-at user))))
 
 (defn- login-handler
   "POST /api/v1/auth/login — body {:provider \"google\" :id-token \"...\"}
@@ -100,12 +103,16 @@
          :body   {:error (.getMessage e)}}))))
 
 (defn- me-handler
-  "GET /api/v1/auth/me — protected, returns the current user from JWT claims."
-  []
+  "GET /api/v1/auth/me — protected, returns the full user from the database."
+  [user-repo]
   (fn [request]
-    (let [identity (:identity request)]
-      {:status 200
-       :body   identity})))
+    (let [user-id (id/build-id (get-in request [:identity :sub]))
+          user    (domain.user/find-by-id user-repo user-id)]
+      (if user
+        {:status 200
+         :body   (serialize-user user)}
+        {:status 200
+         :body   (:identity request)}))))
 
 (defn routes
   "Returns Reitit route vectors for auth endpoints."
@@ -123,5 +130,5 @@
    ["/api/v1/auth/reset-password"
     {:post (reset-password-handler user-repo password-hasher vt-repo)}]
    ["/api/v1/auth/me"
-    {:get        (me-handler)
+    {:get        (me-handler user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])

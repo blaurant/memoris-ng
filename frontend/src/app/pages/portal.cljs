@@ -1,6 +1,7 @@
 (ns app.pages.portal
   (:require [app.pages.admin :as admin]
             [app.pages.consumptions :as consumptions]
+            [app.pages.contracts :as contracts]
             [app.pages.productions :as productions]
             [re-frame.core :as rf]))
 
@@ -21,6 +22,10 @@
        {:class    (when (= :productions active) "sidebar__item--active")
         :on-click #(rf/dispatch [:portal/set-section :productions])}
        "Mes productions"]
+      [:li.sidebar__item
+       {:class    (when (= :contracts active) "sidebar__item--active")
+        :on-click #(rf/dispatch [:portal/set-section :contracts])}
+       "Mes contrats"]
       (when admin?
         [:<>
          [:li.sidebar__item.sidebar__item--separator]
@@ -52,6 +57,7 @@
 
 (defn- dashboard-section []
   ;; Fetch on mount
+  (rf/dispatch [:auth/refresh-user])
   (rf/dispatch [:consumptions/fetch])
   (rf/dispatch [:productions/fetch])
   (fn []
@@ -118,6 +124,7 @@
       (case active
         :consumptions      [consumptions/consumptions-page]
         :productions       [productions/productions-page]
+        :contracts         [contracts/contracts-page]
         :admin-users       [admin/users-tab]
         :admin-networks    [admin/networks-tab]
         :admin-eligibility [admin/eligibility-checks-tab]

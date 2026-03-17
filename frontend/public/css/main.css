@@ -1049,6 +1049,37 @@ a { color: var(--color-green); }
 .nd-cta p { margin-bottom: 1rem; color: var(--color-text); }
 .nd-cta-btn { display: inline-block; padding: 0.75rem 2rem; font-size: 1rem; }
 
+/* ── Contracts page ── */
+.contracts { padding: 0; }
+.contracts__list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+.contracts__section-title {
+  font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--color-muted); margin: 1.2rem 0 0.5rem; padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.contracts__row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.85rem 1rem; background: var(--color-white);
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.contracts__row:hover { border-color: var(--color-green-light); box-shadow: var(--shadow); }
+.contracts__row-left { display: flex; align-items: center; gap: 0.75rem; }
+.contracts__row-left svg { color: var(--color-green-light); flex-shrink: 0; }
+.contracts__row-label { display: block; font-weight: 600; color: var(--color-green); }
+.contracts__row-type { display: block; font-size: 0.8rem; color: var(--color-muted); }
+.contracts__row-right { display: flex; align-items: center; gap: 0.75rem; }
+.contracts__row-date { font-size: 0.8rem; color: var(--color-muted); white-space: nowrap; }
+.contracts__status {
+  font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem;
+  border-radius: 999px; white-space: nowrap;
+}
+.contracts__status--active { background: #e8f5e9; color: #2e7d32; }
+.contracts__status--pending { background: #fff3e0; color: #e65100; }
+.contracts__status--onboarding { background: #e3f2fd; color: #1565c0; }
+.contracts__status--suspended { background: #fce4ec; color: #c62828; }
+.contracts__status--abandoned { background: #f5f5f5; color: #757575; }
+
 /* ── Media queries ── */
 @media (max-width: 640px) {
   .eligibility-form__group { flex-direction: column; }

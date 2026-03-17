@@ -2,6 +2,7 @@
   (:require [application.consumption-scenarios :as scenarios]
             [clojure.string :as str]
             [domain.id :as id]
+            [domain.user :as user]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
 
 (defn- serialize-consumption
@@ -128,7 +129,20 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- sign-contract-handler [consumption-repo]
+(defn- sign-adhesion-handler [user-repo]
+  (fn [request]
+    (try
+      (let [user-id (user-id-from-request request)]
+        (scenarios/sign-adhesion user-repo user-id)
+        (let [u (user/find-by-id user-repo user-id)]
+          {:status 200
+           :body   {:ok true
+                    :adhesion-signed-at (:user/adhesion-signed-at u)}}))
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- sign-contract-handler [consumption-repo user-repo]
   (fn [request]
     (try
       (let [user-id        (user-id-from-request request)
@@ -138,7 +152,7 @@
         {:status 200
          :body   (serialize-consumption
                    (scenarios/sign-contract
-                     consumption-repo user-id consumption-id contract-type))})
+                     consumption-repo user-repo user-id consumption-id contract-type))})
       (catch clojure.lang.ExceptionInfo e
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
@@ -147,7 +161,7 @@
 
 (defn routes
       "Returns Reitit route vectors for consumption endpoints."
-      [consumption-repo jwt-secret]
+      [consumption-repo user-repo jwt-secret]
       [["/api/v1/consumptions"
         {:get        (list-consumptions-handler consumption-repo)
          :post       (create-consumption-handler consumption-repo)
@@ -168,5 +182,8 @@
         {:put        (complete-billing-address-handler consumption-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/step/contract-signature"
-        {:put        (sign-contract-handler consumption-repo)
+        {:put        (sign-contract-handler consumption-repo user-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/auth/sign-adhesion"
+        {:put        (sign-adhesion-handler user-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])

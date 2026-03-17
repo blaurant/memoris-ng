@@ -396,24 +396,41 @@
 (defn- step3-form [production-id production]
   (let [show-contract? (r/atom false)]
     (fn [production-id _production]
-      (let [signed? (some? (:production/adhesion-signed-at production))]
+      (let [user             @(rf/subscribe [:auth/user])
+            adhesion-signed? (some? (:adhesion-signed-at user))]
         [:div.onboarding__form
-         [:div.contract-row
-          [:div.contract-row__info
-           [contract-icon]
-           [:span.contract-row__label "Adhesion a l'association"]]
-          (if signed?
-            [:span.contract-row__signed "Signé \u2713"]
+         ;; Adhesion Elink-co — only if not yet signed by user
+         (when-not adhesion-signed?
+           [:div.contract-row
+            [:div.contract-row__info
+             [contract-icon]
+             [:span.contract-row__label "Adhésion Elink-co"]]
             [:button.btn.btn--small.btn--outline
              {:on-click #(reset! show-contract? true)}
-             "A signer"])]
+             "A signer"]])
+         ;; Finalisation — only visible if adhesion is signed
+         (when adhesion-signed?
+           [:div.contract-row
+            [:div.contract-row__info
+             [contract-icon]
+             [:span.contract-row__label "Adhésion Elink-co"]]
+            [:span.contract-row__signed "Signé \u2713"]])
+         ;; Navigation buttons
+         [:div {:style {:display "flex" :justify-content "space-between" :margin-top "1rem"}}
+          [:button.btn.btn--small.btn--outline
+           {:on-click #(rf/dispatch [:productions/go-back production-id])}
+           "Précédent"]
+          [:button.btn.btn--green.btn--small
+           {:disabled (not adhesion-signed?)
+            :on-click #(rf/dispatch [:productions/submit-step3 production-id])}
+           "Valider et soumettre"]]
          (when @show-contract?
            [:div.modal-overlay {:on-click (fn [e]
                                              (when (= (.-target e) (.-currentTarget e))
                                                (reset! show-contract? false)))}
             [:div.modal
              [:div.modal__header
-              [:span "Adhesion a l'association"]
+              [:span "Adhésion Elink-co"]
               [:button.btn.btn--small
                {:on-click #(reset! show-contract? false)
                 :style {:background "transparent" :color "var(--color-muted)"
@@ -436,12 +453,8 @@
               [:button.btn.btn--small.btn--green
                {:on-click (fn []
                             (reset! show-contract? false)
-                            (rf/dispatch [:productions/submit-step3 production-id]))}
-               "Signer le contrat"]]]])
-         [:div {:style {:margin-top "0.75rem"}}
-          [:button.btn.btn--small.btn--outline
-           {:on-click #(rf/dispatch [:productions/go-back production-id])}
-           "Précédent"]]]))))
+                            (rf/dispatch [:auth/sign-adhesion]))}
+               "Signer"]]]])]))))
 
 (defn production-onboarding-form [production]
   (let [lifecycle (keyword (:production/lifecycle production))

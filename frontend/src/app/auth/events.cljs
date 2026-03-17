@@ -201,6 +201,50 @@
                    (dissoc :auth/error))
      :navigate :page/home}))
 
+;; ── Sign adhesion ───────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/sign-adhesion
+  (fn [{:keys [db]} _]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/auth/sign-adhesion")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/sign-adhesion-ok]
+                  :on-failure      [:auth/sign-adhesion-err]}}))
+
+(rf/reg-event-db :auth/sign-adhesion-ok
+  (fn [db [_ response]]
+    (let [signed-at (or (:adhesion-signed-at response) (.toISOString (js/Date.)))
+          user      (assoc (:auth/user db) :adhesion-signed-at signed-at)]
+      (.setItem js/localStorage "auth-user" (js/JSON.stringify (clj->js user)))
+      (assoc db :auth/user user))))
+
+(rf/reg-event-db :auth/sign-adhesion-err
+  (fn [db _]
+    (js/console.error "Failed to sign adhesion")
+    db))
+
+;; ── Refresh user from backend ────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/refresh-user
+  (fn [{:keys [db]} _]
+    (when-let [token (:auth/token db)]
+      {:http-xhrio {:method          :get
+                    :uri             (str config/API_BASE "/api/v1/auth/me")
+                    :headers         {"Authorization" (str "Bearer " token)}
+                    :response-format (ajax/json-response-format {:keywords? true})
+                    :on-success      [:auth/refresh-user-ok]
+                    :on-failure      [:auth/refresh-user-err]}})))
+
+(rf/reg-event-db :auth/refresh-user-ok
+  (fn [db [_ user]]
+    (.setItem js/localStorage "auth-user" (js/JSON.stringify (clj->js user)))
+    (assoc db :auth/user user)))
+
+(rf/reg-event-db :auth/refresh-user-err
+  (fn [db _] db))
+
 ;; ── Restore session ──────────────────────────────────────────────────────────
 
 (rf/reg-event-db :auth/restore-session
