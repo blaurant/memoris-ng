@@ -49,10 +49,36 @@
         :strokeColor  stroke-color
         :strokeWeight stroke-weight
         :fillColor    fill-color
-        :fillOpacity  fill-opacity}))
+        :fillOpacity  fill-opacity
+        :clickable    true}))
 
 (defn clear-overlays!
   "Removes all overlays from the map and resets the atom to []."
   [overlays-atom]
   (doseq [o @overlays-atom] (.setMap o nil))
   (reset! overlays-atom []))
+
+(defn add-marker!
+  "Adds a marker on the map at the given lat/lng with an optional title.
+  Returns the Marker instance."
+  [gmap {:keys [lat lng title]}]
+  (js/google.maps.Marker.
+   #js {:map      gmap
+        :position #js {:lat lat :lng lng}
+        :title    (or title "")}))
+
+(defn geocode-and-mark!
+  "Geocodes an address string and places a marker on the map.
+  Appends the marker to markers-atom. Calls on-done (if provided) after placement."
+  [gmap markers-atom address title on-done]
+  (let [geocoder (js/google.maps.Geocoder.)]
+    (.geocode geocoder
+      #js {:address address}
+      (fn [results status]
+        (when (= status "OK")
+          (let [location (-> results (aget 0) .-geometry .-location)
+                marker   (add-marker! gmap {:lat (.lat location)
+                                            :lng (.lng location)
+                                            :title title})]
+            (swap! markers-atom conj marker)))
+        (when on-done (on-done))))))

@@ -1004,9 +1004,18 @@ a { color: var(--color-green); }
 .nd-mix-legend-item { display: flex; align-items: center; gap: 0.35rem; }
 .nd-mix-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-.nd-map-section { margin-bottom: 2rem; }
+.nd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+.nd-grid__left { display: flex; flex-direction: column; gap: 1.5rem; }
+.nd-grid__right { display: flex; flex-direction: column; }
+@media (max-width: 768px) { .nd-grid { grid-template-columns: 1fr; } }
+
+.nd-description { margin-bottom: 0; }
+.nd-description h2 { font-size: 1.25rem; color: var(--color-green); margin-bottom: 0.75rem; }
+.nd-description p { line-height: 1.7; color: var(--color-text); }
+
+.nd-map-section { margin-bottom: 0; flex: 1; display: flex; flex-direction: column; }
 .nd-map-section h2 { font-size: 1.25rem; color: var(--color-green); margin-bottom: 0.75rem; }
-.nd-map-container { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.nd-map-container { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); flex: 1; min-height: 300px; }
 
 .nd-productions { margin-bottom: 2rem; }
 .nd-productions h2 { font-size: 1.25rem; color: var(--color-green); margin-bottom: 0.75rem; }

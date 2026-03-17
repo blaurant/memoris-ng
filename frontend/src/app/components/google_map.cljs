@@ -1,19 +1,25 @@
 (ns app.components.google-map
   (:require [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [reitit.frontend.easy :as rfee]))
 
 (defn- draw-circles!
-  "Removes previous circles and draws one per network on the map."
+  "Removes previous circles and draws one per network on the map.
+  Each circle is clickable and navigates to the network detail page."
   [gmap circles-atom networks]
   (google-maps/clear-overlays! circles-atom)
   (reset! circles-atom
           (mapv (fn [net]
-                  (google-maps/draw-circle!
-                   gmap
-                   {:center-lat (:network/center-lat net)
-                    :center-lng (:network/center-lng net)
-                    :radius-km  (:network/radius-km net)}))
+                  (let [circle (google-maps/draw-circle!
+                                gmap
+                                {:center-lat (:network/center-lat net)
+                                 :center-lng (:network/center-lng net)
+                                 :radius-km  (:network/radius-km net)})]
+                    (.addListener circle "click"
+                      (fn [_]
+                        (rfee/push-state :page/network-detail {:id (:network/id net)})))
+                    circle))
                 networks)))
 
 (defn network-map
