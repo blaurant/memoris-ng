@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.admin-handler
   (:require [application.network-scenarios :as network-scenarios]
+            [application.production-scenarios :as production-scenarios]
             [application.user-scenarios :as user-scenarios]
             [domain.alert-banner :as alert]
             [domain.consumption :as consumption]
@@ -40,12 +41,14 @@
 (defn- create-network-handler [user-repo network-repo]
   (fn [request]
     (try
-      (let [{:keys [name center-lat center-lng radius-km]} (:body-params request)
+      (let [{:keys [name center-lat center-lng radius-km description price-per-kwh]} (:body-params request)
             n (network-scenarios/create-network network-repo user-repo (user-id request) (id/build-id)
                                                 name
                                                 (double center-lat)
                                                 (double center-lng)
-                                                (double (or radius-km 1.0)))]
+                                                (double (or radius-km 1.0))
+                                                {:description description
+                                                 :price-per-kwh price-per-kwh})]
         {:status 201
          :body   n})
       (catch Exception e
@@ -132,6 +135,50 @@
     {:status 200
      :body   (mapv #(serialize-production % network-repo) (production/find-all production-repo))}))
 
+(defn- update-network-handler [user-repo network-repo]
+  (fn [request]
+    (try
+      (let [network-id (id/build-id (get-in request [:path-params :id]))
+            {:keys [name center-lat center-lng radius-km description price-per-kwh]} (:body-params request)
+            attrs (cond-> {}
+                    name           (assoc :network/name name)
+                    center-lat     (assoc :network/center-lat (double center-lat))
+                    center-lng     (assoc :network/center-lng (double center-lng))
+                    radius-km      (assoc :network/radius-km (double radius-km))
+                    (some? description)   (assoc :network/description description)
+                    price-per-kwh  (assoc :network/price-per-kwh (double price-per-kwh)))
+            n' (network-scenarios/update-network
+                 network-repo user-repo (user-id request) network-id attrs)]
+        {:status 200
+         :body   (serialize-network n')})
+      (catch Exception e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
+(defn- get-network-detail-admin-handler [user-repo network-repo production-repo consumption-repo]
+  (fn [request]
+    (try
+      (let [network-id (id/build-id (get-in request [:path-params :id]))
+            detail (network-scenarios/get-network-detail-admin
+                     network-repo production-repo consumption-repo
+                     user-repo (user-id request) network-id)]
+        {:status 200
+         :body   detail})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 404
+         :body   {:error (.getMessage e)}}))))
+
+(defn- activate-production-handler [production-repo network-repo]
+  (fn [request]
+    (try
+      (let [production-id (id/build-id (get-in request [:path-params :id]))
+            p' (production-scenarios/activate-production production-repo production-id)]
+        {:status 200
+         :body   (serialize-production p' network-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
 (defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo jwt-secret]
   [["/api/v1/alert"
     {:get (get-alert-handler alert-banner-repo)}]
@@ -149,6 +196,14 @@
      :post       (create-network-handler user-repo network-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/networks/:id/detail"
+    {:get        (get-network-detail-admin-handler user-repo network-repo production-repo consumption-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/networks/:id"
+    {:put        (update-network-handler user-repo network-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/networks/:id/toggle-visibility"
     {:put        (toggle-network-visibility-handler user-repo network-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
@@ -163,5 +218,9 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions"
     {:get        (list-productions-handler production-repo network-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/productions/:id/activate"
+    {:put        (activate-production-handler production-repo network-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]])

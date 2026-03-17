@@ -95,6 +95,31 @@
     (js/console.error "Failed to toggle network visibility")
     db))
 
+;; ── Update network (admin) ───────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/update-network
+  (fn [{:keys [db]} [_ network-id params]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/networks/" network-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          params
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-network-ok]
+                  :on-failure      [:admin/update-network-err]}}))
+
+(rf/reg-event-db :admin/update-network-ok
+  (fn [db [_ updated-network]]
+    (let [nid (:network/id updated-network)]
+      (update db :admin/networks
+              (fn [networks]
+                (mapv #(if (= nid (:network/id %)) updated-network %) networks))))))
+
+(rf/reg-event-db :admin/update-network-err
+  (fn [db _]
+    (js/console.error "Failed to update network")
+    db))
+
 ;; ── Validate network (pending-validation → private) ─────────────────────────
 
 (rf/reg-event-fx :admin/validate-network
@@ -221,6 +246,30 @@
   (fn [db _]
     (js/console.error "Failed to fetch admin productions")
     (assoc db :admin/productions-loading? false)))
+
+;; ── Activate production (admin) ──────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/activate-production
+  (fn [{:keys [db]} [_ production-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/productions/" production-id "/activate")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/activate-production-ok]
+                  :on-failure      [:admin/activate-production-err]}}))
+
+(rf/reg-event-db :admin/activate-production-ok
+  (fn [db [_ updated-production]]
+    (let [pid (:production/id updated-production)]
+      (update db :admin/productions
+              (fn [productions]
+                (mapv #(if (= pid (:production/id %)) updated-production %) productions))))))
+
+(rf/reg-event-db :admin/activate-production-err
+  (fn [db _]
+    (js/console.error "Failed to activate production")
+    db))
 
 ;; ── Tab switch ────────────────────────────────────────────────────────────────
 

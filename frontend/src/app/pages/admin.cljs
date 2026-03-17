@@ -1,7 +1,8 @@
 (ns app.pages.admin
   (:require [clojure.string :as str]
             [re-frame.core :as rf]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [reitit.frontend.easy :as rfee]))
 
 ;; ── Alert tab ──────────────────────────────────────────────────────────────
 
@@ -117,9 +118,9 @@
 ;; ── Create network modal ──────────────────────────────────────────────────────
 
 (defn- create-network-modal [on-close]
-  (let [form (r/atom {:name "" :center-lat "" :center-lng "" :radius-km "1"})]
+  (let [form (r/atom {:name "" :center-lat "" :center-lng "" :radius-km "1" :description "" :price-per-kwh ""})]
     (fn [on-close]
-      (let [{:keys [name center-lat center-lng radius-km]} @form
+      (let [{:keys [name center-lat center-lng radius-km description price-per-kwh]} @form
             valid? (and (seq name)
                         (seq center-lat)
                         (seq center-lng)
@@ -136,6 +137,20 @@
              {:value       name
               :placeholder "Nom du réseau"
               :on-change   #(swap! form assoc :name (.-value (.-target %)))}]
+            [:label "Description"]
+            [:textarea.onboarding__input
+             {:value       description
+              :placeholder "Description du réseau (optionnel)"
+              :rows        4
+              :style       {:resize "vertical"}
+              :on-change   #(swap! form assoc :description (.-value (.-target %)))}]
+            [:label "Prix de l'électricité (€HT/kWh)"]
+            [:input.onboarding__input
+             {:type        "number"
+              :step        "0.01"
+              :value       price-per-kwh
+              :placeholder "ex: 0.17"
+              :on-change   #(swap! form assoc :price-per-kwh (.-value (.-target %)))}]
             [:label "Latitude du centre"]
             [:input.onboarding__input
              {:type        "number"
@@ -163,12 +178,78 @@
             {:disabled (not valid?)
              :on-click (fn []
                          (rf/dispatch [:admin/create-network
-                                       {:name       name
-                                        :center-lat (js/parseFloat center-lat)
-                                        :center-lng (js/parseFloat center-lng)
-                                        :radius-km  (js/parseFloat radius-km)}])
+                                       (cond-> {:name       name
+                                                :center-lat (js/parseFloat center-lat)
+                                                :center-lng (js/parseFloat center-lng)
+                                                :radius-km  (js/parseFloat radius-km)}
+                                         (seq description)   (assoc :description description)
+                                         (seq price-per-kwh) (assoc :price-per-kwh (js/parseFloat price-per-kwh)))])
                          (on-close))}
             "Créer"]]]]))))
+
+;; ── Edit network modal ────────────────────────────────────────────────────────
+
+(defn- edit-network-modal [network on-close]
+  (let [form (r/atom {:name          (:network/name network)
+                      :center-lat    (str (:network/center-lat network))
+                      :center-lng    (str (:network/center-lng network))
+                      :radius-km     (str (:network/radius-km network))
+                      :description   (or (:network/description network) "")
+                      :price-per-kwh (if (:network/price-per-kwh network)
+                                       (str (:network/price-per-kwh network))
+                                       "")})]
+    (fn [_network on-close]
+      (let [{:keys [name center-lat center-lng radius-km description price-per-kwh]} @form
+            valid? (and (seq name) (seq center-lat) (seq center-lng) (seq radius-km))]
+        [:div.modal-overlay {:on-click on-close}
+         [:div.modal {:on-click #(.stopPropagation %)}
+          [:div.modal__header
+           [:span "Modifier le réseau"]
+           [:button.btn.btn--small {:on-click on-close} "X"]]
+          [:div.modal__body
+           [:div.onboarding__form
+            [:label "Nom"]
+            [:input.onboarding__input
+             {:value     name
+              :on-change #(swap! form assoc :name (.-value (.-target %)))}]
+            [:label "Description"]
+            [:textarea.onboarding__input
+             {:value     description
+              :rows      4
+              :style     {:resize "vertical"}
+              :on-change #(swap! form assoc :description (.-value (.-target %)))}]
+            [:label "Prix de l'électricité (€HT/kWh)"]
+            [:input.onboarding__input
+             {:type "number" :step "0.01" :value price-per-kwh
+              :placeholder "ex: 0.17"
+              :on-change #(swap! form assoc :price-per-kwh (.-value (.-target %)))}]
+            [:label "Latitude du centre"]
+            [:input.onboarding__input
+             {:type "number" :step "any" :value center-lat
+              :on-change #(swap! form assoc :center-lat (.-value (.-target %)))}]
+            [:label "Longitude du centre"]
+            [:input.onboarding__input
+             {:type "number" :step "any" :value center-lng
+              :on-change #(swap! form assoc :center-lng (.-value (.-target %)))}]
+            [:label "Rayon (km)"]
+            [:input.onboarding__input
+             {:type "number" :step "any" :value radius-km
+              :on-change #(swap! form assoc :radius-km (.-value (.-target %)))}]]]
+          [:div.modal__actions
+           [:button.btn.btn--small {:on-click on-close} "Annuler"]
+           [:button.btn.btn--green.btn--small
+            {:disabled (not valid?)
+             :on-click (fn []
+                         (rf/dispatch [:admin/update-network
+                                       (:network/id network)
+                                       (cond-> {:name        name
+                                                :center-lat  (js/parseFloat center-lat)
+                                                :center-lng  (js/parseFloat center-lng)
+                                                :radius-km   (js/parseFloat radius-km)
+                                                :description description}
+                                         (seq price-per-kwh) (assoc :price-per-kwh (js/parseFloat price-per-kwh)))])
+                         (on-close))}
+            "Enregistrer"]]]]))))
 
 ;; ── Networks export ──────────────────────────────────────────────────────────
 
@@ -248,7 +329,9 @@
        (for [n pending-networks]
          ^{:key (:network/id n)}
          [:tr.admin-table__row--pending
-          [:td (:network/name n)]
+          [:td [:a {:href  (rfee/href :page/network-detail {:id (:network/id n)})
+                    :style {:color "var(--color-primary)" :text-decoration "underline" :cursor "pointer"}}
+                (:network/name n)]]
           [:td (:network/center-lat n)]
           [:td (:network/center-lng n)]
           [:td (:network/radius-km n)]
@@ -259,13 +342,19 @@
 
 (defn networks-tab []
   (let [show-modal?       (r/atom false)
-        confirm-network   (r/atom nil)]
+        confirm-network   (r/atom nil)
+        edit-network      (r/atom nil)]
     (fn []
       (let [all-networks @(rf/subscribe [:admin/networks])
             loading?     @(rf/subscribe [:admin/networks-loading?])
             pending      (filterv #(= "pending-validation" (:network/lifecycle %)) all-networks)
-            networks     (filterv #(not= "pending-validation" (:network/lifecycle %)) all-networks)]
+            networks     (filterv #(not= "pending-validation" (:network/lifecycle %)) all-networks)
+            public-count (count (filterv #(= "public" (:network/lifecycle %)) all-networks))]
         [:div
+         [:div {:style {:display "flex" :align-items "center" :gap "0.75rem" :margin-bottom "0.75rem"}}
+          [:span {:style {:background "var(--color-green)" :color "#fff" :padding "0.25rem 0.75rem"
+                          :border-radius "var(--radius)" :font-weight "600" :font-size "0.9rem"}}
+           (str public-count " réseau" (when (> public-count 1) "x") " public" (when (> public-count 1) "s"))]]
          [:div.consumptions__header
           [:h2.admin__tab-title "Réseaux"]
           [:div {:style {:display "flex" :gap "0.5rem"}}
@@ -315,13 +404,18 @@
                 (for [n networks]
                   ^{:key (:network/id n)}
                   [:tr {:class (when (not= "public" (:network/lifecycle n)) "admin-table__row--disabled")}
-                   [:td (:network/name n)]
+                   [:td [:a {:href  (rfee/href :page/network-detail {:id (:network/id n)})
+                             :style {:color "var(--color-primary)" :text-decoration "underline" :cursor "pointer"}}
+                         (:network/name n)]]
                    [:td (:network/center-lat n)]
                    [:td (:network/center-lng n)]
                    [:td (:network/radius-km n)]
                    [:td {:class (network-status-class (:network/lifecycle n))}
                     (network-status-label (:network/lifecycle n))]
-                   [:td
+                   [:td {:style {:display "flex" :gap "0.25rem"}}
+                    [:button.btn.btn--small
+                     {:on-click #(reset! edit-network n)}
+                     "Éditer"]
                     [:button.btn.btn--small
                      {:on-click (fn []
                                   (if (and (= "public" (:network/lifecycle n))
@@ -338,7 +432,9 @@
             (fn []
               (rf/dispatch [:admin/toggle-network-visibility (:network/id net)])
               (reset! confirm-network nil))
-            #(reset! confirm-network nil)])]))))
+            #(reset! confirm-network nil)])
+         (when-let [net @edit-network]
+           [edit-network-modal net #(reset! edit-network nil)])]))))
 
 ;; ── Productions table ────────────────────────────────────────────────────────
 
@@ -407,7 +503,8 @@
           [:th "Puissance"]
           [:th "Type"]
           [:th "Compteur"]
-          [:th "Statut"]]]
+          [:th "Statut"]
+          [:th "Actions"]]]
         [:tbody
          (for [p productions]
            ^{:key (:production/id p)}
@@ -418,7 +515,11 @@
             [:td (when-let [pw (:production/installed-power p)] (str pw " kWc"))]
             [:td (get energy-type-labels (:production/energy-type p) "-")]
             [:td (or (:production/linky-meter p) "-")]
-            [:td (:production/lifecycle p)]])]])]))
+            [:td (:production/lifecycle p)]
+            [:td (when (= "pending" (:production/lifecycle p))
+                   [:button.btn.btn--green.btn--small
+                    {:on-click #(rf/dispatch [:admin/activate-production (:production/id p)])}
+                    "Activer"])]])]])]))
 
 ;; ── Eligibility checks table ────────────────────────────────────────────────
 

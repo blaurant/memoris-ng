@@ -12,6 +12,8 @@
    [:network/center-lat double?]
    [:network/center-lng double?]
    [:network/radius-km  {:optional true} double?]
+   [:network/description {:optional true} string?]
+   [:network/price-per-kwh {:optional true} double?]
    [:network/lifecycle [:enum :pending-validation :private :public ]]])
 
 (defn build-network

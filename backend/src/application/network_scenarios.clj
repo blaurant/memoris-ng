@@ -60,13 +60,15 @@
 
 (defn create-network
   "Create a new network with the given attributes. Requires admin role."
-  [network-repo user-repo user-id id name center-lat center-lng radius-km]
+  [network-repo user-repo user-id id name center-lat center-lng radius-km & [{:keys [description price-per-kwh]}]]
   (assert-admin user-repo user-id)
-  (let [n (network/build-network {:network/id         id
-                                  :network/name       name
-                                  :network/center-lat center-lat
-                                  :network/center-lng center-lng
-                                  :network/radius-km  radius-km})]
+  (let [n (network/build-network (cond-> {:network/id         id
+                                          :network/name       name
+                                          :network/center-lat center-lat
+                                          :network/center-lng center-lng
+                                          :network/radius-km  radius-km}
+                                   description   (assoc :network/description description)
+                                   price-per-kwh (assoc :network/price-per-kwh (double price-per-kwh))))]
     (network/save! network-repo n)))
 
 (defn list-all-networks
@@ -102,17 +104,57 @@
       (mu/log ::network-validated :network-id network-id)
       n')))
 
+(defn update-network
+  "Update a network's editable fields. Requires admin role."
+  [network-repo user-repo user-id network-id attrs]
+  (assert-admin user-repo user-id)
+  (let [n (network/find-by-id network-repo network-id)]
+    (when-not n
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (let [n' (network/build-network
+               (merge n (select-keys attrs [:network/name :network/center-lat
+                                            :network/center-lng :network/radius-km
+                                            :network/description :network/price-per-kwh])))]
+      (network/save! network-repo n')
+      (mu/log ::network-updated :network-id network-id)
+      n')))
+
 ;; ── Public serialization (whitelist) ─────────────────────────────────────────
 
 (defn- serialize-public-network [n]
   (select-keys n [:network/id :network/name :network/center-lat
-                  :network/center-lng :network/radius-km :network/lifecycle]))
+                  :network/center-lng :network/radius-km :network/lifecycle
+                  :network/description :network/price-per-kwh]))
 
 (defn- serialize-public-production [p]
   (select-keys p [:production/id :production/energy-type
                   :production/installed-power :production/producer-address]))
 
 ;; ── Network detail (public) ─────────────────────────────────────────────────
+
+(defn- aggregate-network-detail
+  "Shared aggregation logic for network detail."
+  [net production-repo consumption-repo]
+  (let [network-id     (:network/id net)
+        productions    (production/find-by-network-id production-repo network-id)
+        active-prods   (filterv #(= :active (:production/lifecycle %)) productions)
+        consumer-count (consumption/count-by-network-id consumption-repo network-id)
+        total-kwc      (reduce + 0 (map :production/installed-power active-prods))
+        power-by-type  (reduce (fn [acc p]
+                                  (update acc (:production/energy-type p)
+                                          (fnil + 0) (:production/installed-power p)))
+                                {} active-prods)
+        energy-mix     (when (pos? total-kwc)
+                         (into {} (map (fn [[k v]] [k (Math/round (double (/ (* 100 v) total-kwc)))])
+                                      power-by-type)))]
+    (mu/log ::network-detail-fetched :network-id network-id
+            :production-count (count active-prods)
+            :consumer-count consumer-count)
+    {:network         (serialize-public-network net)
+     :productions     (mapv serialize-public-production active-prods)
+     :consumer-count  consumer-count
+     :total-capacity-kwc total-kwc
+     :energy-mix      (or energy-mix {})}))
 
 (defn get-network-detail
   "Aggregate a public network with its active productions and consumer count.
@@ -123,19 +165,13 @@
       (throw (ex-info "Network not found" {:network-id network-id})))
     (when (not= :public (:network/lifecycle net))
       (throw (ex-info "Network not found" {:network-id network-id})))
-    (let [productions    (production/find-by-network-id production-repo network-id)
-          active-prods   (filterv #(= :active (:production/lifecycle %)) productions)
-          consumer-count (consumption/count-by-network-id consumption-repo network-id)
-          total-kwc      (reduce + 0 (map :production/installed-power active-prods))
-          energy-counts  (frequencies (map :production/energy-type active-prods))
-          energy-mix     (when (seq active-prods)
-                           (into {} (map (fn [[k v]] [k (double (/ (* 100 v) (count active-prods)))])
-                                        energy-counts)))]
-      (mu/log ::network-detail-fetched :network-id network-id
-              :production-count (count active-prods)
-              :consumer-count consumer-count)
-      {:network         (serialize-public-network net)
-       :productions     (mapv serialize-public-production active-prods)
-       :consumer-count  consumer-count
-       :total-capacity-kwc total-kwc
-       :energy-mix      (or energy-mix {})})))
+    (aggregate-network-detail net production-repo consumption-repo)))
+
+(defn get-network-detail-admin
+  "Admin: aggregate any network regardless of lifecycle. Requires admin role."
+  [network-repo production-repo consumption-repo user-repo user-id network-id]
+  (assert-admin user-repo user-id)
+  (let [net (network/find-by-id network-repo network-id)]
+    (when-not net
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (aggregate-network-detail net production-repo consumption-repo)))
