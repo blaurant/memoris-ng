@@ -96,3 +96,14 @@
             p' (production/save! production-repo p p')]
         (mu/log ::contract-signed :production-id production-id)
         p'))
+
+(defn activate-production
+      "Admin: activate a pending production."
+      [production-repo production-id]
+      (let [p  (production/find-by-id production-repo production-id)]
+        (when-not p
+          (throw (ex-info "Production not found" {:production-id production-id})))
+        (let [p' (production/activate p)
+              p' (production/save! production-repo p p')]
+          (mu/log ::production-activated :production-id production-id)
+          p')))

@@ -45,7 +45,9 @@
       (mu/merge (mu/optional-keys ProducerInformation))
       (mu/merge (mu/optional-keys InstallationInfo))
       (mu/merge (mu/optional-keys PaymentInfo))
-      (mu/merge (mu/optional-keys ContractSignature))))
+      (mu/merge (mu/optional-keys ContractSignature))
+      (mu/merge [:map
+                 [:production/last-monthly-kwh {:optional true} [:maybe double?]]])))
 
 ;; ── Validation ──────────────────────────────────────────────────────────────
 
@@ -156,6 +158,12 @@
           (throw (ex-info "Cannot go back from this state"
                           {:lifecycle current})))
         (assoc p :production/lifecycle prev)))
+
+(defn activate
+      "Activate a pending production. Transitions :pending -> :active."
+      [p]
+      (assert-lifecycle p :pending)
+      (assoc p :production/lifecycle :active))
 
 (defn abandon
       "Abandon a production during onboarding. Transitions to :abandoned."
