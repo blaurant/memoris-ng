@@ -13,7 +13,10 @@
     ["/check-email"       {:name :page/check-email}]
     ["/forgot-password"   {:name :page/forgot-password}]
     ["/reset-password"    {:name :page/reset-password}]
-    ["/reseau/:id"        {:name :page/network-detail}]]))
+    ["/reseau/:id"        {:name :page/network-detail}]
+    ["/faq"               {:name :page/faq}]
+    ["/qui-sommes-nous"   {:name :page/about}]
+    ["/comment-ca-marche" {:name :page/how-it-works}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."

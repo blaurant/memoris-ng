@@ -2,7 +2,8 @@
   (:require [app.components.eligibility-form :as eligibility-form]
             [app.components.google-map :as google-map]
             [re-frame.core :as rf]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [reitit.frontend.easy :as rfee]))
 
 (defn- hero-section []
   [:section.hero
@@ -128,12 +129,15 @@
 
     [:p.acc-source
      "Tarifs indicatifs basés sur le TRV août 2025, tarifs EDF OA T1 2026, "
-     "et accise à 0\u00a0€/MWh pour l'autoconsommation collective (loi de finances 2025)."]]])
+     "et accise à 0\u00a0€/MWh pour l'autoconsommation collective (loi de finances 2025)."]
+    [:div {:style {:text-align "center" :margin-top "1.5rem"}}
+     [:a.btn.btn--green.btn--small {:href (rfee/href :page/how-it-works)}
+      "En savoir plus sur le fonctionnement"]]]])
 
 (defn- map-section []
   [:section.section
    [:div.container
-    [:h2.section__title "Les réseaux Elinkco"]
+    [:h2.section__title "Les réseaux Elink-co"]
     [:p.section__subtitle
      "Découvrez les zones couvertes par nos réseaux d'énergie partagée en France."]
     [google-map/network-map]]])
@@ -143,7 +147,7 @@
    [:div.container
     [:h2.section__title "Vérifiez votre éligibilité"]
     [:p.section__subtitle
-     "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau Elinkco."]
+     "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau Elink-co."]
     [eligibility-form/eligibility-form]]])
 
 (defn home-page []

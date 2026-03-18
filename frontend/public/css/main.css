@@ -944,13 +944,18 @@ a { color: var(--color-green); }
 
 /* ── Footer ── */
 .footer {
-  text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 1.5rem;
   padding: 2rem 1rem;
   background: var(--color-green);
   color: var(--color-bg);
   font-size: 0.85rem;
   border-top: none;
 }
+.footer__link {
+  color: var(--color-bg); text-decoration: underline;
+  text-underline-offset: 2px; opacity: 0.85;
+}
+.footer__link:hover { opacity: 1; }
 
 /* ── Accent button ── */
 .btn--accent {
@@ -1079,6 +1084,95 @@ a { color: var(--color-green); }
 .contracts__status--onboarding { background: #e3f2fd; color: #1565c0; }
 .contracts__status--suspended { background: #fce4ec; color: #c62828; }
 .contracts__status--abandoned { background: #f5f5f5; color: #757575; }
+
+/* ── How it works page ── */
+.hiw-block { max-width: 800px; margin: 0 auto; }
+.hiw-block__header {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;
+}
+.hiw-block__title { margin: 0; font-size: 1.4rem; color: var(--color-green); }
+.hiw-block__subtitle { margin: 0.15rem 0 0; font-size: 0.9rem; color: var(--color-muted); }
+.hiw-block__content { font-size: 1rem; line-height: 1.8; color: var(--color-text); }
+.hiw-block__content p { margin-bottom: 0.75rem; }
+.hiw-block__content p:last-child { margin-bottom: 0; }
+
+.hiw-steps { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 0.5rem; }
+.hiw-step { display: flex; gap: 1rem; align-items: flex-start; }
+.hiw-step__number {
+  flex-shrink: 0; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-green); color: #fff;
+  border-radius: 50%; font-weight: 700; font-size: 1rem;
+}
+.hiw-step h3 { margin: 0 0 0.25rem; font-size: 1.05rem; color: var(--color-green); }
+.hiw-step p { margin: 0; font-size: 0.95rem; line-height: 1.6; color: var(--color-text); }
+
+.hiw-contracts-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem; margin: 1rem 0;
+}
+.hiw-contract-card {
+  background: var(--color-white); border: 1px solid var(--color-border);
+  border-radius: var(--radius); padding: 1.25rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hiw-contract-card:hover { border-color: var(--color-green-light); box-shadow: var(--shadow); }
+.hiw-contract-card h3 { margin: 0 0 0.5rem; font-size: 1rem; color: var(--color-green); }
+.hiw-contract-card p { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--color-text); }
+
+/* ── About page ── */
+.about-text { max-width: 750px; margin: 0 auto; font-size: 1rem; line-height: 1.8; color: var(--color-text); }
+.about-text p { margin-bottom: 1rem; }
+.about-text p:last-child { margin-bottom: 0; }
+.about-values {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem; margin-top: 1.5rem;
+}
+.about-value-card {
+  background: var(--color-white); border: 1px solid var(--color-border);
+  border-radius: var(--radius); padding: 1.5rem; text-align: center;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.about-value-card:hover { border-color: var(--color-green-light); box-shadow: var(--shadow); }
+.about-value-card h3 {
+  margin: 0.75rem 0 0.5rem; font-size: 1.05rem; color: var(--color-green);
+}
+.about-value-card p { font-size: 0.9rem; color: var(--color-text); line-height: 1.5; margin: 0; }
+.about-list { list-style: none; padding: 0; margin: 0; }
+.about-list li {
+  position: relative; padding: 0.5rem 0 0.5rem 1.5rem;
+  font-size: 1rem; line-height: 1.6;
+}
+.about-list li::before {
+  content: "\2713"; position: absolute; left: 0; color: var(--color-green); font-weight: 700;
+}
+
+/* ── FAQ page ── */
+.faq-list { max-width: 800px; margin: 2rem auto 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.faq-item {
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  background: var(--color-white); overflow: hidden;
+  transition: border-color 0.15s;
+}
+.faq-item--open { border-color: var(--color-green-light); }
+.faq-item__question {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 1rem 1.25rem; gap: 1rem;
+  background: none; border: none; cursor: pointer;
+  font-size: 1rem; font-weight: 600; color: var(--color-green);
+  text-align: left; line-height: 1.4;
+}
+.faq-item__question:hover { background: var(--color-green-pale); }
+.faq-item__chevron {
+  flex-shrink: 0; transition: transform 0.2s;
+  color: var(--color-green-light);
+}
+.faq-item--open .faq-item__chevron { transform: rotate(180deg); }
+.faq-item__answer {
+  padding: 0 1.25rem 1.25rem;
+  color: var(--color-text); font-size: 0.95rem; line-height: 1.6;
+}
+.faq-item__answer p { margin: 0; }
 
 /* ── Media queries ── */
 @media (max-width: 640px) {

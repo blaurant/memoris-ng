@@ -1,8 +1,11 @@
 (ns app.views
   (:require [app.config :as config]
+            [app.pages.about :as about]
             [app.pages.check-email :as check-email]
+            [app.pages.faq :as faq]
             [app.pages.forgot-password :as forgot-password]
             [app.pages.home :as home]
+            [app.pages.how-it-works :as how-it-works]
             [app.pages.network-detail :as network-detail]
             [app.pages.login :as login]
             [app.pages.portal :as portal]
@@ -77,6 +80,9 @@
       :page/forgot-password [forgot-password/forgot-password-page]
       :page/reset-password  [reset-password/reset-password-page]
       :page/network-detail  [network-detail/network-detail-page]
+      :page/faq             [faq/faq-page]
+      :page/about           [about/about-page]
+      :page/how-it-works    [how-it-works/how-it-works-page]
       [home/home-page])))
 
 (defn main-panel []
@@ -85,4 +91,7 @@
    [alert-banner]
    [navbar]
    [current-page]
-   [:footer.footer "© 2026 elink-co — Énergie locale partagée"]])
+   [:footer.footer
+    [:span "© 2026 elink-co — Énergie locale partagée"]
+    [:a.footer__link {:href (rfee/href :page/about)} "Qui sommes-nous"]
+    [:a.footer__link {:href (rfee/href :page/faq)} "FAQ"]]])
