@@ -80,6 +80,35 @@
                               :style {:background "#d32f2f" :color "#fff"}}
       "Supprimer"]]]])
 
+(defn production-menu
+  "Dropdown menu with delete action for a production. Reusable in dashboard."
+  [production]
+  (let [show-menu?      (r/atom false)
+        confirm-delete? (r/atom false)]
+    (fn [production]
+      (let [pid (:production/id production)]
+        [:<>
+         [:div {:style {:position "relative"}}
+          [:button {:on-click #(swap! show-menu? not)
+                    :style {:background "transparent" :border "none" :cursor "pointer"
+                            :color "var(--color-muted)" :font-size "1.3rem"
+                            :padding "0 0.25rem" :line-height "1"}}
+           "\u22EE"]
+          (when @show-menu?
+            [:div.dropdown-menu
+             {:on-mouse-leave #(reset! show-menu? false)}
+             [:button.dropdown-menu__item
+              {:on-click (fn []
+                           (reset! show-menu? false)
+                           (reset! confirm-delete? true))}
+              "Supprimer"]])]
+         (when @confirm-delete?
+           [confirm-delete-modal production
+            (fn []
+              (rf/dispatch [:productions/delete pid])
+              (reset! confirm-delete? false))
+            #(reset! confirm-delete? false)])]))))
+
 (defn production-block [production]
   (let [show-contract? (r/atom false)
         show-menu?     (r/atom false)

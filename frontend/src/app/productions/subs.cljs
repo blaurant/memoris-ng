@@ -6,3 +6,9 @@
 
 (rf/reg-sub :productions/loading?
   (fn [db _] (:productions/loading? db)))
+
+(rf/reg-sub :productions/dashboard
+  (fn [db _] (:productions/dashboard db)))
+
+(rf/reg-sub :productions/dashboard-loading?
+  (fn [db _] (:productions/dashboard-loading? db)))

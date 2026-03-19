@@ -59,26 +59,31 @@
   (reset! overlays-atom []))
 
 (defn add-marker!
-  "Adds a marker on the map at the given lat/lng with an optional title.
+  "Adds a marker on the map at the given lat/lng with an optional title and icon URL.
   Returns the Marker instance."
-  [gmap {:keys [lat lng title]}]
+  [gmap {:keys [lat lng title icon]}]
   (js/google.maps.Marker.
-   #js {:map      gmap
-        :position #js {:lat lat :lng lng}
-        :title    (or title "")}))
+   (clj->js (cond-> {:map      gmap
+                      :position {:lat lat :lng lng}
+                      :title    (or title "")}
+              icon (assoc :icon icon)))))
 
 (defn geocode-and-mark!
   "Geocodes an address string and places a marker on the map.
-  Appends the marker to markers-atom. Calls on-done (if provided) after placement."
-  [gmap markers-atom address title on-done]
-  (let [geocoder (js/google.maps.Geocoder.)]
-    (.geocode geocoder
-      #js {:address address}
-      (fn [results status]
-        (when (= status "OK")
-          (let [location (-> results (aget 0) .-geometry .-location)
-                marker   (add-marker! gmap {:lat (.lat location)
-                                            :lng (.lng location)
-                                            :title title})]
-            (swap! markers-atom conj marker)))
-        (when on-done (on-done))))))
+  Appends the marker to markers-atom. Calls on-done (if provided) after placement.
+  Optional icon URL for custom marker color."
+  ([gmap markers-atom address title on-done]
+   (geocode-and-mark! gmap markers-atom address title on-done nil))
+  ([gmap markers-atom address title on-done icon]
+   (let [geocoder (js/google.maps.Geocoder.)]
+     (.geocode geocoder
+       #js {:address address}
+       (fn [results status]
+         (when (= status "OK")
+           (let [location (-> results (aget 0) .-geometry .-location)
+                 marker   (add-marker! gmap {:lat (.lat location)
+                                             :lng (.lng location)
+                                             :title title
+                                             :icon icon})]
+             (swap! markers-atom conj marker)))
+         (when on-done (on-done)))))))

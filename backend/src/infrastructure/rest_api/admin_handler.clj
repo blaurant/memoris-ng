@@ -184,7 +184,7 @@
   (fn [request]
     (try
       (let [production-id (id/build-id (get-in request [:path-params :id]))
-            p' (production-scenarios/activate-production production-repo production-id)]
+            p' (production-scenarios/activate-production production-repo network-repo production-id)]
         {:status 200
          :body   (serialize-production p' network-repo)})
       (catch clojure.lang.ExceptionInfo e

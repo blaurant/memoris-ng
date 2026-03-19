@@ -28,6 +28,9 @@
 (rf/reg-sub :admin/active-tab
   (fn [db _] (:admin/active-tab db)))
 
+(rf/reg-sub :admin/production-error
+  (fn [db _] (:admin/production-error db)))
+
 (rf/reg-sub :admin/alert-message
   (fn [db _] (:admin/alert-message db)))
 

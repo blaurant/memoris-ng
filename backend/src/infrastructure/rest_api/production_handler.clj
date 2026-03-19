@@ -183,6 +183,85 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
+(defn- update-producer-address-handler [production-repo network-repo]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            production-id (id/build-id (get-in request [:path-params :id]))
+            new-addr      (get-in request [:body-params :producer-address])]
+        (when (or (nil? new-addr) (clojure.string/blank? new-addr))
+          (throw (ex-info "Address is required" {})))
+        {:status 200
+         :body   (serialize-production
+                   (scenarios/update-producer-address production-repo user-id production-id new-addr)
+                   network-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- update-pdl-prm-handler [production-repo network-repo]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            production-id (id/build-id (get-in request [:path-params :id]))
+            new-pdl       (get-in request [:body-params :pdl-prm])]
+        (when (or (nil? new-pdl) (clojure.string/blank? new-pdl))
+          (throw (ex-info "PDL/PRM is required" {})))
+        {:status 200
+         :body   (serialize-production
+                   (scenarios/update-pdl-prm production-repo user-id production-id new-pdl)
+                   network-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- update-linky-meter-handler [production-repo network-repo]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            production-id (id/build-id (get-in request [:path-params :id]))
+            new-linky     (get-in request [:body-params :linky-meter])]
+        (when (or (nil? new-linky) (clojure.string/blank? new-linky))
+          (throw (ex-info "Linky meter is required" {})))
+        {:status 200
+         :body   (serialize-production
+                   (scenarios/update-linky-meter production-repo user-id production-id new-linky)
+                   network-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- update-iban-handler [production-repo network-repo]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            production-id (id/build-id (get-in request [:path-params :id]))
+            new-iban      (get-in request [:body-params :iban])]
+        (when (or (nil? new-iban) (clojure.string/blank? new-iban))
+          (throw (ex-info "IBAN is required" {})))
+        {:status 200
+         :body   (serialize-production
+                   (scenarios/update-iban production-repo user-id production-id new-iban)
+                   network-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- dashboard-handler [production-repo network-repo consumption-repo user-repo]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            production-id (id/build-id (get-in request [:path-params :id]))
+            dashboard     (scenarios/get-production-dashboard
+                            production-repo network-repo consumption-repo user-repo
+                            user-id production-id)]
+        {:status 200
+         :body   (-> dashboard
+                     (update :production #(serialize-production % network-repo)))})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
 ;; ── Routes ──────────────────────────────────────────────────────────────────
 
 (defn routes
@@ -194,6 +273,21 @@
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/productions/:id"
         {:delete     (delete-production-handler production-repo network-repo consumption-repo user-repo email-sender)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/productions/:id/update-address"
+        {:put        (update-producer-address-handler production-repo network-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/productions/:id/update-pdl-prm"
+        {:put        (update-pdl-prm-handler production-repo network-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/productions/:id/update-linky-meter"
+        {:put        (update-linky-meter-handler production-repo network-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/productions/:id/update-iban"
+        {:put        (update-iban-handler production-repo network-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/productions/:id/dashboard"
+        {:get        (dashboard-handler production-repo network-repo consumption-repo user-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/productions/:id/abandon"
         {:put        (abandon-production-handler production-repo network-repo)

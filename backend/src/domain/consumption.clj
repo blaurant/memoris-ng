@@ -191,6 +191,7 @@
 (defprotocol ConsumptionRepo
   (find-by-id      [repo id]                    "Find a consumption by ID.")
   (find-by-user-id [repo user-id]               "Find all consumptions for a user. Returns a vector.")
+  (find-by-network-id [repo network-id]         "Find all consumptions linked to a network. Returns a vector.")
   (count-by-network-id [repo network-id]        "Count consumptions linked to a network.")
   (save!           [repo consumption]
                    [repo original updated]       "Persist a consumption. 2-arity: insert. 3-arity: optimistic update (fails if entity changed since read)."))

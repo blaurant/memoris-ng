@@ -290,9 +290,14 @@
                 (mapv #(if (= pid (:production/id %)) updated-production %) productions))))))
 
 (rf/reg-event-db :admin/activate-production-err
+  (fn [db [_ response]]
+    (let [msg (get-in response [:response :error] "Erreur lors de l'activation")]
+      (js/console.error "Failed to activate production" msg)
+      (assoc db :admin/production-error msg))))
+
+(rf/reg-event-db :admin/dismiss-production-error
   (fn [db _]
-    (js/console.error "Failed to activate production")
-    db))
+    (dissoc db :admin/production-error)))
 
 ;; ── Tab switch ────────────────────────────────────────────────────────────────
 

@@ -145,6 +145,89 @@
             (fn [items]
               (filterv #(not= production-id (:production/id %)) items)))))
 
+;; ── Update producer address ──────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/update-address
+  (fn [{:keys [db]} [_ production-id new-address]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/update-address")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:producer-address new-address}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/step-ok]
+                  :on-failure      [:productions/fetch-err]}}))
+
+;; ── Update PDL/PRM ───────────────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/update-pdl-prm
+  (fn [{:keys [db]} [_ production-id new-pdl]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/update-pdl-prm")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:pdl-prm new-pdl}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/step-ok]
+                  :on-failure      [:productions/fetch-err]}}))
+
+;; ── Update Linky meter ───────────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/update-linky-meter
+  (fn [{:keys [db]} [_ production-id new-linky]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/update-linky-meter")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:linky-meter new-linky}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/step-ok]
+                  :on-failure      [:productions/fetch-err]}}))
+
+;; ── Update IBAN ──────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/update-iban
+  (fn [{:keys [db]} [_ production-id new-iban on-success]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/update-iban")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:iban new-iban}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/update-iban-ok on-success]
+                  :on-failure      [:productions/fetch-err]}}))
+
+(rf/reg-event-db :productions/update-iban-ok
+  (fn [db [_ on-success updated]]
+    (when on-success (on-success))
+    (let [items (:productions/list db)
+          idx   (some (fn [[i p]] (when (= (:production/id p) (:production/id updated)) i))
+                      (map-indexed vector items))]
+      (cond-> db
+        idx (assoc-in [:productions/list idx] updated)))))
+
+;; ── Fetch production dashboard ────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/fetch-dashboard
+  (fn [{:keys [db]} [_ production-id]]
+    {:db         (assoc db :productions/dashboard-loading? true)
+     :http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id "/dashboard")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/fetch-dashboard-ok]
+                  :on-failure      [:productions/fetch-dashboard-err]}}))
+
+(rf/reg-event-db :productions/fetch-dashboard-ok
+  (fn [db [_ data]]
+    (-> db
+        (assoc :productions/dashboard data)
+        (assoc :productions/dashboard-loading? false))))
+
+(rf/reg-event-db :productions/fetch-dashboard-err
+  (fn [db _]
+    (assoc db :productions/dashboard-loading? false)))
+
 ;; ── Step success — upsert production in the list ───────────────────────────
 
 (rf/reg-event-db :productions/step-ok

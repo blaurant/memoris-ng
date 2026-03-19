@@ -311,7 +311,7 @@
     "pending-validation"  "admin-table__status--pending"
     "admin-table__status--private"))
 
-(defn- pending-networks-table [pending-networks]
+(defn- pending-networks-table [pending-networks on-edit]
   (when (seq pending-networks)
     [:div {:style {:margin-bottom "2rem"}}
      [:h3 {:style {:font-size "1rem" :font-weight "600" :margin-bottom "0.5rem"
@@ -336,9 +336,13 @@
           [:td (:network/center-lng n)]
           [:td (:network/radius-km n)]
           [:td
-           [:button.btn.btn--small.btn--green
-            {:on-click #(rf/dispatch [:admin/validate-network (:network/id n)])}
-            "Valider"]]])]]]))
+           [:div {:style {:display "flex" :gap "0.25rem"}}
+            [:button.btn.btn--small
+             {:on-click #(on-edit n)}
+             "Éditer"]
+            [:button.btn.btn--small.btn--green
+             {:on-click #(rf/dispatch [:admin/validate-network (:network/id n)])}
+             "Valider"]]]])]]]))
 
 (defn- confirm-delete-modal [network on-confirm on-cancel]
   [:div.modal-overlay {:on-click on-cancel}
@@ -414,7 +418,7 @@
 
            :else
            [:<>
-            [pending-networks-table pending]
+            [pending-networks-table pending #(reset! edit-network %)]
             (when (seq networks)
               [:table.admin-table
                [:thead
@@ -503,9 +507,60 @@
     (.click a)
     (.revokeObjectURL js/URL url)))
 
+(defn- activation-error-modal [error-msg]
+  [:div.modal-overlay
+   {:on-click #(rf/dispatch [:admin/dismiss-production-error])}
+   [:div.modal
+    {:on-click #(.stopPropagation %)}
+    [:div.modal__header
+     [:span "Activation impossible"]
+     [:button.btn.btn--small
+      {:on-click #(rf/dispatch [:admin/dismiss-production-error])
+       :style {:background "transparent" :color "var(--color-muted)"
+               :border "none" :font-size "1.2rem" :padding "0"}}
+      "\u00D7"]]
+    [:div.modal__body
+     [:p {:style {:color "#d32f2f" :font-weight "600" :margin-bottom "0.5rem"}}
+      error-msg]
+     [:p "Le réseau associé à cette production doit d'abord être validé avant de pouvoir activer la production."]]
+    [:div.modal__actions
+     [:button.btn.btn--small.btn--green
+      {:on-click #(rf/dispatch [:admin/dismiss-production-error])}
+      "Compris"]]]])
+
+(defn- productions-table [productions]
+  [:table.admin-table
+   [:thead
+    [:tr
+     [:th "Utilisateur"]
+     [:th "Adresse"]
+     [:th "PDL/PRM"]
+     [:th "Puissance"]
+     [:th "Type"]
+     [:th "Compteur"]
+     [:th "Statut"]
+     [:th "Actions"]]]
+   [:tbody
+    (doall
+      (for [p productions]
+        ^{:key (:production/id p)}
+        [:tr
+         [:td (subs (str (:production/user-id p)) 0 8)]
+         [:td (or (:production/producer-address p) "-")]
+         [:td (or (:production/pdl-prm p) "-")]
+         [:td (when-let [pw (:production/installed-power p)] (str pw " kWc"))]
+         [:td (get energy-type-labels (:production/energy-type p) "-")]
+         [:td (or (:production/linky-meter p) "-")]
+         [:td (:production/lifecycle p)]
+         [:td (when (= "pending" (:production/lifecycle p))
+                [:button.btn.btn--green.btn--small
+                 {:on-click #(rf/dispatch [:admin/activate-production (:production/id p)])}
+                 "Activer"])]]))]])
+
 (defn productions-tab []
   (let [productions @(rf/subscribe [:admin/productions])
-        loading?    @(rf/subscribe [:admin/productions-loading?])]
+        loading?    @(rf/subscribe [:admin/productions-loading?])
+        error-msg   @(rf/subscribe [:admin/production-error])]
     [:div
      [:div.consumptions__header
       [:h2.admin__tab-title "Productions"]
@@ -522,39 +577,11 @@
         [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
        "Exporter"]]
      (cond
-       loading?
-       [:p.loading "Chargement..."]
-
-       (empty? productions)
-       [:p.admin__empty "Aucune production."]
-
-       :else
-       [:table.admin-table
-        [:thead
-         [:tr
-          [:th "Utilisateur"]
-          [:th "Adresse"]
-          [:th "PDL/PRM"]
-          [:th "Puissance"]
-          [:th "Type"]
-          [:th "Compteur"]
-          [:th "Statut"]
-          [:th "Actions"]]]
-        [:tbody
-         (for [p productions]
-           ^{:key (:production/id p)}
-           [:tr
-            [:td (subs (str (:production/user-id p)) 0 8)]
-            [:td (or (:production/producer-address p) "-")]
-            [:td (or (:production/pdl-prm p) "-")]
-            [:td (when-let [pw (:production/installed-power p)] (str pw " kWc"))]
-            [:td (get energy-type-labels (:production/energy-type p) "-")]
-            [:td (or (:production/linky-meter p) "-")]
-            [:td (:production/lifecycle p)]
-            [:td (when (= "pending" (:production/lifecycle p))
-                   [:button.btn.btn--green.btn--small
-                    {:on-click #(rf/dispatch [:admin/activate-production (:production/id p)])}
-                    "Activer"])]])]])]))
+       loading?         [:p.loading "Chargement..."]
+       (empty? productions) [:p.admin__empty "Aucune production."]
+       :else            [productions-table productions])
+     (when error-msg
+       [activation-error-modal error-msg])]))
 
 ;; ── Eligibility checks table ────────────────────────────────────────────────
 

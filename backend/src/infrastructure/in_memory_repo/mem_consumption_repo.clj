@@ -15,6 +15,12 @@
                    (consumption/build-consumption c)))
                (vals @store))))
 
+  (find-by-network-id [_ network-id]
+    (vec (keep (fn [c]
+                 (when (= network-id (:consumption/network-id c))
+                   (consumption/build-consumption c)))
+               (vals @store))))
+
   (count-by-network-id [_ network-id]
     (count (filter #(= network-id (:consumption/network-id %)) (vals @store))))
 

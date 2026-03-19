@@ -142,12 +142,99 @@
                      "<p>Une action est nécessaire pour assurer la continuité du service.</p>")))))))
     p))
 
+(defn update-producer-address
+  "Update the producer address on an active or pending production."
+  [production-repo user-id production-id new-address]
+  (let [p (find-and-check-ownership production-repo user-id production-id)]
+    (when-not (#{:active :pending} (:production/lifecycle p))
+      (throw (ex-info "Can only update address on active or pending productions"
+                      {:lifecycle (:production/lifecycle p)})))
+    (let [p' (assoc p :production/producer-address new-address)
+          p' (production/save! production-repo p p')]
+      (mu/log ::producer-address-updated :production-id production-id)
+      p')))
+
+(defn update-pdl-prm
+  "Update the PDL/PRM on an active or pending production."
+  [production-repo user-id production-id new-pdl-prm]
+  (let [p (find-and-check-ownership production-repo user-id production-id)]
+    (when-not (#{:active :pending} (:production/lifecycle p))
+      (throw (ex-info "Can only update PDL/PRM on active or pending productions"
+                      {:lifecycle (:production/lifecycle p)})))
+    (let [p' (assoc p :production/pdl-prm new-pdl-prm)
+          p' (production/save! production-repo p p')]
+      (mu/log ::pdl-prm-updated :production-id production-id)
+      p')))
+
+(defn update-linky-meter
+  "Update the Linky meter on an active or pending production."
+  [production-repo user-id production-id new-linky]
+  (let [p (find-and-check-ownership production-repo user-id production-id)]
+    (when-not (#{:active :pending} (:production/lifecycle p))
+      (throw (ex-info "Can only update Linky meter on active or pending productions"
+                      {:lifecycle (:production/lifecycle p)})))
+    (let [p' (assoc p :production/linky-meter new-linky)
+          p' (production/save! production-repo p p')]
+      (mu/log ::linky-meter-updated :production-id production-id)
+      p')))
+
+(defn update-iban
+  "Update the IBAN on an active or pending production."
+  [production-repo user-id production-id new-iban]
+  (let [p (find-and-check-ownership production-repo user-id production-id)]
+    (when-not (#{:active :pending} (:production/lifecycle p))
+      (throw (ex-info "Can only update IBAN on active or pending productions"
+                      {:lifecycle (:production/lifecycle p)})))
+    (let [p' (assoc p :production/iban new-iban)
+          p' (production/save! production-repo p p')]
+      (mu/log ::iban-updated :production-id production-id)
+      p')))
+
+(defn get-production-dashboard
+  "Build a dashboard view for a production: network info, other producers,
+   consumers with user details."
+  [production-repo network-repo consumption-repo user-repo user-id production-id]
+  (let [p   (find-and-check-ownership production-repo user-id production-id)
+        nid (:production/network-id p)
+        net (when nid (network/find-by-id network-repo nid))
+        ;; Other producers on the same network
+        all-prods    (when nid (production/find-by-network-id production-repo nid))
+        other-prods  (filterv #(and (not= production-id (:production/id %))
+                                    (= :active (:production/lifecycle %)))
+                              all-prods)
+        ;; Consumers on the network with user details
+        consumptions (when nid (consumption/find-by-network-id consumption-repo nid))
+        active-consos (filterv #(#{:active :pending} (:consumption/lifecycle %)) consumptions)
+        consumers    (mapv (fn [c]
+                             (let [u (user/find-by-id user-repo (:consumption/user-id c))]
+                               {:name              (or (:user/name u) "—")
+                                :address           (:consumption/consumer-address c)
+                                :last-monthly-kwh  (:consumption/last-monthly-kwh c)
+                                :lifecycle         (name (:consumption/lifecycle c))}))
+                           active-consos)]
+    {:production  p
+     :network    (when net
+                   (select-keys net [:network/id :network/name :network/center-lat
+                                     :network/center-lng :network/radius-km
+                                     :network/price-per-kwh]))
+     :producers  (mapv (fn [pr]
+                          {:energy-type      (name (:production/energy-type pr))
+                           :installed-power  (:production/installed-power pr)
+                           :producer-address (:production/producer-address pr)})
+                        other-prods)
+     :consumers  consumers}))
+
 (defn activate-production
-      "Admin: activate a pending production."
-      [production-repo production-id]
+      "Admin: activate a pending production. Network must not be pending-validation."
+      [production-repo network-repo production-id]
       (let [p  (production/find-by-id production-repo production-id)]
         (when-not p
           (throw (ex-info "Production not found" {:production-id production-id})))
+        (when-let [nid (:production/network-id p)]
+          (let [net (network/find-by-id network-repo nid)]
+            (when (and net (= :pending-validation (:network/lifecycle net)))
+              (throw (ex-info "Cannot activate: network is pending validation"
+                              {:network-id nid :network-name (:network/name net)})))))
         (let [p' (production/activate p)
               p' (production/save! production-repo p p')]
           (mu/log ::production-activated :production-id production-id)
