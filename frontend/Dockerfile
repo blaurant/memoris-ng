@@ -30,7 +30,7 @@ RUN npx shadow-cljs release app \
 
 # Inject absolute OG image URL for social sharing previews
 RUN if [ -n "$SITE_URL" ]; then \
-      sed -i "s|content=\"/og-image.png\"|content=\"${SITE_URL}/og-image.png\"|" public/index.html; \
+      sed -i "s|content=\"/og-image.jpg\"|content=\"${SITE_URL}/og-image.jpg\"|" public/index.html; \
     fi
 
 # --- Runtime stage: Nginx serves static assets ---
