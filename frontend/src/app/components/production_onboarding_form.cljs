@@ -247,13 +247,13 @@
 ;; ── Step 0: Producer information ──────────────────────────────────────────
 
 (defn- step0-form [production-id production]
-  (let [networks      @(rf/subscribe [:networks/list])
-        init-nid      (:production/network-id production)
+  (let [init-nid      (:production/network-id production)
         address       (r/atom (or (:production/producer-address production) ""))
         selected-name (r/atom (:production/network-name production))
         selected-id   (r/atom init-nid)
         show-modal?   (r/atom false)]
     (fn []
+      (let [networks @(rf/subscribe [:networks/list])]
       [:div.onboarding__form
        [:label "Adresse de production"]
        [:input.onboarding__input
@@ -299,7 +299,7 @@
                            production-id @address net-opts]))
           ;; on-cancel
           (fn []
-            (reset! show-modal? false))])])))
+            (reset! show-modal? false))])]))))
 
 ;; ── Step 1: Installation info ──────────────────────────────────────────────
 

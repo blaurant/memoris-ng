@@ -127,6 +127,24 @@
             (fn [items]
               (filterv #(not= (:production/id %) (:production/id abandoned)) items)))))
 
+;; ── Delete production ─────────────────────────────────────────────────────
+
+(rf/reg-event-fx :productions/delete
+  (fn [{:keys [db]} [_ production-id]]
+    {:http-xhrio {:method          :delete
+                  :uri             (str config/API_BASE "/api/v1/productions/" production-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:productions/delete-ok production-id]
+                  :on-failure      [:productions/fetch-err]}}))
+
+(rf/reg-event-db :productions/delete-ok
+  (fn [db [_ production-id _response]]
+    (update db :productions/list
+            (fn [items]
+              (filterv #(not= production-id (:production/id %)) items)))))
+
 ;; ── Step success — upsert production in the list ───────────────────────────
 
 (rf/reg-event-db :productions/step-ok

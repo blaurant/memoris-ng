@@ -144,6 +144,29 @@
     (js/console.error "Failed to validate network")
     db))
 
+;; ── Delete network ──────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/delete-network
+  (fn [{:keys [db]} [_ network-id]]
+    {:http-xhrio {:method          :delete
+                  :uri             (str config/API_BASE "/api/v1/admin/networks/" network-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/delete-network-ok network-id]
+                  :on-failure      [:admin/delete-network-err]}}))
+
+(rf/reg-event-db :admin/delete-network-ok
+  (fn [db [_ network-id _response]]
+    (update db :admin/networks
+            (fn [networks]
+              (filterv #(not= network-id (:network/id %)) networks)))))
+
+(rf/reg-event-db :admin/delete-network-err
+  (fn [db _]
+    (js/console.error "Failed to delete network")
+    db))
+
 ;; ── Fetch eligibility checks ─────────────────────────────────────────────────
 
 (rf/reg-event-fx :admin/fetch-eligibility-checks

@@ -1,13 +1,11 @@
 (ns app.components.consumption-block
   (:require [app.consumptions.contract :as contract]
             [re-frame.core :as rf]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [reitit.frontend.easy :as rfee]))
 
 (def ^:private contract-links
-  [{:label      "Contrat Elinkco"
-    :text       contract/contract-text
-    :signed-key :consumption/contract-signed-at}
-   {:label      "Contrat Producteur"
+  [{:label      "Contrat Producteur"
     :text       contract/producer-contract-text
     :signed-key :consumption/producer-contract-signed-at}
    {:label      "Mandat SEPA"
@@ -22,7 +20,12 @@
             lifecycle    (:consumption/lifecycle consumption)]
         [:div.consumption-block
          [:div.consumption-block__header
-          [:span (or network-name "Réseau")]
+          (if network-id
+            [:a {:href  (rfee/href :page/network-detail {:id network-id})
+                 :style {:color "var(--color-green)" :text-decoration "underline"
+                         :cursor "pointer"}}
+             (or network-name "Réseau")]
+            [:span (or network-name "Réseau")])
           [:span.consumption-block__status lifecycle]]
          [:div.consumption-block__details
           (when-let [date (:consumption/contract-start-date consumption)]

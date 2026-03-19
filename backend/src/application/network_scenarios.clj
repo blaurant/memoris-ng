@@ -3,6 +3,7 @@
             [domain.consumption :as consumption]
             [domain.datetime :as dt]
             [domain.eligibility-check :as ec]
+            [domain.email-sender :as email-sender]
             [domain.id :as id]
             [domain.network :as network]
             [domain.production :as production]
@@ -103,6 +104,36 @@
       (network/save! network-repo n')
       (mu/log ::network-validated :network-id network-id)
       n')))
+
+(defn delete-network
+  "Delete a network. Requires admin role. Sends notification to all admins."
+  [network-repo user-repo email-sender user-id network-id]
+  (assert-admin user-repo user-id)
+  (let [n (network/find-by-id network-repo network-id)]
+    (when-not n
+      (throw (ex-info "Network not found" {:network-id network-id})))
+    (network/delete! network-repo network-id)
+    (mu/log ::network-deleted :network-id network-id :network-name (:network/name n))
+    ;; Notify all admins
+    (let [all-users    (user/find-all user-repo)
+          admin-emails (keep (fn [u]
+                               (when (= :admin (:user/role u))
+                                 (:user/email u)))
+                             all-users)]
+      (when (seq admin-emails)
+        (email-sender/send-admin-notification!
+          email-sender
+          admin-emails
+          (str "Réseau supprimé : " (:network/name n))
+          (str "<h2>Réseau supprimé</h2>"
+               "<p>Le réseau <strong>" (:network/name n) "</strong> a été supprimé par un administrateur.</p>"
+               "<p>Détails :</p>"
+               "<ul>"
+               "<li>Nom : " (:network/name n) "</li>"
+               "<li>Localisation : " (:network/center-lat n) ", " (:network/center-lng n) "</li>"
+               "<li>Rayon : " (:network/radius-km n) " km</li>"
+               "</ul>"))))
+    n))
 
 (defn update-network
   "Update a network's editable fields. Requires admin role."

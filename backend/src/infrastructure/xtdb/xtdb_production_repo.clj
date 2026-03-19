@@ -51,7 +51,12 @@
       (when-not (xt/tx-committed? node tx)
         (throw (ex-info "Concurrent modification detected"
                         {:production-id id})))
-      updated)))
+      updated))
+
+  (delete! [_ id]
+    (xt/submit-tx node [[::xt/delete id]])
+    (xt/sync node)
+    nil))
 
 (defmethod ig/init-key :productions/xtdb-repo [_ {:keys [node]}]
   (->XtdbProductionRepo node))

@@ -23,9 +23,9 @@
     (concat [["/api/v1/hello" {:get hello-handler}]]
             (network-handler/routes network-repo ec-repo production-repo consumption-repo)
             (auth-handler/routes user-repo token-verifier password-hasher email-sender vt-repo jwt-secret)
-            (consumption-handler/routes consumption-repo jwt-secret)
-            (production-handler/routes production-repo network-repo jwt-secret)
-            (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo jwt-secret))
+            (consumption-handler/routes consumption-repo user-repo jwt-secret)
+            (production-handler/routes production-repo network-repo consumption-repo user-repo email-sender jwt-secret)
+            (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret))
     {:data {:muuntaja   m/instance
             :middleware [muuntaja/format-middleware]}}))
 

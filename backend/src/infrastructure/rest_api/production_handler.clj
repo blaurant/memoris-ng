@@ -155,7 +155,7 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- sign-contract-handler [production-repo network-repo]
+(defn- sign-contract-handler [production-repo network-repo user-repo]
   (fn [request]
     (try
       (let [user-id       (user-id-from-request request)
@@ -163,8 +163,22 @@
         {:status 200
          :body   (serialize-production
                    (scenarios/sign-contract
-                     production-repo user-id production-id)
+                     production-repo user-repo user-id production-id)
                    network-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- delete-production-handler [production-repo network-repo consumption-repo user-repo email-sender]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            production-id (id/build-id (get-in request [:path-params :id]))]
+        (scenarios/delete-production
+          production-repo network-repo consumption-repo user-repo email-sender
+          user-id production-id)
+        {:status 200
+         :body   {:ok true}})
       (catch clojure.lang.ExceptionInfo e
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
@@ -173,10 +187,13 @@
 
 (defn routes
       "Returns Reitit route vectors for production endpoints."
-      [production-repo network-repo jwt-secret]
+      [production-repo network-repo consumption-repo user-repo email-sender jwt-secret]
       [["/api/v1/productions"
         {:get        (list-productions-handler production-repo network-repo)
          :post       (create-production-handler production-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/productions/:id"
+        {:delete     (delete-production-handler production-repo network-repo consumption-repo user-repo email-sender)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/productions/:id/abandon"
         {:put        (abandon-production-handler production-repo network-repo)
@@ -194,5 +211,5 @@
         {:put        (submit-payment-info-handler production-repo network-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/productions/:id/step/contract-signature"
-        {:put        (sign-contract-handler production-repo network-repo)
+        {:put        (sign-contract-handler production-repo network-repo user-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])

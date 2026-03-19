@@ -29,15 +29,72 @@
 (defn- energy-mix-color [k]
   (get energy-mix-colors (name-or-str k) "#999999"))
 
+;; ── Energy icons ───────────────────────────────────────────────────────────
+
+(defn- energy-icon [energy-type]
+  (let [etype (name-or-str energy-type)]
+    (case etype
+      "solar"
+      [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"
+             :stroke "#f5aa46" :stroke-width "2"
+             :stroke-linecap "round" :stroke-linejoin "round"}
+       [:circle {:cx "12" :cy "12" :r "5"}]
+       [:line {:x1 "12" :y1 "1" :x2 "12" :y2 "3"}]
+       [:line {:x1 "12" :y1 "21" :x2 "12" :y2 "23"}]
+       [:line {:x1 "4.22" :y1 "4.22" :x2 "5.64" :y2 "5.64"}]
+       [:line {:x1 "18.36" :y1 "18.36" :x2 "19.78" :y2 "19.78"}]
+       [:line {:x1 "1" :y1 "12" :x2 "3" :y2 "12"}]
+       [:line {:x1 "21" :y1 "12" :x2 "23" :y2 "12"}]
+       [:line {:x1 "4.22" :y1 "19.78" :x2 "5.64" :y2 "18.36"}]
+       [:line {:x1 "18.36" :y1 "5.64" :x2 "19.78" :y2 "4.22"}]]
+      "wind"
+      [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"
+             :stroke "#64917d" :stroke-width "2"
+             :stroke-linecap "round" :stroke-linejoin "round"}
+       [:path {:d "M9.59 4.59A2 2 0 1 1 11 8H2"}]
+       [:path {:d "M12.59 19.41A2 2 0 1 0 14 16H2"}]
+       [:path {:d "M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2"}]]
+      "hydro"
+      [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"
+             :stroke "#4a90d9" :stroke-width "2"
+             :stroke-linecap "round" :stroke-linejoin "round"}
+       [:path {:d "M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"}]]
+      "biomass"
+      [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"
+             :stroke "#8b6914" :stroke-width "2"
+             :stroke-linecap "round" :stroke-linejoin "round"}
+       [:path {:d "M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66"}]
+       [:path {:d "M20.59 3.41A21 21 0 0 0 3 21c5-4 8-6 11-7s6-2 8-4a3 3 0 0 0-1.41-5.59z"}]]
+      "cogeneration"
+      [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"
+             :stroke "#a0522d" :stroke-width "2"
+             :stroke-linecap "round" :stroke-linejoin "round"}
+       [:path {:d "M13 2L3 14h9l-1 8 10-12h-9l1-8z"}]]
+      ;; default
+      [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"
+             :stroke "#999" :stroke-width "2"
+             :stroke-linecap "round" :stroke-linejoin "round"}
+       [:circle {:cx "12" :cy "12" :r "10"}]])))
+
 ;; ── Sub-components ──────────────────────────────────────────────────────────
 
 (defn- network-hero []
-  (let [network @(rf/subscribe [:network-detail/network])
-        stats   @(rf/subscribe [:network-detail/stats])
-        name    (:network/name network)
-        n       (:production-count stats)]
+  (let [network     @(rf/subscribe [:network-detail/network])
+        productions @(rf/subscribe [:network-detail/productions])
+        stats       @(rf/subscribe [:network-detail/stats])
+        name        (:network/name network)
+        n           (:production-count stats)
+        energy-types (map #(name-or-str (:production/energy-type %)) productions)]
     [:section.nd-hero
-     [:h1.nd-title name]
+     [:div {:style {:display "flex" :align-items "center" :gap "0.5rem" :flex-wrap "wrap"}}
+      [:h1.nd-title {:style {:margin "0"}} name]
+      (when (seq energy-types)
+        [:div {:style {:display "flex" :gap "0.3rem" :align-items "center"}}
+         (doall
+           (for [[idx etype] (map-indexed vector energy-types)]
+             ^{:key idx}
+             [:span {:style {:display "flex"} :title (energy-type-label etype)}
+              [energy-icon etype]]))])]
      [:p.nd-description
       "Rejoignez l'operation d'autoconsommation collective "
       [:strong name]

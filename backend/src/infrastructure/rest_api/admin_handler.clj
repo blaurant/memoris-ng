@@ -168,6 +168,18 @@
         {:status 404
          :body   {:error (.getMessage e)}}))))
 
+(defn- delete-network-handler [user-repo network-repo email-sender]
+  (fn [request]
+    (try
+      (let [network-id (id/build-id (get-in request [:path-params :id]))
+            n (network-scenarios/delete-network
+                network-repo user-repo email-sender (user-id request) network-id)]
+        {:status 200
+         :body   {:ok true :deleted-network (:network/name n)}})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (if (.contains (.getMessage e) "not found") 404 400)
+         :body   {:error (.getMessage e)}}))))
+
 (defn- activate-production-handler [production-repo network-repo]
   (fn [request]
     (try
@@ -179,7 +191,7 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
-(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo jwt-secret]
+(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret]
   [["/api/v1/alert"
     {:get (get-alert-handler alert-banner-repo)}]
    ["/api/v1/admin/alert"
@@ -202,6 +214,7 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/networks/:id"
     {:put        (update-network-handler user-repo network-repo)
+     :delete     (delete-network-handler user-repo network-repo email-sender)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/networks/:id/toggle-visibility"

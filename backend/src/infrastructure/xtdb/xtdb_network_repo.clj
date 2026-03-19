@@ -25,7 +25,12 @@
   (save! [_ n]
     (xt/submit-tx node [[::xt/put (network->doc n)]])
     (xt/sync node)
-    n))
+    n)
+
+  (delete! [_ id]
+    (xt/submit-tx node [[::xt/delete id]])
+    (xt/sync node)
+    nil))
 
 (defmethod ig/init-key :networks/xtdb-repo [_ {:keys [node]}]
   (->XtdbNetworkRepo node))

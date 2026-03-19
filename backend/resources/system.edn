@@ -42,13 +42,16 @@
  {:node #ig/ref :xtdb/node}
 
  :email/resend-sender
- {:api-key      #env RESEND_API_KEY
-  :from-email   #profile {:dev     "onboarding@resend.dev"
-                           :staging #env EMAIL_FROM
-                           :prod    #env EMAIL_FROM}
-  :app-base-url #profile {:dev "http://localhost:3449"
-                           :staging #env APP_BASE_URL
-                           :prod    #env APP_BASE_URL}}
+ {:api-key        #env RESEND_API_KEY
+  :from-email     #profile {:dev     "onboarding@resend.dev"
+                             :staging #env EMAIL_FROM
+                             :prod    #env EMAIL_FROM}
+  :noreply-email  #profile {:dev     "onboarding@resend.dev"
+                             :staging #env EMAIL_NOREPLY
+                             :prod    #env EMAIL_NOREPLY}
+  :app-base-url   #profile {:dev "http://localhost:3449"
+                             :staging #env APP_BASE_URL
+                             :prod    #env APP_BASE_URL}}
 
  :http/handler
  {:cors-origins   #profile {:dev     ["http://localhost:3449"]

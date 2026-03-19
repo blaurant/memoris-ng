@@ -3,4 +3,5 @@
 (defprotocol EmailSender
   (send-verification-email! [sender email token] "Send a verification email with the given token.")
   (send-welcome-email! [sender email name] "Send a welcome email after account activation.")
-  (send-password-reset-email! [sender email token] "Send a password reset email with the given token."))
+  (send-password-reset-email! [sender email token] "Send a password reset email with the given token.")
+  (send-admin-notification! [sender admin-emails subject html-body] "Send a notification email to admin users."))

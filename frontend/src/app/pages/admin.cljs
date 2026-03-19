@@ -340,9 +340,34 @@
             {:on-click #(rf/dispatch [:admin/validate-network (:network/id n)])}
             "Valider"]]])]]]))
 
+(defn- confirm-delete-modal [network on-confirm on-cancel]
+  [:div.modal-overlay {:on-click on-cancel}
+   [:div.modal {:on-click #(.stopPropagation %)}
+    [:div.modal__header
+     [:span "Supprimer le réseau"]
+     [:button.btn.btn--small {:on-click on-cancel
+                              :style {:background "transparent" :color "var(--color-muted)"
+                                      :border "none" :font-size "1.2rem" :padding "0"}}
+      "\u00D7"]]
+    [:div.modal__body
+     [:p {:style {:margin-bottom "0.5rem" :font-weight "600" :color "#d32f2f"}}
+      "Cette action est irréversible."]
+     [:p {:style {:margin-bottom "0.5rem"}}
+      (str "Voulez-vous vraiment supprimer le réseau \"" (:network/name network) "\" ?")]
+     (when (pos? (or (:network/consumption-count network) 0))
+       [:p {:style {:color "#e65100"}}
+        (str "Attention : ce réseau contient " (:network/consumption-count network)
+             " consommation(s) en cours.")])]
+    [:div.modal__actions
+     [:button.btn.btn--small {:on-click on-cancel} "Annuler"]
+     [:button.btn.btn--small {:on-click on-confirm
+                              :style {:background "#d32f2f" :color "#fff"}}
+      "Supprimer"]]]])
+
 (defn networks-tab []
   (let [show-modal?       (r/atom false)
         confirm-network   (r/atom nil)
+        delete-network    (r/atom nil)
         edit-network      (r/atom nil)]
     (fn []
       (let [all-networks @(rf/subscribe [:admin/networks])
@@ -412,19 +437,23 @@
                    [:td (:network/radius-km n)]
                    [:td {:class (network-status-class (:network/lifecycle n))}
                     (network-status-label (:network/lifecycle n))]
-                   [:td {:style {:display "flex" :gap "0.25rem"}}
-                    [:button.btn.btn--small
-                     {:on-click #(reset! edit-network n)}
-                     "Éditer"]
-                    [:button.btn.btn--small
-                     {:on-click (fn []
-                                  (if (and (= "public" (:network/lifecycle n))
-                                           (pos? (or (:network/consumption-count n) 0)))
-                                    (reset! confirm-network n)
-                                    (rf/dispatch [:admin/toggle-network-visibility (:network/id n)])))}
-                     (if (= "public" (:network/lifecycle n))
-                       "Rendre privé"
-                       "Rendre public")]]])]])])
+                   [:td
+                    [:div {:style {:display "flex" :gap "0.25rem" :flex-wrap "nowrap"}}
+                     [:button.btn.btn--small
+                      {:on-click #(reset! edit-network n)}
+                      "Éditer"]
+                     [:button.btn.btn--small
+                      {:on-click (fn []
+                                   (if (and (= "public" (:network/lifecycle n))
+                                            (pos? (or (:network/consumption-count n) 0)))
+                                     (reset! confirm-network n)
+                                     (rf/dispatch [:admin/toggle-network-visibility (:network/id n)])))}
+                      (if (= "public" (:network/lifecycle n))
+                        "Rendre privé"
+                        "Rendre public")]
+                     [:button.btn.btn--small
+                      {:on-click #(reset! delete-network n)}
+                      "Supprimer"]]]])]])])
          (when @show-modal?
            [create-network-modal #(reset! show-modal? false)])
          (when-let [net @confirm-network]
@@ -434,7 +463,13 @@
               (reset! confirm-network nil))
             #(reset! confirm-network nil)])
          (when-let [net @edit-network]
-           [edit-network-modal net #(reset! edit-network nil)])]))))
+           [edit-network-modal net #(reset! edit-network nil)])
+         (when-let [net @delete-network]
+           [confirm-delete-modal net
+            (fn []
+              (rf/dispatch [:admin/delete-network (:network/id net)])
+              (reset! delete-network nil))
+            #(reset! delete-network nil)])]))))
 
 ;; ── Productions table ────────────────────────────────────────────────────────
 

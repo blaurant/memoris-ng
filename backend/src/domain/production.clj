@@ -127,19 +127,17 @@
                          :production/iban iban))))
 
 (defn sign-contract
-      "Sign the adhesion contract. Transitions directly to :pending."
-      ([p]
-       (sign-contract p (str (Instant/now))))
-      ([p signed-at]
-       (let [_ (assert-lifecycle p :contract-signature)]
-         (validate (-> BaseProduction
-                       (mu/merge ProducerInformation)
-                       (mu/merge InstallationInfo)
-                       (mu/merge PaymentInfo)
-                       (mu/merge ContractSignature))
-                   (assoc p
-                          :production/lifecycle :pending
-                          :production/adhesion-signed-at signed-at)))))
+      "Transitions to :pending if the user's adhesion is signed.
+       Throws if adhesion is not signed."
+      [p adhesion-signed?]
+      (assert-lifecycle p :contract-signature)
+      (when-not adhesion-signed?
+        (throw (ex-info "Adhesion must be signed before completing production" {})))
+      (validate (-> BaseProduction
+                    (mu/merge ProducerInformation)
+                    (mu/merge InstallationInfo)
+                    (mu/merge PaymentInfo))
+                (assoc p :production/lifecycle :pending)))
 
 (def ^:private onboarding-states
   #{:producer-information :installation-info :payment-info :contract-signature})
@@ -181,4 +179,5 @@
   (find-by-network-id [repo network-id]         "Find all productions for a network. Returns a vector.")
   (find-all        [repo]                        "Find all productions (admin).")
   (save!           [repo production]
-                   [repo original updated]       "Persist a production. 2-arity: insert. 3-arity: optimistic update."))
+                   [repo original updated]       "Persist a production. 2-arity: insert. 3-arity: optimistic update.")
+  (delete!         [repo id]                     "Delete a production by ID."))

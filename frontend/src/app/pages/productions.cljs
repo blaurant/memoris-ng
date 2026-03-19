@@ -14,7 +14,8 @@
   (r/create-class
     {:component-did-mount
      (fn [_]
-       (rf/dispatch [:productions/fetch]))
+       (rf/dispatch [:productions/fetch])
+       (rf/dispatch [:networks/fetch]))
 
      :reagent-render
      (fn []
