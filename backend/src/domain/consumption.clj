@@ -131,27 +131,28 @@
                          :consumption/billing-address billing-addr))))
 
 (def ^:private contract-type->key
-  {:elinkco :consumption/contract-signed-at
-   :producer  :consumption/producer-contract-signed-at
+  {:producer  :consumption/producer-contract-signed-at
    :sepa      :consumption/sepa-mandate-signed-at})
 
-(defn- all-contracts-signed? [c]
-  (and (some? (:consumption/contract-signed-at c))
-       (some? (:consumption/producer-contract-signed-at c))
+(defn- consumption-contracts-signed? [c]
+  (and (some? (:consumption/producer-contract-signed-at c))
        (some? (:consumption/sepa-mandate-signed-at c))))
 
 (defn sign-contract
-      "Sign one contract (contract-type = :elinkco | :producer | :sepa).
-       Transitions to :pending only when all 3 contracts are signed."
-      ([c contract-type]
-       (sign-contract c contract-type (str (Instant/now))))
-      ([c contract-type signed-at]
+      "Sign one contract (contract-type = :producer | :sepa).
+       Transitions to :pending only when both contracts are signed
+       AND the user has signed the adhesion (adhesion-signed? must be true)."
+      ([c contract-type adhesion-signed?]
+       (sign-contract c contract-type adhesion-signed? (str (Instant/now))))
+      ([c contract-type adhesion-signed? signed-at]
        (let [_ (assert-lifecycle c :contract-signature)
              k  (or (contract-type->key contract-type)
                      (throw (ex-info "Unknown contract type" {:contract-type contract-type})))
              c' (assoc c k signed-at)
              c' (assoc c' :consumption/lifecycle
-                       (if (all-contracts-signed? c') :pending :contract-signature))]
+                       (if (and adhesion-signed? (consumption-contracts-signed? c'))
+                         :pending
+                         :contract-signature))]
          (validate (-> BaseConsumption
                        (mu/merge ConsumerInformation)
                        (mu/merge LinkyReference)

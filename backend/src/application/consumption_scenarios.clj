@@ -1,6 +1,7 @@
 (ns application.consumption-scenarios
   (:require [com.brunobonacci.mulog :as mu]
-            [domain.consumption :as consumption]))
+            [domain.consumption :as consumption]
+            [domain.user :as user]))
 
 
 (defn list-consumptions
@@ -74,11 +75,26 @@
         (mu/log ::consumption-abandoned :consumption-id consumption-id)
         c'))
 
+(defn sign-adhesion
+      "Sign the Elink-co adhesion on the user (not on the consumption).
+       Only needed for the first consumption or production."
+      [user-repo user-id]
+      (let [u  (user/find-by-id user-repo user-id)]
+        (when-not u
+          (throw (ex-info "User not found" {:user-id user-id})))
+        (when-not (user/adhesion-signed? u)
+          (let [u' (user/sign-adhesion u)]
+            (user/save! user-repo u')
+            (mu/log ::adhesion-signed :user-id user-id)))
+        :ok))
+
 (defn sign-contract
-      "Sign one contract (contract-type = :elinkco | :producer | :sepa)."
-      [consumption-repo user-id consumption-id contract-type]
+      "Sign one contract (contract-type = :producer | :sepa).
+       Checks user adhesion to determine if consumption can transition to :pending."
+      [consumption-repo user-repo user-id consumption-id contract-type]
       (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
-            c' (consumption/sign-contract c contract-type)
+            u  (user/find-by-id user-repo user-id)
+            c' (consumption/sign-contract c contract-type (user/adhesion-signed? u))
             c' (consumption/save! consumption-repo c c')]
         (mu/log ::contract-signed :consumption-id consumption-id :contract-type contract-type)
         c'))

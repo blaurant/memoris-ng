@@ -1,6 +1,7 @@
 (ns ^{:domain/type :entity} domain.user
     (:require [domain.id :as id]
-      [malli.core :as m]))
+      [malli.core :as m])
+    (:import (java.time Instant)))
 
 
 (def email?
@@ -30,7 +31,8 @@
    [:user/role [:enum :customer :admin]]
    [:user/lifecycle [:enum :alive :suspended :deactivated]]
    [:user/password-hash {:optional true} [:maybe string?]]
-   [:user/email-verified? {:optional true} boolean?]])
+   [:user/email-verified? {:optional true} boolean?]
+   [:user/adhesion-signed-at {:optional true} [:maybe string?]]])
 
 
 (defn build-user
@@ -123,6 +125,18 @@
                 (throw (ex-info "Can only reactivate a suspended user"
                                 {:lifecycle (:user/lifecycle user)})))
       (assoc user :user/lifecycle :alive))
+
+(defn adhesion-signed?
+      "Returns true if the user has signed the adhesion."
+      [user]
+      (some? (:user/adhesion-signed-at user)))
+
+(defn sign-adhesion
+      "Sign the Elink-co adhesion on the user."
+      ([user]
+       (sign-adhesion user (str (Instant/now))))
+      ([user signed-at]
+       (assoc user :user/adhesion-signed-at signed-at)))
 
 ;; ── Repository protocol ───────────────────────────────────────────────────
 
