@@ -14,7 +14,11 @@
 
   (save! [_ n]
     (swap! store assoc (:network/id n) n)
-    n))
+    n)
+
+  (delete! [_ id]
+    (swap! store dissoc id)
+    nil))
 
 (defmethod ig/init-key :networks/in-memory-repo
   [_ _]

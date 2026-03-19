@@ -3,8 +3,10 @@
             [application.production-scenarios :as scenarios]
             [domain.id :as id]
             [domain.network :as network]
+            [domain.user :as user]
             [infrastructure.in-memory-repo.mem-network-repo :as mem-net-repo]
-            [infrastructure.in-memory-repo.mem-production-repo :as mem-repo]))
+            [infrastructure.in-memory-repo.mem-production-repo :as mem-repo]
+            [infrastructure.in-memory-repo.mem-user-repo :as mem-user-repo]))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,12 +75,23 @@
   (THEN "the production is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:production/lifecycle (:production ctx)))))
   (WHEN "the user signs the adhesion contract" [ctx]
-    (assoc ctx :production
-           (scenarios/sign-contract
-             (:repo ctx) (:user-id ctx) (:production/id (:production ctx)))))
-  (THEN "the production is in :pending state with adhesion signed" [ctx]
-    (assert (= :pending (:production/lifecycle (:production ctx))))
-    (assert (some? (:production/adhesion-signed-at (:production ctx))))))
+    (let [user-repo (mem-user-repo/->InMemoryUserRepo (atom {}))
+          u (user/build-user {:user/id                          (:user-id ctx)
+                              :user/email                       "test@example.com"
+                              :user/name                        "Test"
+                              :user/role                        :customer
+                              :user/lifecycle                   :alive
+                              :user/provider                    :email
+                              :user/provider-subject-identifier "test"
+                              :user/password-hash               "hash"
+                              :user/email-verified?             true})
+          u (user/sign-adhesion u)]
+      (user/save! user-repo u)
+      (assoc ctx :production
+             (scenarios/sign-contract
+               (:repo ctx) user-repo (:user-id ctx) (:production/id (:production ctx))))))
+  (THEN "the production is in :pending state" [ctx]
+    (assert (= :pending (:production/lifecycle (:production ctx))))))
 
 (defscenario "Create a new network when submitting producer information"
   (GIVEN "a production and an empty network repo" [ctx]
