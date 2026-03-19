@@ -141,19 +141,26 @@
 ;; ── sign-contract ──────────────────────────────────────────────────────────
 
 (deftest sign-contract-test
-  (testing "signing the adhesion contract transitions to :pending"
+  (testing "signing transitions to :pending when adhesion is signed"
     (let [p  (-> (production/create-new-production (id/build-id) user-id)
                  (production/register-producer-information "addr" network-id)
                  (production/register-installation-info "PRM-123" 9.0 :solar "LK-1")
                  (production/submit-payment-info "FR76 3000 6000 0112 3456 7890 189"))
-          p' (production/sign-contract p "2026-03-13T10:00:00Z")]
-      (is (= :pending (:production/lifecycle p')))
-      (is (= "2026-03-13T10:00:00Z" (:production/adhesion-signed-at p')))))
+          p' (production/sign-contract p true)]
+      (is (= :pending (:production/lifecycle p')))))
+
+  (testing "throws when adhesion not signed"
+    (let [p (-> (production/create-new-production (id/build-id) user-id)
+                (production/register-producer-information "addr" network-id)
+                (production/register-installation-info "PRM-123" 9.0 :solar "LK-1")
+                (production/submit-payment-info "FR76 3000 6000 0112 3456 7890 189"))]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (production/sign-contract p false)))))
 
   (testing "throws when not in :contract-signature state"
     (let [p (production/create-new-production (id/build-id) user-id)]
       (is (thrown? clojure.lang.ExceptionInfo
-                  (production/sign-contract p "2026-03-13T10:00:00Z"))))))
+                  (production/sign-contract p true))))))
 
 ;; ── find-by-network-id (repository) ──────────────────────────────────────
 

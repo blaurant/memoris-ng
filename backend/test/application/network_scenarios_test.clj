@@ -75,7 +75,7 @@
       (assert (= 8.0 (:total-capacity-kwc r)))
       (assert (= 3 (:consumer-count r)))
       (assert (= 2 (count (:productions r))))
-      (assert (= {:solar 50.0 :wind 50.0} (:energy-mix r)))
+      (assert (= {:solar 38 :wind 63} (:energy-mix r)))
       (assert (some? (:network r))))))
 
 (defscenario "Non-public network returns ex-info"

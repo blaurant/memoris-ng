@@ -2,7 +2,9 @@
   (:require [bdd.test-gwt :refer [defscenario GIVEN WHEN THEN]]
             [application.consumption-scenarios :as scenarios]
             [domain.id :as id]
-            [infrastructure.in-memory-repo.mem-consumption-repo :as mem-repo]))
+            [domain.user :as user]
+            [infrastructure.in-memory-repo.mem-consumption-repo :as mem-repo]
+            [infrastructure.in-memory-repo.mem-user-repo :as mem-user-repo]))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,10 +27,22 @@
 
 (defscenario "Complete onboarding steps 1 to 4"
   (GIVEN "a consumption in :consumer-information state" [ctx]
-    (let [repo    (fresh-repo)
-          user-id (id/build-id)
-          c       (scenarios/create-consumption repo (id/build-id) user-id)]
-      (assoc ctx :repo repo :user-id user-id :consumption c)))
+    (let [repo      (fresh-repo)
+          user-id   (id/build-id)
+          user-repo (mem-user-repo/->InMemoryUserRepo (atom {}))
+          u         (-> (user/build-user {:user/id                          user-id
+                                          :user/email                       "test@example.com"
+                                          :user/name                        "Test"
+                                          :user/role                        :customer
+                                          :user/lifecycle                   :alive
+                                          :user/provider                    :email
+                                          :user/provider-subject-identifier "test"
+                                          :user/password-hash               "hash"
+                                          :user/email-verified?             true})
+                        user/sign-adhesion)
+          _         (user/save! user-repo u)
+          c         (scenarios/create-consumption repo (id/build-id) user-id)]
+      (assoc ctx :repo repo :user-repo user-repo :user-id user-id :consumption c)))
   (WHEN "the user submits step 1 (consumer informations)" [ctx]
     (let [network-id (id/build-id)
           c' (scenarios/register-consumer-information
@@ -52,33 +66,23 @@
   (THEN "the consumption is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 
-  (WHEN "the user signs the Elinkco contract" [ctx]
-    (assoc ctx :consumption
-           (scenarios/sign-contract
-             (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-             :elinkco)))
-
-  (THEN "the consumption is still in :contract-signature state" [ctx]
-    (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
-
   (WHEN "the user signs the producer contract" [ctx]
     (assoc ctx :consumption
            (scenarios/sign-contract
-             (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
+             (:repo ctx) (:user-repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
              :producer)))
 
-  (THEN "the consumption is still in :contract-signature state (2/3)" [ctx]
+  (THEN "the consumption is still in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 
   (WHEN "the user signs the SEPA mandate" [ctx]
     (assoc ctx :consumption
            (scenarios/sign-contract
-             (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
+             (:repo ctx) (:user-repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
              :sepa)))
 
-  (THEN "the consumption is in :pending state with all 3 signatures" [ctx]
+  (THEN "the consumption is in :pending state with both signatures" [ctx]
     (assert (= :pending (:consumption/lifecycle (:consumption ctx))))
-    (assert (some? (:consumption/contract-signed-at (:consumption ctx))))
     (assert (some? (:consumption/producer-contract-signed-at (:consumption ctx))))
     (assert (some? (:consumption/sepa-mandate-signed-at (:consumption ctx))))))
 
