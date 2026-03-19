@@ -16,12 +16,21 @@
    [:network/price-per-kwh {:optional true} double?]
    [:network/lifecycle [:enum :pending-validation :private :public ]]])
 
+(defn- round4
+  "Round a double to 4 decimal places."
+  [d]
+  (when d
+    (/ (Math/round (* d 10000.0)) 10000.0)))
+
 (defn build-network
   "Validates attrs against the Network schema and returns the network map.
   Throws ex-info if attrs are invalid.
-  Defaults :network/radius-km to 1.0 and :network/lifecycle to :private."
+  Defaults :network/radius-km to 1.0 and :network/lifecycle to :private.
+  Rounds lat/lng to 4 decimal places."
   [attrs]
   (let [with-defaults (-> attrs
+                          (update :network/center-lat round4)
+                          (update :network/center-lng round4)
                           (update :network/radius-km #(or % 1.0))
                           (update :network/lifecycle #(or % :private)))]
     (if (m/validate Network with-defaults)
