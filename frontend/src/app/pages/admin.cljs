@@ -485,7 +485,7 @@
    "cogeneration" "Cogeneration"})
 
 (defn- export-productions-csv [productions]
-  (let [header "ID;Utilisateur;Adresse;Réseau;PDL/PRM;Puissance (kWc);Type;Compteur Linky;IBAN;Statut"
+  (let [header "ID;Utilisateur;Adresse;Réseau;PDL/PRM;Puissance (kWh);Type;Compteur Linky;IBAN;Statut"
         rows   (map (fn [p]
                       (str/join ";" [(:production/id p)
                                      (:production/user-id p)
@@ -548,7 +548,7 @@
          [:td (subs (str (:production/user-id p)) 0 8)]
          [:td (or (:production/producer-address p) "-")]
          [:td (or (:production/pdl-prm p) "-")]
-         [:td (when-let [pw (:production/installed-power p)] (str pw " kWc"))]
+         [:td (when-let [pw (:production/installed-power p)] (str pw " kWh"))]
          [:td (get energy-type-labels (:production/energy-type p) "-")]
          [:td (or (:production/linky-meter p) "-")]
          [:td (:production/lifecycle p)]

@@ -1,6 +1,8 @@
 (ns application.consumption-scenarios
   (:require [com.brunobonacci.mulog :as mu]
             [domain.consumption :as consumption]
+            [domain.network :as network]
+            [domain.production :as production]
             [domain.user :as user]))
 
 
@@ -8,6 +10,59 @@
       "List all consumptions for the given user."
       [consumption-repo user-id]
       (consumption/find-by-user-id consumption-repo user-id))
+
+(defn get-consumption-dashboard
+  "Build a dashboard view for a consumption: network info, producers on the network."
+  [consumption-repo production-repo network-repo user-id consumption-id]
+  (let [c   (let [found (consumption/find-by-id consumption-repo consumption-id)]
+              (when-not found
+                (throw (ex-info "Consumption not found" {:consumption-id consumption-id})))
+              (when-not (= user-id (:consumption/user-id found))
+                (throw (ex-info "Consumption does not belong to user" {})))
+              found)
+        nid (:consumption/network-id c)
+        net (when nid (network/find-by-id network-repo nid))
+        ;; Producers on the network
+        all-prods   (when nid (production/find-by-network-id production-repo nid))
+        active-prods (filterv #(= :active (:production/lifecycle %)) all-prods)]
+    {:consumption c
+     :network     (when net
+                    (select-keys net [:network/id :network/name :network/center-lat
+                                      :network/center-lng :network/radius-km
+                                      :network/price-per-kwh]))
+     :producers   (mapv (fn [p]
+                           {:energy-type      (name (:production/energy-type p))
+                            :installed-power  (:production/installed-power p)
+                            :producer-address (:production/producer-address p)})
+                        active-prods)}))
+
+(defn update-consumer-address
+  "Update the consumer address on an active or pending consumption."
+  [consumption-repo user-id consumption-id new-address]
+  (let [c (let [found (consumption/find-by-id consumption-repo consumption-id)]
+            (when-not found (throw (ex-info "Consumption not found" {})))
+            (when-not (= user-id (:consumption/user-id found)) (throw (ex-info "Consumption does not belong to user" {})))
+            found)]
+    (when-not (#{:active :pending} (:consumption/lifecycle c))
+      (throw (ex-info "Can only update address on active or pending consumptions" {})))
+    (let [c' (assoc c :consumption/consumer-address new-address)
+          c' (consumption/save! consumption-repo c c')]
+      (mu/log ::consumer-address-updated :consumption-id consumption-id)
+      c')))
+
+(defn update-billing-address
+  "Update the billing address on an active or pending consumption."
+  [consumption-repo user-id consumption-id new-address]
+  (let [c (let [found (consumption/find-by-id consumption-repo consumption-id)]
+            (when-not found (throw (ex-info "Consumption not found" {})))
+            (when-not (= user-id (:consumption/user-id found)) (throw (ex-info "Consumption does not belong to user" {})))
+            found)]
+    (when-not (#{:active :pending} (:consumption/lifecycle c))
+      (throw (ex-info "Can only update billing address on active or pending consumptions" {})))
+    (let [c' (assoc c :consumption/billing-address new-address)
+          c' (consumption/save! consumption-repo c c')]
+      (mu/log ::billing-address-updated :consumption-id consumption-id)
+      c')))
 
 (defn create-consumption
       "Create a new consumption for the given user."

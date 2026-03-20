@@ -26,6 +26,55 @@
     (js/console.error "Failed to fetch consumptions")
     (assoc db :consumptions/loading? false)))
 
+;; ── Fetch consumption dashboard ───────────────────────────────────────────
+
+(rf/reg-event-fx :consumptions/fetch-dashboard
+  (fn [{:keys [db]} [_ consumption-id]]
+    {:db         (assoc db :consumptions/dashboard-loading? true)
+     :http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/dashboard")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/fetch-dashboard-ok]
+                  :on-failure      [:consumptions/fetch-dashboard-err]}}))
+
+(rf/reg-event-db :consumptions/fetch-dashboard-ok
+  (fn [db [_ data]]
+    (-> db
+        (assoc :consumptions/dashboard data)
+        (assoc :consumptions/dashboard-loading? false))))
+
+(rf/reg-event-db :consumptions/fetch-dashboard-err
+  (fn [db _]
+    (assoc db :consumptions/dashboard-loading? false)))
+
+;; ── Update consumer address ─────────────────────────────────────────────────
+
+(rf/reg-event-fx :consumptions/update-address
+  (fn [{:keys [db]} [_ consumption-id new-address]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/update-address")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:consumer-address new-address}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/step-ok]
+                  :on-failure      [:consumptions/fetch-err]}}))
+
+;; ── Update billing address ──────────────────────────────────────────────────
+
+(rf/reg-event-fx :consumptions/update-billing-address
+  (fn [{:keys [db]} [_ consumption-id new-address]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/update-billing-address")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:billing-address new-address}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/step-ok]
+                  :on-failure      [:consumptions/fetch-err]}}))
+
+
 ;; ── Create consumption ──────────────────────────────────────────────────────
 
 (rf/reg-event-fx :consumptions/create

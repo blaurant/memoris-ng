@@ -155,8 +155,16 @@
                   :params          {:producer-address new-address}
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
-                  :on-success      [:productions/step-ok]
+                  :on-success      [:productions/update-address-ok production-id]
                   :on-failure      [:productions/fetch-err]}}))
+
+(rf/reg-event-fx :productions/update-address-ok
+  (fn [{:keys [db]} [_ production-id updated]]
+    (let [items (:productions/list db)
+          idx   (some (fn [[i p]] (when (= (:production/id p) (:production/id updated)) i))
+                      (map-indexed vector items))]
+      {:db       (cond-> db idx (assoc-in [:productions/list idx] updated))
+       :dispatch [:productions/fetch-dashboard production-id]})))
 
 ;; ── Update PDL/PRM ───────────────────────────────────────────────────────
 

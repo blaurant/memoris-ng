@@ -145,15 +145,21 @@
                    (when (:producer-address p)
                      (google-maps/geocode-and-mark!
                        gm markers (:producer-address p)
-                       (str (get energy-type-labels (:energy-type p) "") " " (:installed-power p) " kWc")
+                       (str (get energy-type-labels (:energy-type p) "") " " (:installed-power p) " kWh")
                        nil blue-pin))))
-               ;; Markers consommateurs (rouge par défaut)
-               (doseq [c consumers]
-                 (when (:address c)
-                   (google-maps/geocode-and-mark!
-                     gm markers (:address c)
-                     (str (:name c))
-                     nil))))))))
+               ;; Markers consommateurs (point rouge)
+               (let [red-dot #js {:path   js/google.maps.SymbolPath.CIRCLE
+                                  :scale  6
+                                  :fillColor "#d32f2f"
+                                  :fillOpacity 1
+                                  :strokeColor "#b71c1c"
+                                  :strokeWeight 1}]
+                 (doseq [c consumers]
+                   (when (:address c)
+                     (google-maps/geocode-and-mark!
+                       gm markers (:address c)
+                       (str (:name c))
+                       nil red-dot)))))))))
 
       :component-will-unmount
       (fn [_]
@@ -325,7 +331,7 @@
              [:div
               [:h2.prod-dash__title
                (str (get energy-type-labels energy energy) " — "
-                    (:production/installed-power production) " kWc")]
+                    (:production/installed-power production) " kWh")]
               (when (:network/name network)
                 [:a.prod-dash__network
                  {:href (rfee/href :page/network-detail {:id (:network/id network)})}
@@ -375,6 +381,7 @@
 
             ;; Right: map
             (when network
+              ^{:key (str (:production/producer-address production))}
               [dashboard-map network
                (conj (vec producers)
                      {:energy-type (:production/energy-type production)
@@ -460,7 +467,10 @@
                     ^{:key idx}
                     [:tr
                      [:td (:name c)]
-                     [:td (or (:address c) "—")]
+                     [:td [:span {:style {:display "inline-block" :width "12px" :height "12px"
+                                           :border-radius "50%" :background "#d32f2f"
+                                           :margin-right "0.4rem" :vertical-align "middle"}}]
+                      (or (:address c) "—")]
                      [:td (if-let [kwh (:last-monthly-kwh c)]
                             (str kwh " kWh")
                             "—")]

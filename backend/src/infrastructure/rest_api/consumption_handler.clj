@@ -157,14 +157,63 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
+(defn- update-consumer-address-handler [consumption-repo]
+  (fn [request]
+    (try
+      (let [user-id        (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))
+            new-addr       (get-in request [:body-params :consumer-address])]
+        {:status 200
+         :body   (serialize-consumption
+                   (scenarios/update-consumer-address consumption-repo user-id consumption-id new-addr))})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- update-billing-address-handler [consumption-repo]
+  (fn [request]
+    (try
+      (let [user-id        (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))
+            new-addr       (get-in request [:body-params :billing-address])]
+        {:status 200
+         :body   (serialize-consumption
+                   (scenarios/update-billing-address consumption-repo user-id consumption-id new-addr))})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- dashboard-handler [consumption-repo production-repo network-repo]
+  (fn [request]
+    (try
+      (let [user-id       (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))
+            dashboard     (scenarios/get-consumption-dashboard
+                            consumption-repo production-repo network-repo
+                            user-id consumption-id)]
+        {:status 200
+         :body   (update dashboard :consumption serialize-consumption)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
 ;; ── Routes ──────────────────────────────────────────────────────────────────
 
 (defn routes
       "Returns Reitit route vectors for consumption endpoints."
-      [consumption-repo user-repo jwt-secret]
+      [consumption-repo production-repo network-repo user-repo jwt-secret]
       [["/api/v1/consumptions"
         {:get        (list-consumptions-handler consumption-repo)
          :post       (create-consumption-handler consumption-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id/update-address"
+        {:put        (update-consumer-address-handler consumption-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id/update-billing-address"
+        {:put        (update-billing-address-handler consumption-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id/dashboard"
+        {:get        (dashboard-handler consumption-repo production-repo network-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/go-back"
         {:put        (go-back-handler consumption-repo)

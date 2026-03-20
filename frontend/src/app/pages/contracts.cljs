@@ -136,7 +136,7 @@
                  ^{:key (str "prod-" pid)}
                  [contract-row
                   {:icon      [doc-icon]
-                   :label     (str energy " — " power " kWc")
+                   :label     (str energy " — " power " kWh")
                    :sublabel  "Production"
                    :status    (get lifecycle-labels lifecycle lifecycle)
                    :lifecycle lifecycle

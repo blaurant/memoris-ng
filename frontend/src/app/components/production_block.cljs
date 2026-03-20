@@ -71,7 +71,7 @@
      [:p {:style {:margin-bottom "0.5rem"}}
       (str "Voulez-vous vraiment supprimer cette production "
            (get energy-type-labels (:production/energy-type production) "")
-           " de " (:production/installed-power production) " kWc ?")]
+           " de " (:production/installed-power production) " kWh ?")]
      [:p {:style {:color "var(--color-muted)" :font-size "0.9rem"}}
       "Les administrateurs seront notifiés de cette suppression."]]
     [:div.modal__actions
@@ -121,7 +121,7 @@
          [:div.consumption-block__header
           [:div {:style {:display "flex" :align-items "center" :gap "0.5rem"}}
            [:span {:style {:color "var(--color-accent)" :display "flex"}} [energy-icon energy-type]]
-           [:span (str (get energy-type-labels energy-type energy-type) " — " (:production/installed-power production) " kWc")]]
+           [:span (str (get energy-type-labels energy-type energy-type) " — " (:production/installed-power production) " kWh")]]
           [:div {:style {:display "flex" :align-items "center" :gap "0.5rem"}}
            [:span.consumption-block__status lifecycle]
            ;; Menu déroulant

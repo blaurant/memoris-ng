@@ -327,7 +327,7 @@
          :placeholder "Ex: 12345678901234"
          :value       @pdl-prm
          :on-change   #(reset! pdl-prm (.. % -target -value))}]
-       [:label "Puissance installee (kWc)"]
+       [:label "Puissance installee (kWh)"]
        [:input.onboarding__input
         {:type        "number"
          :step        "any"

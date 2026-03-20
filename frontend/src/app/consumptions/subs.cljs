@@ -15,3 +15,9 @@
   (fn [networks [_ network-id]]
     (let [net (some #(when (= (:network/id %) network-id) %) networks)]
       (or (:network/name net) network-id))))
+
+(rf/reg-sub :consumptions/dashboard
+  (fn [db _] (:consumptions/dashboard db)))
+
+(rf/reg-sub :consumptions/dashboard-loading?
+  (fn [db _] (:consumptions/dashboard-loading? db)))
