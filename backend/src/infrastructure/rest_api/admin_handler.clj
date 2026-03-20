@@ -6,6 +6,7 @@
             [domain.consumption :as consumption]
             [domain.network :as network]
             [domain.production :as production]
+            [domain.user :as user]
             [domain.id :as id]
             [infrastructure.rest-api.admin-middleware :as admin-mw]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
@@ -114,11 +115,13 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
-(defn- serialize-production [p network-repo]
+(defn- serialize-production [p network-repo user-repo]
   (let [nid (:production/network-id p)
         net-name (when nid
                    (some-> (network/find-by-id network-repo nid)
-                           :network/name))]
+                           :network/name))
+        user-name (some-> (user/find-by-id user-repo (:production/user-id p))
+                          :user/name)]
     (-> p
         (update :production/id str)
         (update :production/user-id str)
@@ -128,12 +131,14 @@
                 nid
                 (update :production/network-id str)
                 net-name
-                (assoc :production/network-name net-name)))))
+                (assoc :production/network-name net-name)
+                user-name
+                (assoc :production/user-name user-name)))))
 
-(defn- list-productions-handler [production-repo network-repo]
+(defn- list-productions-handler [production-repo network-repo user-repo]
   (fn [_request]
     {:status 200
-     :body   (mapv #(serialize-production % network-repo) (production/find-all production-repo))}))
+     :body   (mapv #(serialize-production % network-repo user-repo) (production/find-all production-repo))}))
 
 (defn- update-network-handler [user-repo network-repo]
   (fn [request]
@@ -180,13 +185,13 @@
         {:status (if (.contains (.getMessage e) "not found") 404 400)
          :body   {:error (.getMessage e)}}))))
 
-(defn- activate-production-handler [production-repo network-repo]
+(defn- activate-production-handler [production-repo network-repo user-repo]
   (fn [request]
     (try
       (let [production-id (id/build-id (get-in request [:path-params :id]))
             p' (production-scenarios/activate-production production-repo network-repo production-id)]
         {:status 200
-         :body   (serialize-production p' network-repo)})
+         :body   (serialize-production p' network-repo user-repo)})
       (catch clojure.lang.ExceptionInfo e
         {:status 400
          :body   {:error (.getMessage e)}}))))
@@ -230,10 +235,10 @@
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions"
-    {:get        (list-productions-handler production-repo network-repo)
+    {:get        (list-productions-handler production-repo network-repo user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions/:id/activate"
-    {:put        (activate-production-handler production-repo network-repo)
+    {:put        (activate-production-handler production-repo network-repo user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]])

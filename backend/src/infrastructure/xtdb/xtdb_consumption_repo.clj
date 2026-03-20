@@ -53,7 +53,12 @@
       (when-not (xt/tx-committed? node tx)
         (throw (ex-info "Concurrent modification detected"
                         {:consumption-id id})))
-      updated)))
+      updated))
+
+  (delete! [_ id]
+    (xt/submit-tx node [[::xt/delete id]])
+    (xt/sync node)
+    nil))
 
 (defmethod ig/init-key :consumptions/xtdb-repo [_ {:keys [node]}]
   (->XtdbConsumptionRepo node))

@@ -17,7 +17,9 @@
       (or (:network/name net) network-id))))
 
 (rf/reg-sub :consumptions/dashboard
-  (fn [db _] (:consumptions/dashboard db)))
+  (fn [db [_ consumption-id]]
+    (get-in db [:consumptions/dashboards consumption-id])))
 
 (rf/reg-sub :consumptions/dashboard-loading?
-  (fn [db _] (:consumptions/dashboard-loading? db)))
+  (fn [db [_ consumption-id]]
+    (get-in db [:consumptions/dashboard-loading consumption-id])))

@@ -90,7 +90,7 @@
          [:button.btn.btn--small {:on-click on-close} "X"]]
         [:div.modal__body
          [:p {:style {:margin-bottom "1rem"}}
-          "Laissez-nous votre email, nous vous préviendrons dès qu'un réseau Elinkco ouvrira dans votre zone."]
+          "Laissez-nous votre email, nous vous préviendrons dès qu'un réseau Elink-co ouvrira dans votre zone."]
          [:input.onboarding__input
           {:type        "email"
            :placeholder "votre@email.com"
@@ -155,7 +155,7 @@
                      :on-click #(rf/dispatch [:eligibility/set-join-network (:network/name network)])}
                     "Adhérer et rejoindre ce réseau"]]]
                  [:<>
-                  [:span address " n'est pas dans la zone d'un réseau Elinkco pour le moment."]
+                  [:span address " n'est pas dans la zone d'un réseau Elink-co pour le moment."]
                   (if notified?
                     [:p {:style {:color "var(--color-success)" :margin-top "0.75rem" :font-size "0.95rem"}}
                      "Vous serez averti dès qu'un réseau ouvrira dans votre zone."]

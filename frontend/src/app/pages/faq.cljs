@@ -53,7 +53,7 @@
   [:div.landing
    [:section.section
     [:div.container
-     [:h1.section__title {:style {:margin-bottom "0.5rem"}} "Questions fréquentes"]
+     [:h1.section__title {:style {:margin-bottom "0.5rem"}} "Foire aux Questions"]
      [:p.section__subtitle "Tout ce que vous devez savoir sur l'autoconsommation collective et Elink-co."]
      [:div.faq-list
       (doall

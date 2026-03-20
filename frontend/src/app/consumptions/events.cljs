@@ -30,23 +30,23 @@
 
 (rf/reg-event-fx :consumptions/fetch-dashboard
   (fn [{:keys [db]} [_ consumption-id]]
-    {:db         (assoc db :consumptions/dashboard-loading? true)
+    {:db         (assoc-in db [:consumptions/dashboard-loading consumption-id] true)
      :http-xhrio {:method          :get
                   :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/dashboard")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
                   :response-format (ajax/json-response-format {:keywords? true})
-                  :on-success      [:consumptions/fetch-dashboard-ok]
-                  :on-failure      [:consumptions/fetch-dashboard-err]}}))
+                  :on-success      [:consumptions/fetch-dashboard-ok consumption-id]
+                  :on-failure      [:consumptions/fetch-dashboard-err consumption-id]}}))
 
 (rf/reg-event-db :consumptions/fetch-dashboard-ok
-  (fn [db [_ data]]
+  (fn [db [_ consumption-id data]]
     (-> db
-        (assoc :consumptions/dashboard data)
-        (assoc :consumptions/dashboard-loading? false))))
+        (assoc-in [:consumptions/dashboards consumption-id] data)
+        (assoc-in [:consumptions/dashboard-loading consumption-id] false))))
 
 (rf/reg-event-db :consumptions/fetch-dashboard-err
-  (fn [db _]
-    (assoc db :consumptions/dashboard-loading? false)))
+  (fn [db [_ consumption-id]]
+    (assoc-in db [:consumptions/dashboard-loading consumption-id] false)))
 
 ;; ── Update consumer address ─────────────────────────────────────────────────
 
@@ -171,6 +171,24 @@
     (update db :consumptions/list
             (fn [items]
               (filterv #(not= (:consumption/id %) (:consumption/id abandoned)) items)))))
+
+;; ── Delete consumption ─────────────────────────────────────────────────────
+
+(rf/reg-event-fx :consumptions/delete
+  (fn [{:keys [db]} [_ consumption-id]]
+    {:http-xhrio {:method          :delete
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/delete-ok consumption-id]
+                  :on-failure      [:consumptions/fetch-err]}}))
+
+(rf/reg-event-db :consumptions/delete-ok
+  (fn [db [_ consumption-id _response]]
+    (update db :consumptions/list
+            (fn [items]
+              (filterv #(not= consumption-id (:consumption/id %)) items)))))
 
 ;; ── Step success — upsert consumption in the list ───────────────────────────
 

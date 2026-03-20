@@ -38,7 +38,11 @@
       (when (not= updated (get applied id))
         (throw (ex-info "Concurrent modification detected"
                         {:consumption-id id})))
-      updated)))
+      updated))
+
+  (delete! [_ id]
+    (swap! store dissoc id)
+    nil))
 
 (defmethod ig/init-key :consumptions/in-memory-repo
   [_ _]

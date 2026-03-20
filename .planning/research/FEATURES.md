@@ -149,7 +149,7 @@ Features to defer until product-market fit is established.
 
 ## Competitor Feature Analysis
 
-| Feature | Enogrid (Mon energie collective) | Maps Energy (ROSE Designer) | ProxyWatt (our approach) |
+| Feature | Enogrid (Mon energie collective) | Maps Energy (ROSE Designer) | Elink-co (our approach) |
 |---------|----------------------------------|----------------------------|--------------------------|
 | Network map | Map with participant locations and zone | Interactive map with energy community boundaries | Google Maps with network circle + production markers |
 | Production details | Producer list with contract status | Detailed technical specs per installation | Public list: name, energy type, location (no contract details) |

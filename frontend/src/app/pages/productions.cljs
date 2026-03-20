@@ -317,8 +317,9 @@
 
       :reagent-render
       (fn [production]
-        (let [dashboard @(rf/subscribe [:productions/dashboard])
-              loading?  @(rf/subscribe [:productions/dashboard-loading?])
+        (let [pid       (:production/id production)
+              dashboard @(rf/subscribe [:productions/dashboard pid])
+              loading?  @(rf/subscribe [:productions/dashboard-loading? pid])
               energy    (:production/energy-type production)
               network   (:network dashboard)
               producers (:producers dashboard)
@@ -326,16 +327,19 @@
           [:div.prod-dash
            ;; Header
            [:div.prod-dash__header
-            [:div {:style {:display "flex" :align-items "center" :gap "0.75rem"}}
+            [:div {:style {:display "flex" :align-items "center" :gap "0.5rem" :flex-wrap "wrap"}}
              [energy-icon energy]
-             [:div
-              [:h2.prod-dash__title
-               (str (get energy-type-labels energy energy) " — "
-                    (:production/installed-power production) " kWh")]
+             [:h2.prod-dash__title {:style {:margin "0" :display "flex" :align-items "center"
+                                            :gap "0.4rem" :flex-wrap "wrap"}}
+              [:span "Ma production"]
+              [:span (str (get energy-type-labels energy energy)
+                          " " (:production/installed-power production) " kWh")]
               (when (:network/name network)
-                [:a.prod-dash__network
-                 {:href (rfee/href :page/network-detail {:id (:network/id network)})}
-                 (:network/name network)])]]
+                [:<>
+                 [:span "dans le réseau"]
+                 [:a.prod-dash__network
+                  {:href (rfee/href :page/network-detail {:id (:network/id network)})}
+                  (:network/name network)]])]]
             [:div {:style {:display "flex" :align-items "center" :gap "0.5rem"}}
              [status-badge (:production/lifecycle production)]
              [block/production-menu production]]]

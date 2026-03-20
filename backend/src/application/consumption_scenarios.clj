@@ -130,6 +130,14 @@
         (mu/log ::consumption-abandoned :consumption-id consumption-id)
         c'))
 
+(defn delete-consumption
+  "Delete a consumption owned by the user."
+  [consumption-repo user-id consumption-id]
+  (let [c (find-and-check-ownership consumption-repo user-id consumption-id)]
+    (consumption/delete! consumption-repo consumption-id)
+    (mu/log ::consumption-deleted :consumption-id consumption-id :user-id user-id)
+    c))
+
 (defn sign-adhesion
       "Sign the Elink-co adhesion on the user (not on the consumption).
        Only needed for the first consumption or production."

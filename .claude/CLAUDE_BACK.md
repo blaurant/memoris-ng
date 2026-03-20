@@ -14,6 +14,7 @@ These are instruction for backend project for a clojure/clojurescript app.
 ## General Code Conventions
 - NEVER create another top-level namespace for top-level functions — `main.clj`, `system.clj` and similar files live at the root of `src/`
 - Use docString on every public function, use private function otherwise.
+- fait attention aux parenthèses, quand il y a beaucoup, tu as tendance à te tromper.
 
 ## Workflow Rules
 - Always run all tests after any code change before reporting success.

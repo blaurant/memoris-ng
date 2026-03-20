@@ -8,7 +8,9 @@
   (fn [db _] (:productions/loading? db)))
 
 (rf/reg-sub :productions/dashboard
-  (fn [db _] (:productions/dashboard db)))
+  (fn [db [_ production-id]]
+    (get-in db [:productions/dashboards production-id])))
 
 (rf/reg-sub :productions/dashboard-loading?
-  (fn [db _] (:productions/dashboard-loading? db)))
+  (fn [db [_ production-id]]
+    (get-in db [:productions/dashboard-loading production-id])))

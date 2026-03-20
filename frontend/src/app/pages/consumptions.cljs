@@ -155,6 +155,57 @@
            [:path {:d "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"}]
            [:path {:d "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"}]]]]))))
 
+;; ── Consumption menu ───────────────────────────────────────────────────────
+
+(defn- confirm-delete-modal [consumption on-confirm on-cancel]
+  [:div.modal-overlay {:on-click (fn [e]
+                                    (when (= (.-target e) (.-currentTarget e))
+                                      (on-cancel)))}
+   [:div.modal {:on-click #(.stopPropagation %)}
+    [:div.modal__header
+     [:span "Supprimer la consommation"]
+     [:button.btn.btn--small {:on-click on-cancel
+                              :style {:background "transparent" :color "var(--color-muted)"
+                                      :border "none" :font-size "1.2rem" :padding "0"}}
+      "\u00D7"]]
+    [:div.modal__body
+     [:p {:style {:margin-bottom "0.5rem" :font-weight "600" :color "#d32f2f"}}
+      "Cette action est irréversible."]
+     [:p {:style {:margin-bottom "0.5rem"}}
+      "Voulez-vous vraiment supprimer cette consommation ?"]]
+    [:div.modal__actions
+     [:button.btn.btn--small {:on-click on-cancel} "Annuler"]
+     [:button.btn.btn--small {:on-click on-confirm
+                              :style {:background "#d32f2f" :color "#fff"}}
+      "Supprimer"]]]])
+
+(defn- consumption-menu [consumption]
+  (let [show-menu?      (r/atom false)
+        confirm-delete? (r/atom false)]
+    (fn [consumption]
+      (let [cid (:consumption/id consumption)]
+        [:<>
+         [:div {:style {:position "relative"}}
+          [:button {:on-click #(swap! show-menu? not)
+                    :style {:background "transparent" :border "none" :cursor "pointer"
+                            :color "var(--color-muted)" :font-size "1.3rem"
+                            :padding "0 0.25rem" :line-height "1"}}
+           "\u22EE"]
+          (when @show-menu?
+            [:div.dropdown-menu
+             {:on-mouse-leave #(reset! show-menu? false)}
+             [:button.dropdown-menu__item
+              {:on-click (fn []
+                           (reset! show-menu? false)
+                           (reset! confirm-delete? true))}
+              "Supprimer"]])]
+         (when @confirm-delete?
+           [confirm-delete-modal consumption
+            (fn []
+              (rf/dispatch [:consumptions/delete cid])
+              (reset! confirm-delete? false))
+            #(reset! confirm-delete? false)])]))))
+
 ;; ── Dashboard view ──────────────────────────────────────────────────────────
 
 (defn- consumption-dashboard [consumption]
@@ -169,8 +220,9 @@
 
       :reagent-render
       (fn [consumption]
-        (let [dashboard  @(rf/subscribe [:consumptions/dashboard])
-              loading?   @(rf/subscribe [:consumptions/dashboard-loading?])
+        (let [cid        (:consumption/id consumption)
+              dashboard  @(rf/subscribe [:consumptions/dashboard cid])
+              loading?   @(rf/subscribe [:consumptions/dashboard-loading? cid])
               network    (:network dashboard)
               producers  (:producers dashboard)
               lifecycle  (:consumption/lifecycle consumption)
@@ -185,13 +237,13 @@
               (when (:network/name network)
                 [:<>
                  [:span "pour"]
-                 [:img {:src "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-                        :style {:width "28px" :height "28px" :flex-shrink "0"}}]
                  [:a.prod-dash__network
                   {:href (rfee/href :page/network-detail {:id (:network/id network)})
                    :style {:white-space "nowrap"}}
                   (:network/name network)]])]]
-            [status-badge lifecycle]]
+            [:div {:style {:display "flex" :align-items "center" :gap "0.5rem"}}
+             [status-badge lifecycle]
+             [consumption-menu consumption]]]
 
            ;; Address
            (when (:consumption/consumer-address consumption)

@@ -235,11 +235,7 @@
          "Suivant"]]]))))
 
 (def ^:private contract-configs
-  [{:type     :elinkco
-    :label    "Contrat Elinkco"
-    :text     contract/contract-text
-    :signed-key :consumption/contract-signed-at}
-   {:type     :producer
+  [{:type     :producer
     :label    "Contrat Producteur"
     :text     contract/producer-contract-text
     :signed-key :consumption/producer-contract-signed-at}
@@ -261,56 +257,70 @@
 (defn- step4-form [consumption-id consumption]
   (let [open-contract (r/atom nil)]
     (fn [consumption-id consumption]
-      [:div.onboarding__form
-       (doall
-         (for [{:keys [type label text signed-key]} contract-configs]
-           (let [signed? (some? (get consumption signed-key))]
-             ^{:key type}
-             [:div.contract-row
-              [:div.contract-row__info
-               [contract-icon]
-               [:span.contract-row__label label]]
-              (if signed?
-                [:span.contract-row__signed "Signe\u0301 \u2713"]
+      (let [user             @(rf/subscribe [:auth/user])
+            adhesion-signed? (some? (:adhesion-signed-at user))
+            all-configs      (if adhesion-signed?
+                               contract-configs
+                               (into [{:type       :adhesion
+                                       :label      "Adhésion Elink-co"
+                                       :text       contract/contract-text
+                                       :signed-key nil}]
+                                     contract-configs))]
+        [:div.onboarding__form
+         (doall
+           (for [{:keys [type label text signed-key]} all-configs]
+             (let [signed? (if (= type :adhesion)
+                             adhesion-signed?
+                             (some? (get consumption signed-key)))]
+               ^{:key type}
+               [:div.contract-row
+                [:div.contract-row__info
+                 [contract-icon]
+                 [:span.contract-row__label label]]
+                (if signed?
+                  [:span.contract-row__signed "Sign\u00e9 \u2713"]
+                  [:button.btn.btn--small.btn--outline
+                   {:on-click #(reset! open-contract type)}
+                   "A signer"])])))
+         (when-let [ct @open-contract]
+           (let [cfg (first (filter #(= ct (:type %)) all-configs))
+                 {:keys [label text]} cfg]
+             [:div.modal-overlay {:on-click (fn [e]
+                                              (when (= (.-target e) (.-currentTarget e))
+                                                (reset! open-contract nil)))}
+              [:div.modal
+               [:div.modal__header
+                [:span label]
+                [:button.btn.btn--small
+                 {:on-click #(reset! open-contract nil)
+                  :style {:background "transparent" :color "var(--color-muted)"
+                          :border "none" :font-size "1.2rem" :padding "0"}}
+                 "\u00D7"]]
+               [:div.modal__body
+                [:pre {:style {:white-space      "pre-wrap"
+                               :font-size        "0.85rem"
+                               :line-height      "1.5"
+                               :background-color "var(--color-green-pale)"
+                               :padding          "1rem"
+                               :border-radius    "var(--radius)"
+                               :max-height       "400px"
+                               :overflow-y       "auto"}}
+                 text]]
+               [:div.modal__actions
                 [:button.btn.btn--small.btn--outline
-                 {:on-click #(reset! open-contract type)}
-                 "A signer"])])))
-       (when-let [ct @open-contract]
-         (let [{:keys [label text]} (first (filter #(= ct (:type %)) contract-configs))]
-           [:div.modal-overlay {:on-click (fn [e]
-                                            (when (= (.-target e) (.-currentTarget e))
-                                              (reset! open-contract nil)))}
-            [:div.modal
-             [:div.modal__header
-              [:span label]
-              [:button.btn.btn--small
-               {:on-click #(reset! open-contract nil)
-                :style {:background "transparent" :color "var(--color-muted)"
-                        :border "none" :font-size "1.2rem" :padding "0"}}
-               "\u00D7"]]
-             [:div.modal__body
-              [:pre {:style {:white-space      "pre-wrap"
-                             :font-size        "0.85rem"
-                             :line-height      "1.5"
-                             :background-color "var(--color-green-pale)"
-                             :padding          "1rem"
-                             :border-radius    "var(--radius)"
-                             :max-height       "400px"
-                             :overflow-y       "auto"}}
-               text]]
-             [:div.modal__actions
-              [:button.btn.btn--small.btn--outline
-               {:on-click #(reset! open-contract nil)}
-               "Annuler"]
-              [:button.btn.btn--small.btn--green
-               {:on-click (fn []
-                            (reset! open-contract nil)
-                            (rf/dispatch [:consumptions/submit-step4 consumption-id ct]))}
-               "Signer le contrat"]]]]))
-       [:div {:style {:margin-top "0.75rem"}}
-        [:button.btn.btn--small.btn--outline
-         {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
-         "Précédent"]]])))
+                 {:on-click #(reset! open-contract nil)}
+                 "Annuler"]
+                [:button.btn.btn--small.btn--green
+                 {:on-click (fn []
+                              (reset! open-contract nil)
+                              (if (= ct :adhesion)
+                                (rf/dispatch [:auth/sign-adhesion])
+                                (rf/dispatch [:consumptions/submit-step4 consumption-id ct])))}
+                 "Signer"]]]]))
+         [:div {:style {:margin-top "0.75rem"}}
+          [:button.btn.btn--small.btn--outline
+           {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+           "Précédent"]]]))))
 
 (defn onboarding-form [consumption]
   (let [lifecycle (keyword (:consumption/lifecycle consumption))

@@ -108,20 +108,26 @@
   (let [stats   @(rf/subscribe [:network-detail/stats])
         network @(rf/subscribe [:network-detail/network])
         price   (:network/price-per-kwh network)]
-    [:section.nd-stats
-     [:div.nd-stat-card
-      [:span.nd-stat-value (:total-capacity-kwc stats)]
-      [:span.nd-stat-label "Capacite installee (kWh)"]]
-     [:div.nd-stat-card
-      [:span.nd-stat-value (:production-count stats)]
-      [:span.nd-stat-label "Sites de production"]]
-     [:div.nd-stat-card
-      [:span.nd-stat-value (:consumer-count stats)]
-      [:span.nd-stat-label "Consommateurs"]]
-     (when price
+    (let [radius-km (:network/radius-km network)
+          diameter  (when radius-km (* 2 radius-km))]
+      [:section.nd-stats
        [:div.nd-stat-card
-        [:span.nd-stat-value (str price " €")]
-        [:span.nd-stat-label "Prix HT/kWh"]])]))
+        [:span.nd-stat-value (:total-capacity-kwc stats)]
+        [:span.nd-stat-label "Capacite installee (kWh)"]]
+       [:div.nd-stat-card
+        [:span.nd-stat-value (:production-count stats)]
+        [:span.nd-stat-label "Sites de production"]]
+       [:div.nd-stat-card
+        [:span.nd-stat-value (:consumer-count stats)]
+        [:span.nd-stat-label "Consommateurs"]]
+       (when diameter
+         [:div.nd-stat-card
+          [:span.nd-stat-value (str diameter " km")]
+          [:span.nd-stat-label "Diametre du reseau"]])
+       (when price
+         [:div.nd-stat-card
+          [:span.nd-stat-value (str price " €")]
+          [:span.nd-stat-label "Prix HT/kWh"]])])))
 
 (defn- energy-mix-bar [energy-mix]
   (if (empty? energy-mix)
@@ -179,7 +185,8 @@
                  (when-let [addr (:production/producer-address prod)]
                    (let [label (str (energy-type-label (:production/energy-type prod))
                                     " - " (:production/installed-power prod) " kWh")]
-                     (google-maps/geocode-and-mark! gmap markers addr label nil)))))))))
+                     (google-maps/geocode-and-mark! gmap markers addr label nil
+                      "https://maps.google.com/mapfiles/ms/icons/blue-dot.png")))))))))
 
       :component-will-unmount
       (fn [_this]
@@ -209,7 +216,12 @@
           [:div.nd-production-card
            [:span.nd-production-type (energy-type-label (:production/energy-type prod))]
            [:span.nd-production-power (str (:production/installed-power prod) " kWh")]
-           [:span.nd-production-address (:production/producer-address prod)]])])]))
+           [:span.nd-production-address
+            {:style {:display "flex" :align-items "center"}}
+            [:img {:src   "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                   :style {:width "28px" :height "28px" :flex-shrink "0"
+                           :margin-right "0.4rem"}}]
+            (:production/producer-address prod)]])])]))
 
 (defn- network-description []
   (let [network @(rf/subscribe [:network-detail/network])

@@ -183,6 +183,18 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
+(defn- delete-consumption-handler [consumption-repo]
+  (fn [request]
+    (try
+      (let [user-id        (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))]
+        (scenarios/delete-consumption consumption-repo user-id consumption-id)
+        {:status 200
+         :body   {:ok true}})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
 (defn- dashboard-handler [consumption-repo production-repo network-repo]
   (fn [request]
     (try
@@ -205,6 +217,9 @@
       [["/api/v1/consumptions"
         {:get        (list-consumptions-handler consumption-repo)
          :post       (create-consumption-handler consumption-repo)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id"
+        {:delete     (delete-consumption-handler consumption-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/update-address"
         {:put        (update-consumer-address-handler consumption-repo)

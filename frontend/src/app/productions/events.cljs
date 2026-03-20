@@ -218,23 +218,23 @@
 
 (rf/reg-event-fx :productions/fetch-dashboard
   (fn [{:keys [db]} [_ production-id]]
-    {:db         (assoc db :productions/dashboard-loading? true)
+    {:db         (assoc-in db [:productions/dashboard-loading production-id] true)
      :http-xhrio {:method          :get
                   :uri             (str config/API_BASE "/api/v1/productions/" production-id "/dashboard")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
                   :response-format (ajax/json-response-format {:keywords? true})
-                  :on-success      [:productions/fetch-dashboard-ok]
-                  :on-failure      [:productions/fetch-dashboard-err]}}))
+                  :on-success      [:productions/fetch-dashboard-ok production-id]
+                  :on-failure      [:productions/fetch-dashboard-err production-id]}}))
 
 (rf/reg-event-db :productions/fetch-dashboard-ok
-  (fn [db [_ data]]
+  (fn [db [_ production-id data]]
     (-> db
-        (assoc :productions/dashboard data)
-        (assoc :productions/dashboard-loading? false))))
+        (assoc-in [:productions/dashboards production-id] data)
+        (assoc-in [:productions/dashboard-loading production-id] false))))
 
 (rf/reg-event-db :productions/fetch-dashboard-err
-  (fn [db _]
-    (assoc db :productions/dashboard-loading? false)))
+  (fn [db [_ production-id]]
+    (assoc-in db [:productions/dashboard-loading production-id] false)))
 
 ;; ── Step success — upsert production in the list ───────────────────────────
 

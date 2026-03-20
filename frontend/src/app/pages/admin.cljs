@@ -488,7 +488,7 @@
   (let [header "ID;Utilisateur;Adresse;Réseau;PDL/PRM;Puissance (kWh);Type;Compteur Linky;IBAN;Statut"
         rows   (map (fn [p]
                       (str/join ";" [(:production/id p)
-                                     (:production/user-id p)
+                                     (or (:production/user-name p) (:production/user-id p))
                                      (or (:production/producer-address p) "")
                                      (or (:production/network-id p) "")
                                      (or (:production/pdl-prm p) "")
@@ -545,7 +545,7 @@
       (for [p productions]
         ^{:key (:production/id p)}
         [:tr
-         [:td (subs (str (:production/user-id p)) 0 8)]
+         [:td (or (:production/user-name p) (subs (str (:production/user-id p)) 0 8))]
          [:td (or (:production/producer-address p) "-")]
          [:td (or (:production/pdl-prm p) "-")]
          [:td (when-let [pw (:production/installed-power p)] (str pw " kWh"))]

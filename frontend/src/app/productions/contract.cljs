@@ -1,11 +1,11 @@
 (ns app.productions.contract)
 
 (def adhesion-contract-text
-  "CONTRAT D'ADHESION A L'ASSOCIATION Elinkco
+  "CONTRAT D'ADHESION A L'ASSOCIATION Elink-co
 
 Article 1 - Objet
 Le present contrat a pour objet de definir les conditions d'adhesion
-du Producteur a l'association Elinkco, dans le cadre d'une operation
+du Producteur a l'association Elink-co, dans le cadre d'une operation
 d'autoconsommation collective conformement aux articles L315-2 et
 suivants du Code de l'energie.
 
@@ -18,7 +18,7 @@ Le Producteur s'engage a :
 - Communiquer son IBAN pour le versement des compensations
 
 Article 3 - Engagements de l'Association
-L'association Elinkco s'engage a :
+L'association Elink-co s'engage a :
 - Assurer la repartition equitable de l'energie produite entre les consommateurs
 - Fournir un suivi mensuel de la production injectee
 - Verser les compensations financieres au Producteur selon les modalites convenues
