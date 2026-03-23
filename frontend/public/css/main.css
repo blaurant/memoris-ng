@@ -1324,5 +1324,6 @@ a { color: var(--color-green); }
 @media (max-width: 640px) {
   .eligibility-form__group { flex-direction: column; }
   .hero { padding: 3rem 1rem; }
+  .navbar__menu { display: none; }
 }
 

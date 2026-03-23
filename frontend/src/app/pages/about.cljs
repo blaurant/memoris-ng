@@ -34,13 +34,18 @@
 
 (defn about-page []
   [:div.landing
-   ;; Hero
+   ;; Hero with image
    [:section.section.section--alt
     [:div.container {:style {:text-align "center"}}
      [:h1.section__title "Qui sommes-nous ?"]
      [:p.section__subtitle {:style {:max-width "700px" :margin "0 auto"}}
       "Elink-co est une association loi 1901 qui organise des opérations d'autoconsommation collective "
-      "pour permettre à chacun de consommer une énergie renouvelable, locale et à prix juste."]]]
+      "pour permettre à chacun de consommer une énergie renouvelable, locale et à prix juste."]
+     [:img {:src "/img/about-community.jpg"
+            :alt "Voisins partageant un moment devant des panneaux solaires"
+            :style {:width "100%" :max-width "700px" :margin "2rem auto 0"
+                    :border-radius "var(--radius)" :display "block"
+                    :box-shadow "var(--shadow)"}}]]]
 
    ;; Mission
    [:section.section
@@ -95,7 +100,12 @@
        [:li "Nous définissons les " [:strong "clés de répartition"] " de l'énergie entre les participants de chaque réseau"]
        [:li "Nous assurons le " [:strong "suivi mensuel"] " de la production et de la consommation de chaque membre"]
        [:li "Nous garantissons des " [:strong "tarifs stables et transparents"] ", découplés des fluctuations du marché de l'énergie"]
-       [:li "Nous veillons à une " [:strong "répartition équitable"] " et versons les compensations financières aux producteurs"]]]]]
+       [:li "Nous veillons à une " [:strong "répartition équitable"] " et versons les compensations financières aux producteurs"]]
+      [:img {:src "/img/about-project.jpg"
+             :alt "Habitants planifiant un projet solaire dans leur village"
+             :style {:width "100%" :margin-top "1.5rem"
+                     :border-radius "var(--radius)"
+                     :box-shadow "var(--shadow)"}}]]]]
 
    ;; Cadre légal
    [:section.section.section--alt
@@ -105,12 +115,13 @@
       [:p
        "L'autoconsommation collective est encadrée par les "
        [:strong "articles L315-2 et suivants du Code de l'énergie"]
-       ". Ce dispositif, introduit en 2017 et renforcé depuis, permet à des producteurs "
-       "et des consommateurs situés dans un périmètre géographique restreint (2 à 20 km selon les zones) "
-       "de partager de l'énergie renouvelable via le réseau public de distribution."]
+       ". Ce dispositif, introduit en 2017 et renforcé depuis, permet à des producteurs et des "
+       "consommateurs situés dans un périmètre géographique restreint (2 à 20 km selon les "
+       "zones) de partager de l'énergie renouvelable via le réseau public de distribution."]
       [:p
-       "En tant qu'association loi 1901, Elink-co agit dans un cadre désintéressé, au service "
-       "de ses membres et de la transition énergétique locale."]]]]
+       "En tant qu'association loi 1901, Elink-co agit au service de ses membres et de la transition "
+       "énergétique locale. Les frais de gestion facturés aux producteurs et consommateurs ainsi que "
+       "les frais de cotisation annuelle participent au bon fonctionnement de l'association."]]]]
 
    ;; CTA
    [:section.section
