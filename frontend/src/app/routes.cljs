@@ -15,8 +15,13 @@
     ["/reset-password"    {:name :page/reset-password}]
     ["/reseau/:id"        {:name :page/network-detail}]
     ["/faq"               {:name :page/faq}]
-    ["/qui-sommes-nous"   {:name :page/about}]
-    ["/comment-ca-marche" {:name :page/how-it-works}]]))
+    ["/qui-sommes-nous"          {:name :page/about}]
+    ["/comment-ca-marche"        {:name :page/how-it-works}]
+    ["/consommateur-particulier" {:name :page/for-individual-consumer}]
+    ["/producteur-particulier"   {:name :page/for-individual-producer}]
+    ["/entreprise"               {:name :page/for-business}]
+    ["/agriculteurs"             {:name :page/for-farmers}]
+    ["/temoignages"              {:name :page/testimonials}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."

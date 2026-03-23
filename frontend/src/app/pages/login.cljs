@@ -83,7 +83,7 @@
                "Inscription")]
         [:p (if join-network
               "Créez votre compte pour finaliser votre adhésion."
-              "Créez votre compte pour accéder à votre espace client.")]
+              "Créez votre compte et accédez à votre espace client.")]
         [email-register-form]
         [:div.auth-separator
          [:span "ou"]]]
