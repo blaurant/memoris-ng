@@ -22,6 +22,11 @@
               (user/build-user u)))
           (vals @store)))
 
+  (find-by-docuseal-submission-id [_ submission-id]
+    (some (fn [u] (when (= submission-id (:user/docuseal-submission-id u))
+                    (user/build-user u)))
+          (vals @store)))
+
   (find-all [_]
     (mapv user/build-user (vals @store)))
 

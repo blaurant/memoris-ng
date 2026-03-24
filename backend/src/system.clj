@@ -22,7 +22,8 @@
             [infrastructure.xtdb.xtdb-consumption-repo]
             [infrastructure.xtdb.xtdb-production-repo]
             [infrastructure.xtdb.xtdb-eligibility-check-repo]
-            [infrastructure.xtdb.xtdb-alert-banner-repo]))
+            [infrastructure.xtdb.xtdb-alert-banner-repo]
+            [infrastructure.docuseal.docuseal-gateway]))
 
 ;; Teach aero how to read #ig/ref tags from system.edn
 (defmethod aero/reader 'ig/ref [_ _ value] (ig/ref value))

@@ -80,7 +80,7 @@
       {:on-click on-close}
       "Fermer"]]]])
 
-(defn- contract-row [{:keys [icon label sublabel status lifecycle signed-at on-click]}]
+(defn- contract-row [{:keys [icon label sublabel status lifecycle signed-at on-click download-event]}]
   [:div.contracts__row {:on-click on-click
                         :style {:cursor (when on-click "pointer")}}
    [:div.contracts__row-left
@@ -90,10 +90,23 @@
      (when sublabel
        [:span.contracts__row-type sublabel])]]
    [:div.contracts__row-right
-    (when-let [date (format-date signed-at)]
-      [:span.contracts__row-date (str "Signé le " date)])
     [:span {:class (str "contracts__status " (status-class lifecycle))}
-     status]]])
+     (if-let [date (format-date signed-at)]
+       (str "Signé le " date)
+       status)]
+    (when download-event
+      [:button {:on-click (fn [e]
+                            (.stopPropagation e)
+                            (rf/dispatch download-event))
+                :title "Télécharger le document signé"
+                :style {:background "none" :border "none" :cursor "pointer"
+                        :padding "0 0 0 0.5rem" :display "flex" :align-items "center"}}
+       [:svg {:width "24" :height "24" :viewBox "0 0 24 24" :fill "none"
+              :stroke "var(--color-green)" :stroke-width "2"
+              :stroke-linecap "round" :stroke-linejoin "round"}
+        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+        [:polyline {:points "7 10 12 15 17 10"}]
+        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]])]])
 
 ;; ── Adhesion section ────────────────────────────────────────────────────────
 
@@ -106,13 +119,14 @@
           [:<>
            [:h3.contracts__section-title "Adhésion"]
            [contract-row
-            {:icon      [doc-icon]
-             :label     "Adhésion Elink-co"
-             :sublabel  "Association"
-             :status    "Signé"
-             :lifecycle "active"
-             :signed-at (:adhesion-signed-at user)
-             :on-click  #(reset! open-modal? true)}]
+            {:icon           [doc-icon]
+             :label          "Adhésion Elink-co"
+             :sublabel       "Association"
+             :status         "Signé"
+             :lifecycle      "active"
+             :signed-at      (:adhesion-signed-at user)
+             :on-click       #(reset! open-modal? true)
+             :download-event [:auth/download-adhesion]}]
            (when @open-modal?
              [contract-modal "Adhésion Elink-co"
               conso-contract/contract-text

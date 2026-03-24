@@ -32,7 +32,8 @@
    [:user/lifecycle [:enum :alive :suspended :deactivated]]
    [:user/password-hash {:optional true} [:maybe string?]]
    [:user/email-verified? {:optional true} boolean?]
-   [:user/adhesion-signed-at {:optional true} [:maybe string?]]])
+   [:user/adhesion-signed-at {:optional true} [:maybe string?]]
+   [:user/docuseal-submission-id {:optional true} [:maybe int?]]])
 
 
 (defn build-user
@@ -140,9 +141,15 @@
 
 ;; ── Repository protocol ───────────────────────────────────────────────────
 
+(defn set-docuseal-submission-id
+      "Store the DocuSeal submission ID on the user."
+      [user submission-id]
+      (assoc user :user/docuseal-submission-id submission-id))
+
 (defprotocol UserRepo
   (find-by-id       [repo id]               "Find a user by ID.")
   (find-by-email    [repo provider email]    "Find a user by provider and email.")
   (find-by-provider [repo provider provider-subject-identifier] "Find a user by provider and provider-subject-identifier.")
+  (find-by-docuseal-submission-id [repo submission-id] "Find a user by DocuSeal submission ID.")
   (find-all         [repo]                   "Returns all users.")
   (save!            [repo user]              "Persist a user (insert or update)."))

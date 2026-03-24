@@ -1,6 +1,8 @@
 (ns application.consumption-scenarios
   (:require [com.brunobonacci.mulog :as mu]
+            [domain.adhesion-html :as adhesion-html]
             [domain.consumption :as consumption]
+            [domain.document-signer :as document-signer]
             [domain.network :as network]
             [domain.production :as production]
             [domain.user :as user]))
@@ -139,17 +141,75 @@
     c))
 
 (defn sign-adhesion
-      "Sign the Elink-co adhesion on the user (not on the consumption).
-       Only needed for the first consumption or production."
-      [user-repo user-id]
-      (let [u  (user/find-by-id user-repo user-id)]
+      "Initiate the Elink-co adhesion signing via DocuSeal.
+       Returns {:signing-url ...} for the frontend to embed.
+       The adhesion is NOT marked as signed until the webhook confirms it."
+      [user-repo document-signer user-id]
+      (let [u (user/find-by-id user-repo user-id)]
         (when-not u
           (throw (ex-info "User not found" {:user-id user-id})))
+        (when (user/adhesion-signed? u)
+          (throw (ex-info "Adhesion already signed" {:user-id user-id})))
+        (let [html   (adhesion-html/render-adhesion-html
+                       (:user/name u) (:user/email u))
+              result (document-signer/create-html-signature-request
+                       document-signer html (:user/email u))
+              u'     (-> u
+                         (user/set-docuseal-submission-id (:submission-id result)))]
+          (user/save! user-repo u')
+          (mu/log ::adhesion-signature-requested
+                  :user-id       user-id
+                  :submission-id (:submission-id result))
+          {:signing-url (:signing-url result)})))
+
+(defn complete-adhesion-webhook
+      "Called by the DocuSeal webhook when adhesion is signed.
+       Finds the user by submission-id and marks adhesion as signed."
+      [user-repo submission-id]
+      (let [u (user/find-by-docuseal-submission-id user-repo submission-id)]
+        (when-not u
+          (throw (ex-info "User not found for submission" {:submission-id submission-id})))
         (when-not (user/adhesion-signed? u)
           (let [u' (user/sign-adhesion u)]
             (user/save! user-repo u')
-            (mu/log ::adhesion-signed :user-id user-id)))
+            (mu/log ::adhesion-signed :user-id (:user/id u)
+                    :submission-id submission-id)))
         :ok))
+
+(defn check-adhesion-status
+      "Check with DocuSeal if the adhesion has been signed.
+       If completed, marks the user's adhesion as signed."
+      [user-repo document-signer user-id]
+      (let [u (user/find-by-id user-repo user-id)]
+        (when-not u
+          (throw (ex-info "User not found" {:user-id user-id})))
+        (if (user/adhesion-signed? u)
+          {:signed true}
+          (if-not (:user/docuseal-submission-id u)
+            {:signed false}
+            (let [completed? (document-signer/submission-completed?
+                               document-signer (:user/docuseal-submission-id u))]
+              (when completed?
+                (let [u' (user/sign-adhesion u)]
+                  (user/save! user-repo u')
+                  (mu/log ::adhesion-confirmed-via-poll
+                          :user-id user-id
+                          :submission-id (:user/docuseal-submission-id u))))
+              {:signed completed?})))))
+
+(defn get-adhesion-document-url
+      "Retrieve the signed adhesion document URL from DocuSeal."
+      [user-repo document-signer user-id]
+      (let [u (user/find-by-id user-repo user-id)]
+        (when-not u
+          (throw (ex-info "User not found" {:user-id user-id})))
+        (when-not (:user/docuseal-submission-id u)
+          (throw (ex-info "No adhesion submission found" {:user-id user-id})))
+        (let [url (document-signer/get-signed-document-url
+                    document-signer (:user/docuseal-submission-id u))]
+          (when-not url
+            (throw (ex-info "Document not yet available" {:user-id user-id})))
+          {:document-url url})))
 
 (defn sign-contract
       "Sign one contract (contract-type = :producer | :sepa).

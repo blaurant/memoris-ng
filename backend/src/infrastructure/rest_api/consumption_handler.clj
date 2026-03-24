@@ -1,6 +1,8 @@
 (ns infrastructure.rest-api.consumption-handler
   (:require [application.consumption-scenarios :as scenarios]
+            [clojure.data.json :as json]
             [clojure.string :as str]
+            [com.brunobonacci.mulog :as mu]
             [domain.id :as id]
             [domain.user :as user]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
@@ -129,15 +131,53 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- sign-adhesion-handler [user-repo]
+(defn- sign-adhesion-handler [user-repo document-signer]
   (fn [request]
     (try
-      (let [user-id (user-id-from-request request)]
-        (scenarios/sign-adhesion user-repo user-id)
-        (let [u (user/find-by-id user-repo user-id)]
-          {:status 200
-           :body   {:ok true
-                    :adhesion-signed-at (:user/adhesion-signed-at u)}}))
+      (let [user-id (user-id-from-request request)
+            result  (scenarios/sign-adhesion user-repo document-signer user-id)]
+        {:status 200
+         :body   result})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- docuseal-webhook-handler [user-repo]
+  (fn [request]
+    (try
+      (let [body          (json/read-str (slurp (:body request)) :key-fn keyword)
+            event-type    (:event_type body)
+            data          (:data body)
+            submission-id (when data
+                            (or (:submission_id data) (:id data)))]
+        (mu/log ::docuseal-webhook :event-type event-type :submission-id submission-id)
+        (when (and (= "submission.completed" event-type) submission-id)
+          (scenarios/complete-adhesion-webhook user-repo submission-id))
+        {:status 200 :body {:ok true}})
+      (catch clojure.lang.ExceptionInfo e
+        (mu/log ::docuseal-webhook-error :error (.getMessage e))
+        {:status 200 :body {:ok true}}))))
+
+(defn- check-adhesion-handler [user-repo document-signer]
+  (fn [request]
+    (try
+      (let [user-id (user-id-from-request request)
+            result  (scenarios/check-adhesion-status
+                      user-repo document-signer user-id)]
+        {:status 200
+         :body   result})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- adhesion-document-handler [user-repo document-signer]
+  (fn [request]
+    (try
+      (let [user-id (user-id-from-request request)
+            result  (scenarios/get-adhesion-document-url
+                      user-repo document-signer user-id)]
+        {:status 200
+         :body   result})
       (catch clojure.lang.ExceptionInfo e
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
@@ -213,7 +253,7 @@
 
 (defn routes
       "Returns Reitit route vectors for consumption endpoints."
-      [consumption-repo production-repo network-repo user-repo jwt-secret]
+      [consumption-repo production-repo network-repo user-repo document-signer jwt-secret]
       [["/api/v1/consumptions"
         {:get        (list-consumptions-handler consumption-repo)
          :post       (create-consumption-handler consumption-repo)
@@ -249,5 +289,13 @@
         {:put        (sign-contract-handler consumption-repo user-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/auth/sign-adhesion"
-        {:put        (sign-adhesion-handler user-repo)
-         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])
+        {:put        (sign-adhesion-handler user-repo document-signer)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/auth/check-adhesion"
+        {:get        (check-adhesion-handler user-repo document-signer)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/auth/adhesion-document"
+        {:get        (adhesion-document-handler user-repo document-signer)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/webhooks/docuseal"
+        {:post       (docuseal-webhook-handler user-repo)}]])

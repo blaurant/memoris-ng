@@ -36,6 +36,15 @@
       (when-let [eid (ffirst results)]
         (doc->user (xt/entity (xt/db node) eid)))))
 
+  (find-by-docuseal-submission-id [_ submission-id]
+    (let [results (xt/q (xt/db node)
+                        '{:find  [e]
+                          :where [[e :user/docuseal-submission-id sid]]
+                          :in    [sid]}
+                        submission-id)]
+      (when-let [eid (ffirst results)]
+        (doc->user (xt/entity (xt/db node) eid)))))
+
   (find-all [_]
     (let [results (xt/q (xt/db node)
                         '{:find  [(pull e [*])]

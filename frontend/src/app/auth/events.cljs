@@ -205,7 +205,8 @@
 
 (rf/reg-event-fx :auth/sign-adhesion
   (fn [{:keys [db]} _]
-    {:http-xhrio {:method          :put
+    {:db (assoc db :auth/adhesion-loading? true)
+     :http-xhrio {:method          :put
                   :uri             (str config/API_BASE "/api/v1/auth/sign-adhesion")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
                   :format          (ajax/json-request-format)
@@ -215,14 +216,58 @@
 
 (rf/reg-event-db :auth/sign-adhesion-ok
   (fn [db [_ response]]
-    (let [signed-at (or (:adhesion-signed-at response) (.toISOString (js/Date.)))
-          user      (assoc (:auth/user db) :adhesion-signed-at signed-at)]
-      (.setItem js/localStorage "auth-user" (js/JSON.stringify (clj->js user)))
-      (assoc db :auth/user user))))
+    (let [url (:signing-url response)]
+      (when url (.open js/window url "_blank"))
+      (-> db
+          (assoc :auth/adhesion-loading? false)
+          (assoc :auth/docuseal-signing-url url)))))
 
 (rf/reg-event-db :auth/sign-adhesion-err
   (fn [db _]
-    (js/console.error "Failed to sign adhesion")
+    (js/console.error "Failed to initiate adhesion signing")
+    (assoc db :auth/adhesion-loading? false)))
+
+(rf/reg-event-fx :auth/check-adhesion-status
+  (fn [{:keys [db]} _]
+    {:http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/auth/check-adhesion")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/check-adhesion-ok]
+                  :on-failure      [:auth/check-adhesion-err]}}))
+
+(rf/reg-event-fx :auth/check-adhesion-ok
+  (fn [{:keys [db]} [_ response]]
+    (if (:signed response)
+      {:dispatch [:auth/refresh-user]}
+      {:db db})))
+
+(rf/reg-event-db :auth/check-adhesion-err
+  (fn [db _] db))
+
+(rf/reg-event-fx :auth/docuseal-signing-complete
+  (fn [{:keys [db]} _]
+    {:db (dissoc db :auth/docuseal-signing-url)
+     :dispatch [:auth/check-adhesion-status]}))
+
+(rf/reg-event-fx :auth/download-adhesion
+  (fn [{:keys [db]} _]
+    {:http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/auth/adhesion-document")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/download-adhesion-ok]
+                  :on-failure      [:auth/download-adhesion-err]}}))
+
+(rf/reg-event-db :auth/download-adhesion-ok
+  (fn [db [_ response]]
+    (when-let [url (:document-url response)]
+      (.open js/window url "_blank"))
+    db))
+
+(rf/reg-event-db :auth/download-adhesion-err
+  (fn [db _]
+    (js/console.error "Failed to download adhesion document")
     db))
 
 ;; ── Refresh user from backend ────────────────────────────────────────────────

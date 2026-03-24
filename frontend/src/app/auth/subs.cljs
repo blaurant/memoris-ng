@@ -49,3 +49,9 @@
 
 (rf/reg-sub :auth/reset-password-success?
   (fn [db _] (:auth/reset-password-success? db)))
+
+(rf/reg-sub :auth/docuseal-signing-url
+  (fn [db _] (:auth/docuseal-signing-url db)))
+
+(rf/reg-sub :auth/adhesion-loading?
+  (fn [db _] (:auth/adhesion-loading? db)))

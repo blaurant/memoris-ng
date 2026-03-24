@@ -393,68 +393,77 @@
    [:line {:x1 "16" :y1 "17" :x2 "8" :y2 "17"}]
    [:polyline {:points "10 9 9 9 8 9"}]])
 
-(defn- step3-form [production-id production]
-  (let [show-contract? (r/atom false)]
-    (fn [production-id _production]
-      (let [user             @(rf/subscribe [:auth/user])
-            adhesion-signed? (some? (:adhesion-signed-at user))]
-        [:div.onboarding__form
-         ;; Adhesion Elink-co — only if not yet signed by user
-         (when-not adhesion-signed?
-           [:div.contract-row
-            [:div.contract-row__info
-             [contract-icon]
-             [:span.contract-row__label "Adhésion Elink-co"]]
-            [:button.btn.btn--small.btn--outline
-             {:on-click #(reset! show-contract? true)}
-             "A signer"]])
-         ;; Finalisation — only visible if adhesion is signed
-         (when adhesion-signed?
-           [:div.contract-row
-            [:div.contract-row__info
-             [contract-icon]
-             [:span.contract-row__label "Adhésion Elink-co"]]
-            [:span.contract-row__signed "Signé \u2713"]])
-         ;; Navigation buttons
-         [:div {:style {:display "flex" :justify-content "space-between" :margin-top "1rem"}}
+(defn- docuseal-signing-watcher []
+  (let [visibility-handler (atom nil)]
+    (r/create-class
+      {:component-did-mount
+       (fn [_]
+         (let [handler (fn []
+                         (when (= "visible" (.-visibilityState js/document))
+                           (rf/dispatch [:auth/check-adhesion-status])
+                           (js/setTimeout
+                             #(rf/dispatch [:auth/docuseal-signing-complete])
+                             2000)))]
+           (reset! visibility-handler handler)
+           (.addEventListener js/document "visibilitychange" handler)))
+       :component-will-unmount
+       (fn [_]
+         (when-let [handler @visibility-handler]
+           (.removeEventListener js/document "visibilitychange" handler)))
+       :reagent-render
+       (fn []
+         (let [signing-url @(rf/subscribe [:auth/docuseal-signing-url])]
+           (when signing-url
+             [:div.modal-overlay {:on-click (fn [e]
+                                              (when (= (.-target e) (.-currentTarget e))
+                                                (rf/dispatch [:auth/docuseal-signing-complete])))}
+              [:div.modal {:style {:max-width "500px" :text-align "center"}}
+               [:div.modal__header
+                [:span "Signature de l'adhésion"]
+                [:button.btn.btn--small
+                 {:on-click #(rf/dispatch [:auth/docuseal-signing-complete])
+                  :style {:background "transparent" :color "var(--color-muted)"
+                          :border "none" :font-size "1.2rem" :padding "0"}}
+                 "\u00D7"]]
+               [:div.modal__body {:style {:padding "2rem"}}
+                [:p {:style {:font-size "1rem" :line-height "1.6" :margin-bottom "1.5rem"}}
+                 "Le document d'adhésion Elink-co a été ouvert dans un nouvel onglet. "
+                 "Signez-le puis revenez ici."]
+                [:p {:style {:font-size "0.85rem" :color "var(--color-muted)" :margin-bottom "1.5rem"}}
+                 "La fenêtre se fermera automatiquement quand vous reviendrez."]
+                [:a.btn.btn--green
+                 {:href signing-url :target "_blank" :rel "noopener"}
+                 "Ouvrir le document à signer"]]]])))})))
+
+(defn- step3-form [production-id _production]
+  (let [user              @(rf/subscribe [:auth/user])
+        adhesion-signed?  (some? (:adhesion-signed-at user))
+        adhesion-loading? @(rf/subscribe [:auth/adhesion-loading?])]
+    [:div.onboarding__form
+     ;; Adhesion Elink-co
+     [:div.contract-row
+      [:div.contract-row__info
+       [contract-icon]
+       [:span.contract-row__label "Adhésion Elink-co"]]
+      (if adhesion-signed?
+        [:span.contract-row__signed "Signé \u2713"]
+        (if adhesion-loading?
+          [:span {:style {:color "var(--color-muted)" :font-size "0.85rem"}}
+           "Chargement..."]
           [:button.btn.btn--small.btn--outline
-           {:on-click #(rf/dispatch [:productions/go-back production-id])}
-           "Précédent"]
-          [:button.btn.btn--green.btn--small
-           {:disabled (not adhesion-signed?)
-            :on-click #(rf/dispatch [:productions/submit-step3 production-id])}
-           "Valider et soumettre"]]
-         (when @show-contract?
-           [:div.modal-overlay {:on-click (fn [e]
-                                             (when (= (.-target e) (.-currentTarget e))
-                                               (reset! show-contract? false)))}
-            [:div.modal
-             [:div.modal__header
-              [:span "Adhésion Elink-co"]
-              [:button.btn.btn--small
-               {:on-click #(reset! show-contract? false)
-                :style {:background "transparent" :color "var(--color-muted)"
-                        :border "none" :font-size "1.2rem" :padding "0"}}
-               "\u00D7"]]
-             [:div.modal__body
-              [:pre {:style {:white-space      "pre-wrap"
-                             :font-size        "0.85rem"
-                             :line-height      "1.5"
-                             :background-color "var(--color-green-pale)"
-                             :padding          "1rem"
-                             :border-radius    "var(--radius)"
-                             :max-height       "400px"
-                             :overflow-y       "auto"}}
-               contract/adhesion-contract-text]]
-             [:div.modal__actions
-              [:button.btn.btn--small.btn--outline
-               {:on-click #(reset! show-contract? false)}
-               "Annuler"]
-              [:button.btn.btn--small.btn--green
-               {:on-click (fn []
-                            (reset! show-contract? false)
-                            (rf/dispatch [:auth/sign-adhesion]))}
-               "Signer"]]]])]))))
+           {:on-click #(rf/dispatch [:auth/sign-adhesion])}
+           "A signer"]))]
+     ;; DocuSeal signing watcher
+     [docuseal-signing-watcher]
+     ;; Navigation buttons
+     [:div {:style {:display "flex" :justify-content "space-between" :margin-top "1rem"}}
+      [:button.btn.btn--small.btn--outline
+       {:on-click #(rf/dispatch [:productions/go-back production-id])}
+       "Précédent"]
+      [:button.btn.btn--green.btn--small
+       {:disabled (not adhesion-signed?)
+        :on-click #(rf/dispatch [:productions/submit-step3 production-id])}
+       "Valider et soumettre"]]]))
 
 (defn production-onboarding-form [production]
   (let [lifecycle (keyword (:production/lifecycle production))

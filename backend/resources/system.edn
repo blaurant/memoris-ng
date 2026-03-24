@@ -53,6 +53,10 @@
                              :staging #env APP_BASE_URL
                              :prod    #env APP_BASE_URL}}
 
+ :docuseal/gateway
+ {:api-key  #env DOCUSEAL_API_KEY
+  :api-base "https://api.docuseal.com"}
+
  :http/handler
  {:cors-origins   #profile {:dev     ["http://localhost:3449"]
                              :staging [#env CORS_ORIGIN]
@@ -67,7 +71,8 @@
   :email-sender          #ig/ref :email/resend-sender
   :verification-token-repo #ig/ref :verification-tokens/xtdb-repo
   :jwt-secret            #ig/ref :auth/jwt-secret
-  :alert-banner-repo     #ig/ref :alerts/xtdb-repo}
+  :alert-banner-repo     #ig/ref :alerts/xtdb-repo
+  :document-signer       #ig/ref :docuseal/gateway}
 
  :http/server
  {:port    #profile {:dev 3000 :staging 8080 :prod 8080}
