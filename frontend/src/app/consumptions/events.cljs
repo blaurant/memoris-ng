@@ -129,16 +129,68 @@
 
 ;; ── Submit step 4 ───────────────────────────────────────────────────────────
 
+;; Initiate contract signing via DocuSeal (returns signing-url)
 (rf/reg-event-fx :consumptions/submit-step4
   (fn [{:keys [db]} [_ consumption-id contract-type]]
-    {:http-xhrio {:method          :put
+    {:db (assoc db :consumptions/contract-loading? contract-type)
+     :http-xhrio {:method          :put
                   :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/step/contract-signature")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
                   :params          {:contract-type (name contract-type)}
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
-                  :on-success      [:consumptions/step-ok]
+                  :on-success      [:consumptions/contract-signing-url-ok contract-type]
+                  :on-failure      [:consumptions/contract-signing-err]}}))
+
+(rf/reg-event-db :consumptions/contract-signing-url-ok
+  (fn [db [_ contract-type response]]
+    (let [url (:signing-url response)]
+      (when url (.open js/window url "_blank"))
+      (-> db
+          (dissoc :consumptions/contract-loading?)
+          (assoc :consumptions/contract-signing-url url)
+          (assoc :consumptions/contract-signing-type contract-type)))))
+
+(rf/reg-event-db :consumptions/contract-signing-err
+  (fn [db _]
+    (js/console.error "Failed to initiate contract signing")
+    (dissoc db :consumptions/contract-loading?)))
+
+(rf/reg-event-fx :consumptions/contract-signing-complete
+  (fn [{:keys [db]} [_ consumption-id contract-type]]
+    {:db (-> db
+             (dissoc :consumptions/contract-signing-url)
+             (dissoc :consumptions/contract-signing-type))
+     :dispatch [:consumptions/check-contract-status consumption-id contract-type]}))
+
+(rf/reg-event-fx :consumptions/check-contract-status
+  (fn [{:keys [db]} [_ consumption-id contract-type]]
+    {:http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/check-contract?contract-type=" (name contract-type))
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/check-contract-ok]
                   :on-failure      [:consumptions/fetch-err]}}))
+
+(rf/reg-event-fx :consumptions/check-contract-ok
+  (fn [_ [_ response]]
+    (when (:signed response)
+      {:dispatch [:consumptions/fetch]})))
+
+(rf/reg-event-fx :consumptions/download-contract
+  (fn [{:keys [db]} [_ consumption-id contract-type]]
+    {:http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/contract-document?contract-type=" (name contract-type))
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:consumptions/download-contract-ok]
+                  :on-failure      [:consumptions/fetch-err]}}))
+
+(rf/reg-event-db :consumptions/download-contract-ok
+  (fn [db [_ response]]
+    (when-let [url (:document-url response)]
+      (.open js/window url "_blank"))
+    db))
 
 ;; ── Go back to previous step ───────────────────────────────────────────────
 

@@ -2,6 +2,7 @@
   (:require [com.brunobonacci.mulog :as mu]
             [domain.adhesion-html :as adhesion-html]
             [domain.consumption :as consumption]
+            [domain.contract-html :as contract-html]
             [domain.document-signer :as document-signer]
             [domain.network :as network]
             [domain.production :as production]
@@ -211,13 +212,69 @@
             (throw (ex-info "Document not yet available" {:user-id user-id})))
           {:document-url url})))
 
-(defn sign-contract
-      "Sign one contract (contract-type = :producer | :sepa).
-       Checks user adhesion to determine if consumption can transition to :pending."
-      [consumption-repo user-repo user-id consumption-id contract-type]
+(def ^:private contract-type->submission-key
+  {:producer :consumption/docuseal-producer-submission-id
+   :sepa     :consumption/docuseal-sepa-submission-id})
+
+(def ^:private contract-type->html-fn
+  {:producer contract-html/render-producer-contract-html
+   :sepa     contract-html/render-sepa-mandate-html})
+
+(def ^:private contract-type->doc-name
+  {:producer "Contrat Producteur"
+   :sepa     "Mandat SEPA"})
+
+(defn initiate-contract-signing
+      "Initiate DocuSeal signing for a contract (producer or sepa).
+       Returns {:signing-url ...} for the frontend."
+      [consumption-repo user-repo document-signer user-id consumption-id contract-type]
       (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
             u  (user/find-by-id user-repo user-id)
-            c' (consumption/sign-contract c contract-type (user/adhesion-signed? u))
-            c' (consumption/save! consumption-repo c c')]
-        (mu/log ::contract-signed :consumption-id consumption-id :contract-type contract-type)
-        c'))
+            html-fn (or (contract-type->html-fn contract-type)
+                        (throw (ex-info "Unknown contract type" {:contract-type contract-type})))
+            sub-key (contract-type->submission-key contract-type)
+            html   (html-fn (:user/name u) (:user/email u))
+            result (document-signer/create-html-signature-request
+                     document-signer html (:user/email u))
+            c'     (assoc c sub-key (:submission-id result))
+            c'     (consumption/save! consumption-repo c c')]
+        (mu/log ::contract-signature-requested
+                :consumption-id consumption-id
+                :contract-type  contract-type
+                :submission-id  (:submission-id result))
+        {:signing-url (:signing-url result)}))
+
+(defn check-contract-status
+      "Check with DocuSeal if a contract has been signed.
+       If completed, marks the contract as signed on the consumption."
+      [consumption-repo user-repo document-signer user-id consumption-id contract-type]
+      (let [c       (find-and-check-ownership consumption-repo user-id consumption-id)
+            u       (user/find-by-id user-repo user-id)
+            sub-key (or (contract-type->submission-key contract-type)
+                        (throw (ex-info "Unknown contract type" {:contract-type contract-type})))
+            sub-id  (get c sub-key)]
+        (if-not sub-id
+          {:signed false}
+          (let [completed? (document-signer/submission-completed? document-signer sub-id)]
+            (when completed?
+              (let [c' (consumption/sign-contract c contract-type (user/adhesion-signed? u))
+                    _  (consumption/save! consumption-repo c c')]
+                (mu/log ::contract-signed
+                        :consumption-id consumption-id
+                        :contract-type  contract-type
+                        :submission-id  sub-id)))
+            {:signed completed?}))))
+
+(defn get-contract-document-url
+      "Retrieve the signed contract document URL from DocuSeal."
+      [consumption-repo document-signer user-id consumption-id contract-type]
+      (let [c       (find-and-check-ownership consumption-repo user-id consumption-id)
+            sub-key (or (contract-type->submission-key contract-type)
+                        (throw (ex-info "Unknown contract type" {:contract-type contract-type})))
+            sub-id  (get c sub-key)]
+        (when-not sub-id
+          (throw (ex-info "No submission found" {:contract-type contract-type})))
+        (let [url (document-signer/get-signed-document-url document-signer sub-id)]
+          (when-not url
+            (throw (ex-info "Document not yet available" {:contract-type contract-type})))
+          {:document-url url})))

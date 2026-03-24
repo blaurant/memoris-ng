@@ -81,32 +81,22 @@
       "Fermer"]]]])
 
 (defn- contract-row [{:keys [icon label sublabel status lifecycle signed-at on-click download-event]}]
-  [:div.contracts__row {:on-click on-click
-                        :style {:cursor (when on-click "pointer")}}
-   [:div.contracts__row-left
-    icon
-    [:div
-     [:span.contracts__row-label label]
-     (when sublabel
-       [:span.contracts__row-type sublabel])]]
-   [:div.contracts__row-right
-    [:span {:class (str "contracts__status " (status-class lifecycle))}
-     (if-let [date (format-date signed-at)]
-       (str "Signé le " date)
-       status)]
-    (when download-event
-      [:button {:on-click (fn [e]
-                            (.stopPropagation e)
-                            (rf/dispatch download-event))
-                :title "Télécharger le document signé"
-                :style {:background "none" :border "none" :cursor "pointer"
-                        :padding "0 0 0 0.5rem" :display "flex" :align-items "center"}}
-       [:svg {:width "24" :height "24" :viewBox "0 0 24 24" :fill "none"
-              :stroke "var(--color-green)" :stroke-width "2"
-              :stroke-linecap "round" :stroke-linejoin "round"}
-        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
-        [:polyline {:points "7 10 12 15 17 10"}]
-        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]])]])
+  (let [click-handler (or (when download-event
+                            #(rf/dispatch download-event))
+                          on-click)]
+    [:div.contracts__row {:on-click click-handler
+                          :style {:cursor (when click-handler "pointer")}}
+     [:div.contracts__row-left
+      icon
+      [:div
+       [:span.contracts__row-label label]
+       (when sublabel
+         [:span.contracts__row-type sublabel])]]
+     [:div.contracts__row-right
+      [:span {:class (str "contracts__status " (status-class lifecycle))}
+       (if-let [date (format-date signed-at)]
+         (str "Signé le " date)
+         status)]]]))
 
 ;; ── Adhesion section ────────────────────────────────────────────────────────
 
@@ -165,32 +155,38 @@
 ;; ── Consumptions section ────────────────────────────────────────────────────
 
 (defn- consumptions-section []
-  (let [open-modal? (r/atom nil)]
-    (fn []
-      (let [consumptions @(rf/subscribe [:consumptions/list])]
-        (when (seq consumptions)
-          [:<>
-           [:h3.contracts__section-title "Consommations"]
-           (doall
-             (for [c consumptions]
-               (let [network-id   (:consumption/network-id c)
-                     network-name @(rf/subscribe [:consumptions/network-name network-id])
-                     lifecycle    (:consumption/lifecycle c)
-                     cid          (:consumption/id c)]
-                 ^{:key (str "conso-" cid)}
-                 [contract-row
-                  {:icon      [doc-icon]
-                   :label     (or network-name "Réseau")
-                   :sublabel  "Consommation"
-                   :status    (get lifecycle-labels lifecycle lifecycle)
-                   :lifecycle lifecycle
-                   :signed-at (:consumption/contract-signed-at c)
-                   :on-click  (when (= "active" lifecycle)
-                                #(reset! open-modal? cid))}])))
-           (when @open-modal?
-             [contract-modal "Contrat de Consommation"
-              conso-contract/contract-text
-              #(reset! open-modal? nil)])])))))
+  (fn []
+    (let [consumptions @(rf/subscribe [:consumptions/list])]
+      (when (seq consumptions)
+        [:<>
+         [:h3.contracts__section-title "Consommations"]
+         (doall
+           (for [c consumptions]
+             (let [network-id   (:consumption/network-id c)
+                   network-name @(rf/subscribe [:consumptions/network-name network-id])
+                   cid          (:consumption/id c)
+                   producer-signed? (some? (:consumption/producer-contract-signed-at c))
+                   sepa-signed?     (some? (:consumption/sepa-mandate-signed-at c))]
+               ^{:key (str "conso-" cid)}
+               [:<>
+                (when producer-signed?
+                  [contract-row
+                   {:icon           [doc-icon]
+                    :label          (str "Contrat Producteur — " (or network-name "Réseau"))
+                    :sublabel       "Consommation"
+                    :status         "Signé"
+                    :lifecycle      "active"
+                    :signed-at      (:consumption/producer-contract-signed-at c)
+                    :download-event [:consumptions/download-contract cid :producer]}])
+                (when sepa-signed?
+                  [contract-row
+                   {:icon           [doc-icon]
+                    :label          (str "Mandat SEPA — " (or network-name "Réseau"))
+                    :sublabel       "Consommation"
+                    :status         "Signé"
+                    :lifecycle      "active"
+                    :signed-at      (:consumption/sepa-mandate-signed-at c)
+                    :download-event [:consumptions/download-contract cid :sepa]}])])))]))))
 
 ;; ── Main page ───────────────────────────────────────────────────────────────
 

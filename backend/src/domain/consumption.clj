@@ -42,7 +42,9 @@
   [:map
    [:consumption/contract-signed-at {:optional true} string?]
    [:consumption/producer-contract-signed-at {:optional true} string?]
-   [:consumption/sepa-mandate-signed-at {:optional true} string?]])
+   [:consumption/sepa-mandate-signed-at {:optional true} string?]
+   [:consumption/docuseal-producer-submission-id {:optional true} [:maybe int?]]
+   [:consumption/docuseal-sepa-submission-id {:optional true} [:maybe int?]]])
 
 ;; Full schema: step fields optional (for deserialization from storage)
 (def Consumption

@@ -300,81 +300,98 @@
                  {:href signing-url :target "_blank" :rel "noopener"}
                  "Ouvrir le document à signer"]]]])))})))
 
-(defn- step4-form [consumption-id consumption]
-  (let [open-contract (r/atom nil)]
-    (fn [consumption-id consumption]
-      (let [user             @(rf/subscribe [:auth/user])
-            adhesion-signed? (some? (:adhesion-signed-at user))
-            adhesion-loading? @(rf/subscribe [:auth/adhesion-loading?])
-            all-configs      (if adhesion-signed?
-                               contract-configs
-                               (into [{:type       :adhesion
-                                       :label      "Adhésion Elink-co"
-                                       :text       contract/contract-text
-                                       :signed-key nil}]
-                                     contract-configs))]
-        [:div.onboarding__form
-         (doall
-           (for [{:keys [type label text signed-key]} all-configs]
-             (let [signed? (if (= type :adhesion)
-                             adhesion-signed?
-                             (some? (get consumption signed-key)))]
-               ^{:key type}
-               [:div.contract-row
-                [:div.contract-row__info
-                 [contract-icon]
-                 [:span.contract-row__label label]]
-                (if signed?
-                  [:span.contract-row__signed "Sign\u00e9 \u2713"]
-                  (if (and (= type :adhesion) adhesion-loading?)
-                    [:span {:style {:color "var(--color-muted)" :font-size "0.85rem"}}
-                     "Chargement..."]
-                    [:button.btn.btn--small.btn--outline
-                     {:on-click (fn []
-                                  (if (= type :adhesion)
-                                    (rf/dispatch [:auth/sign-adhesion])
-                                    (reset! open-contract type)))}
-                     "A signer"]))])))
-         ;; DocuSeal signing watcher (opens in new tab)
-         [docuseal-signing-watcher]
-         ;; Contract modal for other contracts (producer, SEPA)
-         (when-let [ct @open-contract]
-           (let [cfg (first (filter #(= ct (:type %)) all-configs))
-                 {:keys [label text]} cfg]
+(defn- contract-signing-watcher
+  "Shows a modal while any DocuSeal contract signing is in progress.
+   Closes when the user returns to the tab."
+  [consumption-id]
+  (let [visibility-handler (atom nil)]
+    (r/create-class
+      {:component-did-mount
+       (fn [_]
+         (let [handler (fn []
+                         (when (= "visible" (.-visibilityState js/document))
+                           (let [ct @(rf/subscribe [:consumptions/contract-signing-type])]
+                             (when ct
+                               (rf/dispatch [:consumptions/contract-signing-complete
+                                             consumption-id ct])))
+                           (js/setTimeout #(rf/dispatch [:consumptions/fetch]) 2000)))]
+           (reset! visibility-handler handler)
+           (.addEventListener js/document "visibilitychange" handler)))
+       :component-will-unmount
+       (fn [_]
+         (when-let [handler @visibility-handler]
+           (.removeEventListener js/document "visibilitychange" handler)))
+       :reagent-render
+       (fn [_consumption-id]
+         (let [signing-url @(rf/subscribe [:consumptions/contract-signing-url])]
+           (when signing-url
              [:div.modal-overlay {:on-click (fn [e]
                                               (when (= (.-target e) (.-currentTarget e))
-                                                (reset! open-contract nil)))}
-              [:div.modal
+                                                (let [ct @(rf/subscribe [:consumptions/contract-signing-type])]
+                                                  (rf/dispatch [:consumptions/contract-signing-complete
+                                                                consumption-id ct]))))}
+              [:div.modal {:style {:max-width "500px" :text-align "center"}}
                [:div.modal__header
-                [:span label]
+                [:span "Signature du contrat"]
                 [:button.btn.btn--small
-                 {:on-click #(reset! open-contract nil)
+                 {:on-click #(let [ct @(rf/subscribe [:consumptions/contract-signing-type])]
+                               (rf/dispatch [:consumptions/contract-signing-complete
+                                             consumption-id ct]))
                   :style {:background "transparent" :color "var(--color-muted)"
                           :border "none" :font-size "1.2rem" :padding "0"}}
                  "\u00D7"]]
-               [:div.modal__body
-                [:pre {:style {:white-space      "pre-wrap"
-                               :font-size        "0.85rem"
-                               :line-height      "1.5"
-                               :background-color "var(--color-green-pale)"
-                               :padding          "1rem"
-                               :border-radius    "var(--radius)"
-                               :max-height       "400px"
-                               :overflow-y       "auto"}}
-                 text]]
-               [:div.modal__actions
-                [:button.btn.btn--small.btn--outline
-                 {:on-click #(reset! open-contract nil)}
-                 "Annuler"]
-                [:button.btn.btn--small.btn--green
-                 {:on-click (fn []
-                              (reset! open-contract nil)
-                              (rf/dispatch [:consumptions/submit-step4 consumption-id ct]))}
-                 "Signer"]]]]))
-         [:div {:style {:margin-top "0.75rem"}}
-          [:button.btn.btn--small.btn--outline
-           {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
-           "Précédent"]]]))))
+               [:div.modal__body {:style {:padding "2rem"}}
+                [:p {:style {:font-size "1rem" :line-height "1.6" :margin-bottom "1.5rem"}}
+                 "Le document a été ouvert dans un nouvel onglet. "
+                 "Signez-le puis revenez ici."]
+                [:p {:style {:font-size "0.85rem" :color "var(--color-muted)" :margin-bottom "1.5rem"}}
+                 "La fenêtre se fermera automatiquement quand vous reviendrez."]
+                [:a.btn.btn--green
+                 {:href signing-url :target "_blank" :rel "noopener"}
+                 "Ouvrir le document à signer"]]]])))})))
+
+(defn- step4-form [consumption-id consumption]
+  (fn [consumption-id consumption]
+    (let [user              @(rf/subscribe [:auth/user])
+          adhesion-signed?  (some? (:adhesion-signed-at user))
+          adhesion-loading? @(rf/subscribe [:auth/adhesion-loading?])
+          contract-loading? @(rf/subscribe [:consumptions/contract-loading?])
+          all-configs       (into [{:type       :adhesion
+                                      :label      "Adhésion Elink-co"
+                                      :signed-key nil}]
+                                    contract-configs)]
+      [:div.onboarding__form
+       (doall
+         (for [{:keys [type label signed-key]} all-configs]
+           (let [signed? (if (= type :adhesion)
+                           adhesion-signed?
+                           (some? (get consumption signed-key)))
+                 loading? (or (and (= type :adhesion) adhesion-loading?)
+                              (= contract-loading? type))]
+             ^{:key type}
+             [:div.contract-row
+              [:div.contract-row__info
+               [contract-icon]
+               [:span.contract-row__label label]]
+              (if signed?
+                [:span.contract-row__signed "Sign\u00e9 \u2713"]
+                (if loading?
+                  [:span {:style {:color "var(--color-muted)" :font-size "0.85rem"}}
+                   "Chargement..."]
+                  [:button.btn.btn--small.btn--outline
+                   {:on-click (fn []
+                                (if (= type :adhesion)
+                                  (rf/dispatch [:auth/sign-adhesion])
+                                  (rf/dispatch [:consumptions/submit-step4 consumption-id type])))}
+                   "A signer"]))])))
+       ;; DocuSeal signing watchers
+       [docuseal-signing-watcher]
+       [contract-signing-watcher consumption-id]
+       [:div {:style {:margin-top "0.75rem"}}
+        [:button.btn.btn--small.btn--outline
+         {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+         "Précédent"]]])))
+
 
 (defn onboarding-form [consumption]
   (let [lifecycle (keyword (:consumption/lifecycle consumption))

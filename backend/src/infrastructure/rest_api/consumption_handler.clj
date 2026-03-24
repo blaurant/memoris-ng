@@ -182,17 +182,50 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- sign-contract-handler [consumption-repo user-repo]
+(defn- initiate-contract-handler [consumption-repo user-repo document-signer]
   (fn [request]
     (try
       (let [user-id        (user-id-from-request request)
             consumption-id (id/build-id (get-in request [:path-params :id]))
             ct-str         (require-param request :contract-type "contract-type")
-            contract-type  (keyword ct-str)]
+            contract-type  (keyword ct-str)
+            result         (scenarios/initiate-contract-signing
+                             consumption-repo user-repo document-signer
+                             user-id consumption-id contract-type)]
         {:status 200
-         :body   (serialize-consumption
-                   (scenarios/sign-contract
-                     consumption-repo user-repo user-id consumption-id contract-type))})
+         :body   result})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- check-contract-handler [consumption-repo user-repo document-signer]
+  (fn [request]
+    (try
+      (let [user-id        (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))
+            ct-str         (get-in request [:query-params "contract-type"])
+            contract-type  (keyword ct-str)
+            result         (scenarios/check-contract-status
+                             consumption-repo user-repo document-signer
+                             user-id consumption-id contract-type)]
+        {:status 200
+         :body   result})
+      (catch clojure.lang.ExceptionInfo e
+        {:status (error-status e)
+         :body   {:error (.getMessage e)}}))))
+
+(defn- contract-document-handler [consumption-repo document-signer]
+  (fn [request]
+    (try
+      (let [user-id        (user-id-from-request request)
+            consumption-id (id/build-id (get-in request [:path-params :id]))
+            ct-str         (get-in request [:query-params "contract-type"])
+            contract-type  (keyword ct-str)
+            result         (scenarios/get-contract-document-url
+                             consumption-repo document-signer
+                             user-id consumption-id contract-type)]
+        {:status 200
+         :body   result})
       (catch clojure.lang.ExceptionInfo e
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
@@ -286,7 +319,13 @@
         {:put        (complete-billing-address-handler consumption-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/step/contract-signature"
-        {:put        (sign-contract-handler consumption-repo user-repo)
+        {:put        (initiate-contract-handler consumption-repo user-repo document-signer)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id/check-contract"
+        {:get        (check-contract-handler consumption-repo user-repo document-signer)
+         :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+       ["/api/v1/consumptions/:id/contract-document"
+        {:get        (contract-document-handler consumption-repo document-signer)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/auth/sign-adhesion"
         {:put        (sign-adhesion-handler user-repo document-signer)

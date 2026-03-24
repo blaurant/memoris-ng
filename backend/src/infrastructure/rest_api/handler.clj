@@ -9,7 +9,8 @@
             [muuntaja.core :as m]
             [reitit.ring :as ring]
             [reitit.ring.middleware.muuntaja :as muuntaja]
-            [ring.middleware.cors :refer [wrap-cors]]))
+            [ring.middleware.cors :refer [wrap-cors]]
+            [ring.middleware.params :refer [wrap-params]]))
 
 (defn- hello-handler
   "Returns a greeting message."
@@ -27,7 +28,8 @@
             (production-handler/routes production-repo network-repo consumption-repo user-repo email-sender jwt-secret)
             (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret))
     {:data {:muuntaja   m/instance
-            :middleware [muuntaja/format-middleware]}}))
+            :middleware [wrap-params
+                        muuntaja/format-middleware]}}))
 
 (defmethod ig/init-key :http/handler
   [_ {:keys [cors-origins network-repo user-repo consumption-repo production-repo eligibility-check-repo

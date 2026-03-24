@@ -4,6 +4,7 @@
             [domain.id :as id]
             [domain.user :as user]
             [infrastructure.in-memory-repo.mem-consumption-repo :as mem-repo]
+            [infrastructure.in-memory-repo.mem-document-signer :as mem-signer]
             [infrastructure.in-memory-repo.mem-user-repo :as mem-user-repo]))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,25 +67,33 @@
   (THEN "the consumption is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 
-  (WHEN "the user signs the producer contract" [ctx]
-    (assoc ctx :consumption
-           (scenarios/sign-contract
-             (:repo ctx) (:user-repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-             :producer)))
+  (WHEN "the user initiates and completes the producer contract" [ctx]
+    (let [signer (mem-signer/make-test-signer)
+          cid    (:consumption/id (:consumption ctx))]
+      (scenarios/initiate-contract-signing
+        (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :producer)
+      (scenarios/check-contract-status
+        (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :producer)
+      ctx))
 
   (THEN "the consumption is still in :contract-signature state" [ctx]
-    (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
+    (let [c (first (scenarios/list-consumptions (:repo ctx) (:user-id ctx)))]
+      (assert (= :contract-signature (:consumption/lifecycle c)))))
 
-  (WHEN "the user signs the SEPA mandate" [ctx]
-    (assoc ctx :consumption
-           (scenarios/sign-contract
-             (:repo ctx) (:user-repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-             :sepa)))
+  (WHEN "the user initiates and completes the SEPA mandate" [ctx]
+    (let [signer (mem-signer/make-test-signer)
+          cid    (:consumption/id (:consumption ctx))]
+      (scenarios/initiate-contract-signing
+        (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :sepa)
+      (scenarios/check-contract-status
+        (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :sepa)
+      ctx))
 
   (THEN "the consumption is in :pending state with both signatures" [ctx]
-    (assert (= :pending (:consumption/lifecycle (:consumption ctx))))
-    (assert (some? (:consumption/producer-contract-signed-at (:consumption ctx))))
-    (assert (some? (:consumption/sepa-mandate-signed-at (:consumption ctx))))))
+    (let [c (first (scenarios/list-consumptions (:repo ctx) (:user-id ctx)))]
+      (assert (= :pending (:consumption/lifecycle c)))
+      (assert (some? (:consumption/producer-contract-signed-at c)))
+      (assert (some? (:consumption/sepa-mandate-signed-at c))))))
 
 (defscenario "List consumptions for a user"
   (GIVEN "two consumptions for user A and one for user B" [ctx]

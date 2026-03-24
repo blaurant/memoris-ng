@@ -23,3 +23,12 @@
 (rf/reg-sub :consumptions/dashboard-loading?
   (fn [db [_ consumption-id]]
     (get-in db [:consumptions/dashboard-loading consumption-id])))
+
+(rf/reg-sub :consumptions/contract-signing-url
+  (fn [db _] (:consumptions/contract-signing-url db)))
+
+(rf/reg-sub :consumptions/contract-signing-type
+  (fn [db _] (:consumptions/contract-signing-type db)))
+
+(rf/reg-sub :consumptions/contract-loading?
+  (fn [db _] (:consumptions/contract-loading? db)))
