@@ -211,7 +211,8 @@
             [:p {:style {:font-size "0.9rem" :color "var(--color-muted)" :margin-bottom "1rem"}}
              "Pour créer une consommation, nous avons besoin de vos informations personnelles "
              "(nom, prénom, adresse, etc.)."]
-            [:a.btn.btn--green.btn--small {:href (rfee/href :page/profile)}
+            [:button.btn.btn--green.btn--small
+             {:on-click #(rf/dispatch [:portal/set-section :profile])}
              "Compléter mon profil"]]
 
            ;; Identity filled — show selector + address form

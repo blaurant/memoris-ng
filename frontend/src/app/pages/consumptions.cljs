@@ -386,12 +386,9 @@
                  [onboarding/onboarding-form c]))]
 
             (empty? consumptions)
-            [:div.consumptions__empty
-             [:p "Aucune consommation pour le moment."]
-             [:button.btn.btn--green
-              {:on-click #(rf/dispatch [:consumptions/create])
-               :style {:margin-top "1rem"}}
-              "Ajouter ma consommation"]]
+            (do
+              (rf/dispatch [:consumptions/create])
+              [:p.loading "Création en cours..."])
 
             :else
             [:div
