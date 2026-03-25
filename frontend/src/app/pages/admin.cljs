@@ -126,7 +126,7 @@
                                             (on-close)))}
          [:div.modal {:on-click #(.stopPropagation %)}
           [:div.modal__header
-           [:span (str "Modifier le profil de " (:user/name user))]
+           [:span (str "Modifier l'identité de " (:user/name user))]
            [:button.btn.btn--small
             {:on-click on-close
              :style {:background "transparent" :color "var(--color-muted)"
@@ -236,7 +236,7 @@
                 [:td (:user/lifecycle u)]
                 [:td [:button.btn.btn--small
                       {:on-click #(reset! editing-user u)}
-                      "Éditer"]]])]])
+                      "Identité"]]])]])
          (when-let [u @selected-user]
            [user-profile-modal u #(reset! selected-user nil)])
          (when-let [u @editing-user]

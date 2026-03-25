@@ -9,7 +9,7 @@
 (def steps
   [{:key :consumer-information :label "Adresse & Réseau"        :number 1}
    {:key :linky-reference       :label "Référence Linky"        :number 2}
-   {:key :billing-address       :label "Adresse de facturation" :number 3}
+   {:key :billing-address       :label "Info financières"       :number 3}
    {:key :contract-signature    :label "Signature du contrat"   :number 4}])
 
 (def ^:private step-order
@@ -217,11 +217,15 @@
            ;; Identity filled — show selector + address form
            [:<>
             [identity-selector user selected-identity address]
+            [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-bottom "0.25rem" :display "block"}}
+             "Adresse de la consommation"]
             [:input.onboarding__input
              {:type        "text"
               :placeholder "Votre adresse de consommation"
               :value       @address
               :on-change   #(reset! address (.. % -target -value))}]
+            [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-bottom "0.25rem" :display "block"}}
+             "Sélectionnez votre réseau"]
             [:div.onboarding__network-row
              [:select.onboarding__select
               {:value     @network-id
@@ -270,11 +274,28 @@
 
 (defn- step3-form [consumption-id consumer-address]
   (let [use-same?    (r/atom true)
-        billing-addr (r/atom "")]
+        billing-addr (r/atom "")
+        iban         (r/atom "")
+        bic          (r/atom "")]
     (fn []
-      (let [same? @use-same?
+      (let [user    @(rf/subscribe [:auth/user])
+            natural (:natural-person user)
+            legals  (or (:legal-persons user) [])
+            same?   @use-same?
             effective-addr (if same? consumer-address @billing-addr)]
         [:div.onboarding__form
+         ;; Identity display (read-only)
+         [:div {:style {:background "var(--color-green-pale)" :border-radius "var(--radius)"
+                        :padding "0.75rem 1rem" :margin-bottom "1rem"}}
+          [:span {:style {:font-weight "600" :font-size "0.9rem"}}
+           (if (seq legals)
+             ;; TODO: show selected legal person if applicable
+             (str (:first-name natural) " " (:last-name natural))
+             (str (:first-name natural) " " (:last-name natural)))]]
+
+         ;; Billing address
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-bottom "0.25rem" :display "block"}}
+          "Adresse de facturation"]
          [:div.onboarding__radio-group
           [:label.onboarding__radio-label
            [:input {:type      "radio"
@@ -288,26 +309,46 @@
                     :name      "billing-choice"
                     :checked   (not same?)
                     :on-change #(reset! use-same? false)}]
-           "Utiliser une adresse différente pour la facturation"]]
+           "Utiliser une adresse différente"]]
          [:input.onboarding__input
           {:type        "text"
            :placeholder "Adresse de facturation"
            :value       (if same? consumer-address @billing-addr)
            :disabled    same?
            :on-change   #(reset! billing-addr (.. % -target -value))}]
+
+         ;; IBAN / BIC
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "1rem"
+                          :margin-bottom "0.25rem" :display "block"}}
+          "IBAN " [:span {:style {:color "#d32f2f"}} "*"]]
+         [:input.onboarding__input
+          {:type        "text"
+           :placeholder "Ex: FR76 3000 6000 0112 3456 7890 189"
+           :value       @iban
+           :on-change   #(reset! iban (.. % -target -value))}]
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "0.5rem"
+                          :margin-bottom "0.25rem" :display "block"}}
+          "BIC " [:span {:style {:color "var(--color-muted)" :font-weight "400" :font-size "0.8rem"}}
+                  "(recommandé)"]]
+         [:input.onboarding__input
+          {:type        "text"
+           :placeholder "Ex: BNPAFRPP"
+           :value       @bic
+           :on-change   #(reset! bic (.. % -target -value))}]
+
          [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
-        [:button.btn.btn--small.btn--outline
-         {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
-         "Précédent"]
-        [:button.btn.btn--green.btn--small
-         {:disabled (empty? effective-addr)
-          :on-click #(rf/dispatch [:consumptions/submit-step3
-                                   consumption-id effective-addr])}
-         "Suivant"]]]))))
+          [:button.btn.btn--small.btn--outline
+           {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+           "Précédent"]
+          [:button.btn.btn--green.btn--small
+           {:disabled (or (empty? effective-addr) (empty? @iban))
+            :on-click #(rf/dispatch [:consumptions/submit-step3
+                                     consumption-id effective-addr])}
+           "Suivant"]]]))))
 
 (def ^:private contract-configs
   [{:type     :producer
-    :label    "Contrat Producteur"
+    :label    "Contrat d'achat d'électricité"
     :text     contract/producer-contract-text
     :signed-key :consumption/producer-contract-signed-at}
    {:type     :sepa
@@ -428,7 +469,7 @@
           adhesion-loading? @(rf/subscribe [:auth/adhesion-loading?])
           contract-loading? @(rf/subscribe [:consumptions/contract-loading?])
           all-configs       (into [{:type       :adhesion
-                                      :label      "Adhésion Elink-co"
+                                      :label      "Adhésion à l'association elink-co"
                                       :signed-key nil}]
                                     contract-configs)]
       [:div.onboarding__form
