@@ -47,15 +47,13 @@
        [:span message]])))
 
 (defn- navbar []
-  (let [logged-in?    @(rf/subscribe [:auth/logged-in?])
-        user-name     @(rf/subscribe [:auth/user-name])
-        dropdown-open? (r/atom false)]
-    (fn []
+  (r/with-let [dropdown-open? (r/atom false)]
+    (let [logged-in? @(rf/subscribe [:auth/logged-in?])
+          user-name  @(rf/subscribe [:auth/user-name])]
       [:nav.navbar
        [:a.navbar__logo {:href "/"}
         [:img.navbar__logo-img {:src "/img/logo-elinkco.jpg" :alt "elink-co"}]]
        [:div.navbar__menu
-        ;; Pour qui ? — dropdown
         [:div.navbar__dropdown
          {:on-mouse-enter #(reset! dropdown-open? true)
           :on-mouse-leave #(reset! dropdown-open? false)}
@@ -75,9 +73,7 @@
              "Entreprise"]
             [:a.navbar__dropdown-item {:href (rfee/href :page/for-farmers)}
              "Agriculteurs"]])]
-        ;; Témoignages
         [:a.navbar__menu-item {:href (rfee/href :page/testimonials)} "Témoignages"]
-        ;; Qui sommes-nous ?
         [:a.navbar__menu-item {:href (rfee/href :page/about)} "Qui sommes-nous\u00a0?"]]
        [:div.navbar__auth
         (if logged-in?
@@ -94,6 +90,7 @@
            [:a.btn.btn--small
             {:href (rfee/href :page/login)}
             "Espace Adhérent"]])]])))
+
 
 (defn- current-page []
   (let [page       @(rf/subscribe [:router/current-page])
