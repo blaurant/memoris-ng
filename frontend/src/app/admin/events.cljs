@@ -299,6 +299,31 @@
   (fn [db _]
     (dissoc db :admin/production-error)))
 
+;; ── Update user profile (admin) ──────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/update-user-profile
+  (fn [{:keys [db]} [_ user-id person-info on-success]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/auth/profile/natural")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          (assoc person-info :target-user-id user-id)
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-user-profile-ok on-success]
+                  :on-failure      [:admin/update-user-profile-err]}}))
+
+(rf/reg-event-db :admin/update-user-profile-ok
+  (fn [db [_ on-success updated-user]]
+    (when on-success (on-success))
+    (update db :admin/users
+            (fn [users]
+              (mapv #(if (= (:user/id %) (:user/id updated-user)) updated-user %) users)))))
+
+(rf/reg-event-db :admin/update-user-profile-err
+  (fn [db [_ response]]
+    (js/console.error "Failed to update user profile" (get-in response [:response :error]))
+    db))
+
 ;; ── Tab switch ────────────────────────────────────────────────────────────────
 
 (rf/reg-event-db :admin/set-tab

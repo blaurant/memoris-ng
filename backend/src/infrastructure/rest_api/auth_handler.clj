@@ -3,7 +3,7 @@
             [application.user-scenarios :as user-scenarios]
             [clojure.string :as str]
             [domain.id :as id]
-            [domain.user]
+            [domain.user :as user]
             [infrastructure.auth.jwt :as jwt]
             [infrastructure.rest-api.auth-middleware :as auth-mw]))
 
@@ -112,7 +112,7 @@
   [user-repo]
   (fn [request]
     (let [user-id (id/build-id (get-in request [:identity :sub]))
-          user    (domain.user/find-by-id user-repo user-id)]
+          user    (user/find-by-id user-repo user-id)]
       (if user
         {:status 200
          :body   (serialize-user user)}
@@ -120,16 +120,26 @@
          :body   (:identity request)}))))
 
 (defn- update-natural-person-handler
-  "PUT /api/v1/auth/profile/natural — update natural person."
+  "PUT /api/v1/auth/profile/natural — update natural person.
+   Accepts optional target-user-id param; if present, caller must be admin."
   [user-repo]
   (fn [request]
     (try
-      (let [user-id (id/build-id (get-in request [:identity :sub]))
-            info    (:body-params request)
-            user    (user-scenarios/update-natural-person user-repo user-id info)]
+      (let [caller-id      (id/build-id (get-in request [:identity :sub]))
+            target-id-str  (get-in request [:body-params :target-user-id])
+            target-id      (if target-id-str
+                             (id/build-id target-id-str)
+                             caller-id)
+            _              (when (and target-id-str (not= target-id caller-id))
+                             (let [caller (user/find-by-id user-repo caller-id)]
+                               (when-not (= :admin (:user/role caller))
+                                 (throw (ex-info "Only admins can edit other users" {})))))
+            info           (dissoc (:body-params request) :target-user-id)
+            user           (user-scenarios/update-natural-person user-repo target-id info)]
         {:status 200 :body (serialize-user user)})
       (catch clojure.lang.ExceptionInfo e
-        {:status 400 :body {:error (.getMessage e)}}))))
+        {:status (if (.contains (.getMessage e) "Only admins") 403 400)
+         :body   {:error (.getMessage e)}}))))
 
 (defn- add-legal-person-handler
   "POST /api/v1/auth/profile/legal — add a legal person."

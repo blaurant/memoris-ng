@@ -96,6 +96,70 @@
         {:on-click on-close}
         "Fermer"]]]]))
 
+;; ── Edit user profile modal ───────────────────────────────────────────────────
+
+(def ^:private natural-required-fields
+  [:last-name :first-name :birth-date :birth-place :postal-address :phone])
+
+(defn- natural-person-valid? [data]
+  (every? #(seq (str (get data %))) natural-required-fields))
+
+(defn- field-row [label value on-change & [{:keys [placeholder type required?]}]]
+  [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+   [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+    label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
+   [:input {:type        (or type "text")
+            :value       (or value "")
+            :placeholder (or placeholder "")
+            :on-change   #(on-change (-> % .-target .-value))
+            :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
+                          :border-radius "var(--radius)" :font-size "0.95rem"}}]])
+
+(defn- edit-user-profile-modal [user on-close]
+  (let [np   (or (:user/natural-person user) {})
+        form (r/atom np)]
+    (fn [user on-close]
+      (let [data   @form
+            valid? (natural-person-valid? data)]
+        [:div.modal-overlay {:on-click (fn [e]
+                                          (when (= (.-target e) (.-currentTarget e))
+                                            (on-close)))}
+         [:div.modal {:on-click #(.stopPropagation %)}
+          [:div.modal__header
+           [:span (str "Modifier le profil de " (:user/name user))]
+           [:button.btn.btn--small
+            {:on-click on-close
+             :style {:background "transparent" :color "var(--color-muted)"
+                     :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
+          [:div.modal__body
+           [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
+            [field-row "Nom" (:last-name data)
+             #(swap! form assoc :last-name %) {:required? true}]
+            [field-row "Prénom" (:first-name data)
+             #(swap! form assoc :first-name %) {:required? true}]
+            [field-row "Date de naissance" (:birth-date data)
+             #(swap! form assoc :birth-date %)
+             {:type "date" :required? true}]
+            [field-row "Lieu de naissance" (:birth-place data)
+             #(swap! form assoc :birth-place %) {:required? true}]
+            [field-row "Profession" (:profession data)
+             #(swap! form assoc :profession %)]
+            [field-row "Adresse postale" (:postal-address data)
+             #(swap! form assoc :postal-address %) {:required? true}]
+            [field-row "Téléphone" (:phone data)
+             #(swap! form assoc :phone %)
+             {:type "tel" :required? true}]]]
+          [:div.modal__actions
+           [:button.btn.btn--small.btn--outline {:on-click on-close} "Annuler"]
+           [:button {:class (str "btn btn--small btn--green" (when-not valid? " btn--disabled"))
+                     :style (when-not valid? {:opacity "0.5" :cursor "not-allowed"})
+                     :on-click (fn []
+                                 (when valid?
+                                   (rf/dispatch [:admin/update-user-profile
+                                                 (:user/id user) data on-close])))}
+            "Enregistrer"]]]]))))
+
 ;; ── Users table ───────────────────────────────────────────────────────────────
 
 (defn- export-users-csv [users]
@@ -118,7 +182,8 @@
     (.revokeObjectURL js/URL url)))
 
 (defn users-tab []
-  (let [selected-user (r/atom nil)]
+  (let [selected-user (r/atom nil)
+        editing-user  (r/atom nil)]
     (fn []
       (let [users    @(rf/subscribe [:admin/users])
             loading? @(rf/subscribe [:admin/users-loading?])]
@@ -152,7 +217,8 @@
               [:th "Email"]
               [:th "Fournisseur"]
               [:th "Role"]
-              [:th "Statut"]]]
+              [:th "Statut"]
+              [:th ""]]]
             [:tbody
              (for [u users]
                ^{:key (:user/id u)}
@@ -167,9 +233,14 @@
                 [:td (:user/provider u)]
                 [:td {:class (when (= "admin" (:user/role u)) "admin-table__role--admin")}
                  (:user/role u)]
-                [:td (:user/lifecycle u)]])]])
+                [:td (:user/lifecycle u)]
+                [:td [:button.btn.btn--small
+                      {:on-click #(reset! editing-user u)}
+                      "Éditer"]]])]])
          (when-let [u @selected-user]
-           [user-profile-modal u #(reset! selected-user nil)])]))))
+           [user-profile-modal u #(reset! selected-user nil)])
+         (when-let [u @editing-user]
+           [edit-user-profile-modal u #(reset! editing-user nil)])]))))
 
 ;; ── Create network modal ──────────────────────────────────────────────────────
 
