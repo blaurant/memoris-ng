@@ -1,7 +1,9 @@
 (ns app.components.onboarding-form
-  (:require [app.consumptions.contract :as contract]
+  (:require [app.components.legal-person-modal :as lpm]
+            [app.consumptions.contract :as contract]
             [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
+            [reitit.frontend.easy :as rfee]
             [reagent.core :as r]))
 
 (def steps
@@ -139,44 +141,113 @@
                :on-click #(on-select (:network/id sel))}
               "Valider"]]]]))})))
 
+(defn- identity-selector
+  "Lets the user pick which identity to use: natural person or one of their legal persons.
+   Updates address atom when selection changes."
+  [user selected-identity address]
+  (let [show-modal? (r/atom false)]
+    (fn [user selected-identity address]
+      (let [natural    (:natural-person user)
+            legals     (or (:legal-persons user) [])
+            nat-label  (str (:first-name natural) " " (:last-name natural))]
+        [:div {:style {:margin-bottom "1rem"}}
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-bottom "0.5rem" :display "block"}}
+          "Identité utilisée pour cette consommation"]
+         [:div.onboarding__radio-group
+          [:label.onboarding__radio-label
+           [:input {:type      "radio"
+                    :name      "identity-choice"
+                    :checked   (= @selected-identity :natural)
+                    :on-change (fn []
+                                 (reset! selected-identity :natural)
+                                 (reset! address (or (:postal-address natural) "")))}]
+           (str nat-label " (personne physique)")]
+          (doall
+            (for [[idx lp] (map-indexed vector legals)]
+              ^{:key idx}
+              [:label.onboarding__radio-label
+               [:input {:type      "radio"
+                        :name      "identity-choice"
+                        :checked   (= @selected-identity [:legal idx])
+                        :on-change (fn []
+                                     (reset! selected-identity [:legal idx])
+                                     (reset! address (or (:headquarters lp) "")))}]
+               (str (:company-name lp) " — " (:siren lp))]))]
+         [:button.btn.btn--small.btn--outline
+          {:on-click #(reset! show-modal? true)
+           :style {:margin-top "0.5rem" :font-size "0.8rem"}}
+          "+ Créer une personne morale"]
+         (when @show-modal?
+           [lpm/new-legal-person-modal #(reset! show-modal? false)])]))))
+
 (defn- step1-form [consumption-id]
-  (let [address    (r/atom "")
-        network-id (r/atom "")
-        show-map?  (r/atom false)
-        networks   @(rf/subscribe [:networks/list])]
+  (let [address           (r/atom nil)
+        network-id        (r/atom "")
+        show-map?         (r/atom false)
+        selected-identity (r/atom :natural)
+        prefilled?        (r/atom false)
+        networks          @(rf/subscribe [:networks/list])]
     (fn []
-      [:div.onboarding__form
-       [:input.onboarding__input
-        {:type        "text"
-         :placeholder "Votre adresse de consommation"
-         :value       @address
-         :on-change   #(reset! address (.. % -target -value))}]
-       [:div.onboarding__network-row
-        [:select.onboarding__select
-         {:value     @network-id
-          :on-change #(reset! network-id (.. % -target -value))}
-         [:option {:value ""} "Choisir un réseau"]
-         (doall
-           (for [n networks]
-             ^{:key (:network/id n)}
-             [:option {:value (:network/id n)} (:network/name n)]))]
-        [:button.btn.btn--small.btn--outline
-         {:on-click #(reset! show-map? true)}
-         "Sélectionner sur la carte"]]
-       [:button.btn.btn--green.btn--small
-        {:disabled (or (empty? @address) (empty? @network-id))
-         :on-click #(rf/dispatch [:consumptions/submit-step1
-                                  consumption-id @address @network-id])}
-        "Suivant"]
-       (when @show-map?
-         [network-map-modal
-          @address
-          networks
-          (fn [selected-id]
-            (reset! network-id selected-id)
-            (reset! show-map? false))
-          (fn []
-            (reset! show-map? false))])])))
+      (let [user    @(rf/subscribe [:auth/user])
+            natural (:natural-person user)]
+        ;; Pre-fill address from natural person on first render
+        (when (and (not @prefilled?)
+                   natural
+                   (seq (:postal-address natural)))
+          (reset! address (:postal-address natural))
+          (reset! prefilled? true))
+        (when (nil? @address)
+          (reset! address ""))
+        [:div.onboarding__form
+         (if-not (and natural
+                      (seq (:first-name natural))
+                      (seq (:last-name natural)))
+           ;; No identity filled — show message + link to profile
+           [:div {:style {:background "#fff8e1" :border "1px solid #ffe082"
+                          :border-radius "var(--radius)" :padding "1.25rem"
+                          :text-align "center"}}
+            [:p {:style {:font-weight "600" :margin-bottom "0.5rem"}}
+             "Veuillez d'abord renseigner votre identité"]
+            [:p {:style {:font-size "0.9rem" :color "var(--color-muted)" :margin-bottom "1rem"}}
+             "Pour créer une consommation, nous avons besoin de vos informations personnelles "
+             "(nom, prénom, adresse, etc.)."]
+            [:a.btn.btn--green.btn--small {:href (rfee/href :page/profile)}
+             "Compléter mon profil"]]
+
+           ;; Identity filled — show selector + address form
+           [:<>
+            [identity-selector user selected-identity address]
+            [:input.onboarding__input
+             {:type        "text"
+              :placeholder "Votre adresse de consommation"
+              :value       @address
+              :on-change   #(reset! address (.. % -target -value))}]
+            [:div.onboarding__network-row
+             [:select.onboarding__select
+              {:value     @network-id
+               :on-change #(reset! network-id (.. % -target -value))}
+              [:option {:value ""} "Choisir un réseau"]
+              (doall
+                (for [n networks]
+                  ^{:key (:network/id n)}
+                  [:option {:value (:network/id n)} (:network/name n)]))]
+             [:button.btn.btn--small.btn--outline
+              {:on-click #(reset! show-map? true)}
+              "Sélectionner sur la carte"]]
+            [:button.btn.btn--green.btn--small
+             {:disabled (or (empty? @address) (empty? @network-id))
+              :on-click #(rf/dispatch [:consumptions/submit-step1
+                                       consumption-id @address @network-id])}
+             "Suivant"]
+            (when @show-map?
+              [network-map-modal
+               @address
+               networks
+               (fn [selected-id]
+                 (reset! network-id selected-id)
+                 (reset! show-map? false))
+               (fn []
+                 (reset! show-map? false))])])]))))
 
 (defn- step2-form [consumption-id]
   (let [linky-ref (r/atom "")]

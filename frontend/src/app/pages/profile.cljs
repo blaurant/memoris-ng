@@ -1,5 +1,6 @@
 (ns app.pages.profile
-  (:require [re-frame.core :as rf]
+  (:require [app.components.legal-person-modal :as lpm]
+            [re-frame.core :as rf]
             [reagent.core :as r]))
 
 (defn- field-row [label value on-change & [{:keys [placeholder type required?]}]]
@@ -120,52 +121,16 @@
             [:span {:style {:color "var(--color-green)" :font-size "0.85rem"}}
              "Enregistré \u2713"])]]))))
 
-(defn- new-legal-person-form []
-  (let [form    (r/atom {})
-        adding? (r/atom false)]
+(defn- add-legal-person-button []
+  (let [show? (r/atom false)]
     (fn []
-      (if-not @adding?
-        [:button.btn.btn--small.btn--outline
-         {:on-click #(reset! adding? true)
-          :style {:margin-top "0.5rem"}}
-         "+ Ajouter une personne morale"]
-        (let [data   @form
-              valid? (legal-person-valid? data)]
-          [:div {:style {:background "var(--color-green-pale)" :border-radius "var(--radius)"
-                         :padding "1.5rem" :margin-top "0.5rem"}}
-           [:h4 {:style {:margin-bottom "1rem"}} "Nouvelle personne morale"]
-           [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
-            [field-row "Raison sociale" (:company-name data)
-             #(swap! form assoc :company-name %) {:required? true}]
-            [field-row "N° SIREN" (:siren data)
-             #(swap! form assoc :siren %) {:required? true}]
-            [field-row "Siège social" (:headquarters data)
-             #(swap! form assoc :headquarters %) {:required? true}]
-            [field-row "Numéro de téléphone" (:phone data)
-             #(swap! form assoc :phone %)
-             {:type "tel" :required? true}]]
-           [:h4 {:style {:margin-top "1rem" :margin-bottom "0.5rem" :font-size "0.95rem"}}
-            "Représentant légal"]
-           [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
-            [field-row "Nom" (:representative-last-name data)
-             #(swap! form assoc :representative-last-name %) {:required? true}]
-            [field-row "Prénom" (:representative-first-name data)
-             #(swap! form assoc :representative-first-name %) {:required? true}]
-            [field-row "Fonction" (:representative-role data)
-             #(swap! form assoc :representative-role %)
-             {:placeholder "Président, gérant, directeur général..." :required? true}]]
-           [:div {:style {:margin-top "1rem" :display "flex" :gap "0.75rem"}}
-            [:button {:class (str "btn btn--small btn--green" (when-not valid? " btn--disabled"))
-                      :style (when-not valid? {:opacity "0.5" :cursor "not-allowed"})
-                      :on-click (fn []
-                                  (when valid?
-                                    (rf/dispatch [:auth/add-legal-person data])
-                                    (reset! form {})
-                                    (reset! adding? false)))}
-             "Ajouter"]
-            [:button.btn.btn--small.btn--outline
-             {:on-click (fn [] (reset! form {}) (reset! adding? false))}
-             "Annuler"]]])))))
+      [:<>
+       [:button.btn.btn--small.btn--outline
+        {:on-click #(reset! show? true)
+         :style {:margin-top "0.5rem"}}
+        "+ Ajouter une personne morale"]
+       (when @show?
+         [lpm/new-legal-person-modal #(reset! show? false)])])))
 
 ;; ── Main page ───────────────────────────────────────────────────────────────
 
@@ -193,4 +158,4 @@
                  [legal-person-card idx lp]))
              [:p {:style {:color "var(--color-muted)" :font-size "0.9rem" :margin-bottom "0.5rem"}}
               "Aucune personne morale enregistrée."])
-           [new-legal-person-form]]]]))))
+           [add-legal-person-button]]]]))))
