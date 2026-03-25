@@ -85,7 +85,7 @@
        "de la partie administrative, et technique. Vous consommez à présent une part d'énergie verte "
        "produite localement."]
       [:div {:style {:text-align "center"}}
-       [:a.btn.btn--green.btn--small {:href (rfee/href :page/how-it-works)}
+       [:a.btn.btn--green.btn--small {:href "/comment-ca-marche#reseaux"}
         "En savoir plus"]]]
 
      ;; Card 2 — Avantage producteur
@@ -105,7 +105,7 @@
        "Vous conservez votre contrat de revente d'énergie avec EDF OA. Elink-co se charge des "
        "démarches entre vous, Enedis, EDF et les consommateurs finaux."]
       [:div {:style {:text-align "center"}}
-       [:a.btn.btn--green.btn--small {:href (rfee/href :page/how-it-works)}
+       [:a.btn.btn--green.btn--small {:href "/comment-ca-marche#producteur"}
         "En savoir plus"]]]
 
      ;; Card 3 — Avantage consommateur
@@ -126,7 +126,7 @@
        "Adhérez simplement au réseau Elink-co, nous nous occupons des démarches entre "
        "vous, Enedis, EDF et les producteurs finaux."]
       [:div {:style {:text-align "center"}}
-       [:a.btn.btn--green.btn--small {:href (rfee/href :page/how-it-works)}
+       [:a.btn.btn--green.btn--small {:href "/comment-ca-marche#consommateur"}
         "En savoir plus"]]]
 
      ]

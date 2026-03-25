@@ -54,6 +54,7 @@ a { color: var(--color-green); }
   top: 25px;
   z-index: 100;
 }
+[id] { scroll-margin-top: 100px; }
 .navbar__logo {
   display: flex;
   align-items: center;

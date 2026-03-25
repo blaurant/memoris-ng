@@ -3,6 +3,7 @@
             [app.pages.consumptions :as consumptions]
             [app.pages.contracts :as contracts]
             [app.pages.productions :as productions]
+            [app.pages.profile :as profile]
             [re-frame.core :as rf]))
 
 (defn- sidebar []
@@ -26,6 +27,10 @@
        {:class    (when (= :contracts active) "sidebar__item--active")
         :on-click #(rf/dispatch [:portal/set-section :contracts])}
        "Mes contrats"]
+      [:li.sidebar__item
+       {:class    (when (= :profile active) "sidebar__item--active")
+        :on-click #(rf/dispatch [:portal/set-section :profile])}
+       "Mon profil"]
       (when admin?
         [:<>
          [:li.sidebar__item.sidebar__item--separator]
@@ -125,6 +130,7 @@
         :consumptions      [consumptions/consumptions-page]
         :productions       [productions/productions-page]
         :contracts         [contracts/contracts-page]
+        :profile           [profile/profile-page]
         :admin-users       [admin/users-tab]
         :admin-networks    [admin/networks-tab]
         :admin-eligibility [admin/eligibility-checks-tab]

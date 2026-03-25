@@ -270,6 +270,61 @@
     (js/console.error "Failed to download adhesion document")
     db))
 
+;; ── Update profile ──────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/update-natural-person
+  (fn [{:keys [db]} [_ person-info]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/auth/profile/natural")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          person-info
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/profile-ok]
+                  :on-failure      [:auth/profile-err]}}))
+
+(rf/reg-event-fx :auth/add-legal-person
+  (fn [{:keys [db]} [_ legal-info]]
+    {:http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/auth/profile/legal")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          legal-info
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/profile-ok]
+                  :on-failure      [:auth/profile-err]}}))
+
+(rf/reg-event-fx :auth/update-legal-person
+  (fn [{:keys [db]} [_ index legal-info]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/auth/profile/legal/" index)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          legal-info
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/profile-ok]
+                  :on-failure      [:auth/profile-err]}}))
+
+(rf/reg-event-fx :auth/remove-legal-person
+  (fn [{:keys [db]} [_ index]]
+    {:http-xhrio {:method          :delete
+                  :uri             (str config/API_BASE "/api/v1/auth/profile/legal/" index)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/profile-ok]
+                  :on-failure      [:auth/profile-err]}}))
+
+(rf/reg-event-db :auth/profile-ok
+  (fn [db [_ user]]
+    (.setItem js/localStorage "auth-user" (js/JSON.stringify (clj->js user)))
+    (assoc db :auth/user user)))
+
+(rf/reg-event-db :auth/profile-err
+  (fn [db _]
+    (js/console.error "Failed to update profile")
+    db))
+
 ;; ── Refresh user from backend ────────────────────────────────────────────────
 
 (rf/reg-event-fx :auth/refresh-user

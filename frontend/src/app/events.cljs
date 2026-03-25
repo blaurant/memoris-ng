@@ -37,7 +37,13 @@
 
 (rf/reg-event-fx :router/navigated
   (fn [{:keys [db]} [_ page-name path-params]]
-    (.scrollTo js/window 0 0)
+    (let [hash (.-hash js/location)]
+      (if (seq hash)
+        (js/setTimeout
+          #(when-let [el (.getElementById js/document (subs hash 1))]
+             (.scrollIntoView el #js {:behavior "smooth"}))
+          100)
+        (.scrollTo js/window 0 0)))
     (let [db' (cond-> (assoc db :router/current-page page-name)
                 (not= page-name :page/signup) (dissoc :eligibility/join-network)
                 (= page-name :page/network-detail) (dissoc :network-detail/data :network-detail/error))]

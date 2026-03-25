@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.auth-handler
   (:require [application.auth-scenarios :as auth]
+            [application.user-scenarios :as user-scenarios]
             [clojure.string :as str]
             [domain.id :as id]
             [domain.user]
@@ -13,7 +14,11 @@
            :role     (name (:user/role user))
            :provider (name (:user/provider user))}
     (:user/adhesion-signed-at user)
-    (assoc :adhesion-signed-at (:user/adhesion-signed-at user))))
+    (assoc :adhesion-signed-at (:user/adhesion-signed-at user))
+    (:user/natural-person user)
+    (assoc :natural-person (:user/natural-person user))
+    (:user/legal-persons user)
+    (assoc :legal-persons (:user/legal-persons user))))
 
 (defn- login-handler
   "POST /api/v1/auth/login — body {:provider \"google\" :id-token \"...\"}
@@ -114,6 +119,55 @@
         {:status 200
          :body   (:identity request)}))))
 
+(defn- update-natural-person-handler
+  "PUT /api/v1/auth/profile/natural — update natural person."
+  [user-repo]
+  (fn [request]
+    (try
+      (let [user-id (id/build-id (get-in request [:identity :sub]))
+            info    (:body-params request)
+            user    (user-scenarios/update-natural-person user-repo user-id info)]
+        {:status 200 :body (serialize-user user)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400 :body {:error (.getMessage e)}}))))
+
+(defn- add-legal-person-handler
+  "POST /api/v1/auth/profile/legal — add a legal person."
+  [user-repo]
+  (fn [request]
+    (try
+      (let [user-id (id/build-id (get-in request [:identity :sub]))
+            info    (:body-params request)
+            user    (user-scenarios/add-legal-person user-repo user-id info)]
+        {:status 200 :body (serialize-user user)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400 :body {:error (.getMessage e)}}))))
+
+(defn- update-legal-person-handler
+  "PUT /api/v1/auth/profile/legal/:index — update a legal person."
+  [user-repo]
+  (fn [request]
+    (try
+      (let [user-id (id/build-id (get-in request [:identity :sub]))
+            index   (parse-long (get-in request [:path-params :index]))
+            info    (:body-params request)
+            user    (user-scenarios/update-legal-person user-repo user-id index info)]
+        {:status 200 :body (serialize-user user)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400 :body {:error (.getMessage e)}}))))
+
+(defn- remove-legal-person-handler
+  "DELETE /api/v1/auth/profile/legal/:index — remove a legal person."
+  [user-repo]
+  (fn [request]
+    (try
+      (let [user-id (id/build-id (get-in request [:identity :sub]))
+            index   (parse-long (get-in request [:path-params :index]))
+            user    (user-scenarios/remove-legal-person user-repo user-id index)]
+        {:status 200 :body (serialize-user user)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400 :body {:error (.getMessage e)}}))))
+
 (defn routes
   "Returns Reitit route vectors for auth endpoints."
   [user-repo token-verifier password-hasher email-sender vt-repo jwt-secret]
@@ -131,4 +185,14 @@
     {:post (reset-password-handler user-repo password-hasher vt-repo)}]
    ["/api/v1/auth/me"
     {:get        (me-handler user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+   ["/api/v1/auth/profile/natural"
+    {:put        (update-natural-person-handler user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+   ["/api/v1/auth/profile/legal"
+    {:post       (add-legal-person-handler user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+   ["/api/v1/auth/profile/legal/:index"
+    {:put        (update-legal-person-handler user-repo)
+     :delete     (remove-legal-person-handler user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])

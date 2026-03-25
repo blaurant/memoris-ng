@@ -21,6 +21,30 @@
    string?
    [:fn {:error/message "must be at least 8 characters"} #(>= (count %) 8)]])
 
+(def non-blank-string?
+  [:and string?
+   [:fn {:error/message "must not be blank"} #(not (clojure.string/blank? %))]])
+
+(def NaturalPerson
+  [:map
+   [:first-name non-blank-string?]
+   [:last-name non-blank-string?]
+   [:birth-date non-blank-string?]
+   [:birth-place non-blank-string?]
+   [:profession {:optional true} [:maybe string?]]
+   [:postal-address non-blank-string?]
+   [:phone non-blank-string?]])
+
+(def LegalPerson
+  [:map
+   [:company-name non-blank-string?]
+   [:siren non-blank-string?]
+   [:headquarters non-blank-string?]
+   [:representative-first-name non-blank-string?]
+   [:representative-last-name non-blank-string?]
+   [:representative-role non-blank-string?]
+   [:phone non-blank-string?]])
+
 (def User
   [:map
    [:user/id [:fn {:error/message "must be a valid ID"} id/id?]]
@@ -33,7 +57,9 @@
    [:user/password-hash {:optional true} [:maybe string?]]
    [:user/email-verified? {:optional true} boolean?]
    [:user/adhesion-signed-at {:optional true} [:maybe string?]]
-   [:user/docuseal-submission-id {:optional true} [:maybe int?]]])
+   [:user/docuseal-submission-id {:optional true} [:maybe int?]]
+   [:user/natural-person {:optional true} [:maybe NaturalPerson]]
+   [:user/legal-persons {:optional true} [:maybe [:vector LegalPerson]]]])
 
 
 (defn build-user
@@ -138,6 +164,48 @@
        (sign-adhesion user (str (Instant/now))))
       ([user signed-at]
        (assoc user :user/adhesion-signed-at signed-at)))
+
+(defn update-natural-person
+      "Update user's natural person profile.
+       Validates against NaturalPerson Malli schema."
+      [user person-info]
+      (when-not (m/validate NaturalPerson person-info)
+        (throw (ex-info "Invalid natural person data"
+                        {:errors (m/explain NaturalPerson person-info)})))
+      (assoc user :user/natural-person person-info))
+
+(defn add-legal-person
+      "Add a legal person to the user's list of legal persons.
+       Validates against LegalPerson Malli schema."
+      [user legal-info]
+      (when-not (m/validate LegalPerson legal-info)
+        (throw (ex-info "Invalid legal person data"
+                        {:errors (m/explain LegalPerson legal-info)})))
+      (update user :user/legal-persons (fnil conj []) legal-info))
+
+(defn update-legal-person
+      "Update a legal person at given index in the user's list.
+       Validates against LegalPerson Malli schema."
+      [user index legal-info]
+      (when-not (m/validate LegalPerson legal-info)
+        (throw (ex-info "Invalid legal person data"
+                        {:errors (m/explain LegalPerson legal-info)})))
+      (let [persons (or (:user/legal-persons user) [])]
+        (when (>= index (count persons))
+          (throw (ex-info "Legal person index out of bounds"
+                          {:index index :count (count persons)})))
+        (assoc user :user/legal-persons (assoc persons index legal-info))))
+
+(defn remove-legal-person
+      "Remove a legal person at given index from the user's list."
+      [user index]
+      (let [persons (or (:user/legal-persons user) [])]
+        (when (>= index (count persons))
+          (throw (ex-info "Legal person index out of bounds"
+                          {:index index :count (count persons)})))
+        (assoc user :user/legal-persons
+               (into (subvec persons 0 index)
+                     (subvec persons (inc index))))))
 
 ;; ── Repository protocol ───────────────────────────────────────────────────
 

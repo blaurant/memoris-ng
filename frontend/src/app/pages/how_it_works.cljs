@@ -80,32 +80,8 @@
       "De la découverte d'un réseau à la signature de votre contrat, "
       "voici tout ce qu'il faut savoir pour rejoindre l'autoconsommation collective avec Elink-co."]]]
 
-   ;; 1 — Les réseaux
-   [:section.section
-    [:div.container
-     [:div.hiw-block
-      [:div.hiw-block__header
-       [icon-network]
-       [:div
-        [:h2.hiw-block__title "Les réseaux d'énergie locale"]
-        [:p.hiw-block__subtitle "Le socle de l'autoconsommation collective"]]]
-      [:div.hiw-block__content
-       [:p
-        "Un réseau Elink-co regroupe des producteurs et des consommateurs d'énergie situés "
-        "dans un " [:strong "périmètre géographique restreint"] " (de 2 à 20 km selon les zones). "
-        "Chaque réseau est organisé autour d'une ou plusieurs installations de production d'énergie "
-        "renouvelable : panneaux solaires, petite hydraulique, éolien, biomasse ou cogénération."]
-       [:p
-        "L'énergie produite est injectée sur le réseau public de distribution (géré par Enedis) "
-        "et répartie " [:strong "virtuellement toutes les 30 minutes"] " entre les consommateurs du réseau, "
-        "selon des clés de répartition définies par la communauté. Vous n'avez besoin d'aucune "
-        "installation particulière chez vous : votre compteur Linky suffit."]
-       [:p
-        "Vous pouvez " [:strong "consulter les réseaux disponibles"] " sur notre carte interactive "
-        "et vérifier si votre adresse se trouve dans la zone d'un réseau existant."]]]]]
-
-   ;; 2 — Consommateur
-   [:section.section.section--alt
+   ;; 1 — Consommateur
+   [:section.section {:id "consommateur"}
     [:div.container
      [:div.hiw-block
       [:div.hiw-block__header
@@ -115,20 +91,36 @@
         [:p.hiw-block__subtitle "Consommer de l'énergie verte produite à côté de chez vous"]]]
       [:div.hiw-block__content
        [:p
-        "En tant que consommateur, vous achetez une partie de votre électricité directement "
-        "auprès d'un producteur local, à un " [:strong "tarif avantageux et stable"] " dans le temps. "
-        "Vous conservez votre fournisseur d'électricité habituel, qui continue à vous alimenter "
-        "lorsque la production locale ne couvre pas vos besoins."]
+        "En tant que consommateur, vous participez à une opération " [:strong "d'autoconsommation "]
+        [:strong "collective"] " qui vous permet de " [:strong "consommer une électricité locale"]
+        " , produite à partir " [:strong "d'énergies renouvelables"] " par des producteurs situés à proximité."]
        [:p
-        "Concrètement, vous recevez " [:strong "deux factures"] " : celle de votre fournisseur "
-        "(dont le montant diminue) et celle du producteur local pour l'énergie verte consommée. "
-        "Les frais de réseau et les taxes restent identiques : seul le prix de l'énergie change."]
+        "L'électricité produite est répartie entre les consommateurs selon une clé de "
+        "répartition qui peut être définie par les membres du collectif. Vous achetez ainsi une "
+        "part de votre électricité directement auprès de plusieurs producteurs locaux."]
        [:p
-        "Aucun risque de coupure : si le producteur est à l'arrêt (maintenance, météo), "
-        "votre fournisseur habituel prend automatiquement le relais."]]]]]
+        "Votre prix d'électricité correspond aux prix fixés par les producteurs à laquelle "
+        "s'ajoutent des frais de gestion liés à l'organisation du service (frais d'adhésion "
+        "30\u00a0€/an, frais de fonctionnement 0.015\u00a0€ HT/kWh acheté)."]
+       [:p
+        "Au final, votre électricité vous coûtera environ " [:strong "10\u00a0% moins cher"]
+        " que le prix réglementé EDF. Le prix de vente est fixé à l'avance et reste stable "
+        "dans le temps. Il ne varie pas en fonction du marché de l'électricité ou du contexte "
+        "géopolitique."]
+       [:p
+        [:strong "L'électricité renouvelable"] " étant par nature variable (selon la météo, les saisons, "
+        "etc.), elle ne couvre pas en permanence l'ensemble de vos besoins. Vous conservez "
+        "le contrat avec votre fournisseur d'électricité classique pour compléter votre "
+        "approvisionnement et garantir la continuité de service."]
+       [:p
+        "En participant à un collectif, vous consommez automatiquement et en priorité "
+        "l'énergie verte des producteurs participants."]
+       [:p
+        "Enfin, vous pouvez quitter le dispositif à tout moment, dans le respect des conditions "
+        "de résiliation prévues au contrat (c'est-à-dire 2 mois)."]]]]]
 
-   ;; 3 — Producteur
-   [:section.section
+   ;; 2 — Producteur
+   [:section.section.section--alt {:id "producteur"}
     [:div.container
      [:div.hiw-block
       [:div.hiw-block__header
@@ -138,17 +130,68 @@
         [:p.hiw-block__subtitle "Vendre votre énergie à vos voisins au meilleur prix"]]]
       [:div.hiw-block__content
        [:p
-        "Vous disposez d'une installation de production d'énergie renouvelable (panneaux solaires, "
-        "éolienne, turbine hydraulique...) ? En rejoignant un réseau Elink-co, vous vendez votre "
-        "production directement à vos voisins à un tarif " [:strong "bien supérieur au rachat EDF OA"]
-        " (environ 0,13 €/kWh contre 0,04 à 0,05 €/kWh en surplus)."]
+        "En tant que " [:strong "producteur"] ", vous participez à une opération " [:strong "d'autoconsommation "]
+        [:strong "collective"] " qui vous permet de " [:strong "vendre directement l'électricité produite"] " par votre "
+        "installation à des consommateurs situés à proximité."]
        [:p
-        "Elink-co se charge de trouver les consommateurs, d'organiser la répartition de votre production "
-        "et de gérer les aspects administratifs auprès d'Enedis. Vous n'avez qu'à produire : "
-        "nous nous occupons du reste."]
+        "Vous fixez votre propre prix de vente (en accord avec Elink-co) et êtes rémunéré en "
+        "fonction des quantités d'électricité réellement consommées. La répartition de "
+        "l'électricité entre les consommateurs est définie par une clé de répartition gérée par "
+        "Elink-co."]
        [:p
-        "Votre installation est " [:strong "rentabilisée plus rapidement"] " et vous contribuez "
-        "directement à la transition énergétique de votre territoire."]]]]]
+        [:strong "Elink-co"] " prend en charge l'organisation globale\u00a0: coordination des participants, "
+        "gestion administrative, collecte des données, facturation à votre nom et répartition "
+        "des paiements."]
+       [:p
+        "Votre engagement repose sur une obligation de moyens\u00a0: vous devez exploiter et "
+        "entretenir correctement votre installation, mais vous ne garantissez ni un volume de "
+        "production ni une fourniture continue, la production d'énergie renouvelable étant par "
+        "nature variable."]
+       [:p
+        "Si votre surplus n'est pas consommé par les membres du collectif, votre contrat de "
+        "rachat EDF prend alors le relais."]
+       [:p
+        "Des frais de gestion sont appliqués pour couvrir les services de l'association (frais "
+        "d'adhésion 30\u00a0€/an, frais de fonctionnement 0.015\u00a0€ HT/kWh vendu)."]
+       [:p
+        "Enfin, vous pouvez quitter l'opération à tout moment dans le respect des conditions "
+        "de résiliation prévues au contrat."]]]]]
+
+   ;; 3 — Les réseaux
+   [:section.section {:id "reseaux"}
+    [:div.container
+     [:div.hiw-block
+      [:div.hiw-block__header
+       [icon-network]
+       [:div
+        [:h2.hiw-block__title "Les réseaux d'énergie locale"]
+        [:p.hiw-block__subtitle "Le socle de l'autoconsommation collective"]]]
+      [:div.hiw-block__content
+       [:p
+        [:strong "Elink-co"] " est une association et une entité centrale qui organise, structure et pilote "
+        [:strong "l'opération d'autoconsommation collective"] " en réunissant des producteurs et des "
+        "consommateurs au sein d'un périmètre géographique défini (2km/10km ou 20km)."]
+       [:p
+        "Elle assure la coordination entre tous les participants et veille au bon déroulement de "
+        "l'opération conformément à la réglementation en vigueur. À ce titre, elle définit, met à "
+        "jour et transmet la clé de répartition de l'électricité au gestionnaire de réseau, "
+        "permettant d'allouer l'énergie produite entre les consommateurs."]
+       [:p
+        [:strong "Elink-co"] " prend en charge l'ensemble des aspects administratifs et opérationnels\u00a0: "
+        "collecte et traitement des données de production et de consommation, établissement "
+        "des factures, et répartition des revenus entre les producteurs et les consommateurs, "
+        "dans le cadre des mandats qui lui sont confiés."]
+       [:p
+        "Elle agit également comme interface entre les participants et le gestionnaire de "
+        "réseau public, garantissant la bonne intégration de l'opération dans le système "
+        "électrique."]
+       [:p
+        [:strong "Elink-co"] " peut adapter les modalités de fonctionnement, y compris les prix et les "
+        "conditions contractuelles, avec un préavis, afin de tenir compte des évolutions "
+        "économiques, techniques ou réglementaires."]
+       [:p
+        "En contrepartie de ses services, elle perçoit des frais de gestion auprès des "
+        "producteurs et des consommateurs."]]]]]
 
    ;; 4 — L'inscription (onboarding)
    [:section.section.section--alt
