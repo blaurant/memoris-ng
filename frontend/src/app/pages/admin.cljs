@@ -49,6 +49,53 @@
               [:line {:x1 "12" :y1 "17" :x2 "12.01" :y2 "17"}]]
              [:span (if (seq message) message "(aperçu vide)")]])]]))))
 
+;; ── User profile modal ────────────────────────────────────────────────────────
+
+(defn- user-profile-modal [user on-close]
+  (let [np (:user/natural-person user)]
+    [:div.modal-overlay {:on-click (fn [e]
+                                      (when (= (.-target e) (.-currentTarget e))
+                                        (on-close)))}
+     [:div.modal {:on-click #(.stopPropagation %)}
+      [:div.modal__header
+       [:span (str "Profil de " (:user/name user))]
+       [:button.btn.btn--small
+        {:on-click on-close
+         :style {:background "transparent" :color "var(--color-muted)"
+                 :border "none" :font-size "1.2rem" :padding "0"}}
+        "\u00D7"]]
+      [:div.modal__body
+       (if (and np (seq (:first-name np)))
+         [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "0.75rem 1.5rem"}}
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Prénom"]
+           [:p {:style {:font-weight "600"}} (:first-name np)]]
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Nom"]
+           [:p {:style {:font-weight "600"}} (:last-name np)]]
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Date de naissance"]
+           [:p {:style {:font-weight "600"}} (or (:birth-date np) "—")]]
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Lieu de naissance"]
+           [:p {:style {:font-weight "600"}} (or (:birth-place np) "—")]]
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Adresse postale"]
+           [:p {:style {:font-weight "600"}} (or (:postal-address np) "—")]]
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Téléphone"]
+           [:p {:style {:font-weight "600"}} (or (:phone np) "—")]]
+          (when (seq (:profession np))
+            [:div
+             [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Profession"]
+             [:p {:style {:font-weight "600"}} (:profession np)]])]
+         [:p {:style {:color "var(--color-muted)" :text-align "center" :padding "1rem 0"}}
+          "Cet utilisateur n'a pas encore renseigné son identité."])]
+      [:div.modal__actions
+       [:button.btn.btn--small.btn--green
+        {:on-click on-close}
+        "Fermer"]]]]))
+
 ;; ── Users table ───────────────────────────────────────────────────────────────
 
 (defn- export-users-csv [users]
@@ -71,49 +118,58 @@
     (.revokeObjectURL js/URL url)))
 
 (defn users-tab []
-  (let [users    @(rf/subscribe [:admin/users])
-        loading? @(rf/subscribe [:admin/users-loading?])]
-    [:div
-     [:div.consumptions__header
-      [:h2.admin__tab-title "Utilisateurs"]
-      [:button.btn.btn--small
-       {:on-click #(export-users-csv users)
-        :disabled (empty? users)
-        :title    "Exporter en CSV"}
-       [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
-              :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
-              :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
-              :style {:vertical-align "middle" :margin-right "4px"}}
-        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
-        [:polyline {:points "7 10 12 15 17 10"}]
-        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
-       "Exporter"]]
-     (cond
-       loading?
-       [:p.loading "Chargement..."]
+  (let [selected-user (r/atom nil)]
+    (fn []
+      (let [users    @(rf/subscribe [:admin/users])
+            loading? @(rf/subscribe [:admin/users-loading?])]
+        [:div
+         [:div.consumptions__header
+          [:h2.admin__tab-title "Utilisateurs"]
+          [:button.btn.btn--small
+           {:on-click #(export-users-csv users)
+            :disabled (empty? users)
+            :title    "Exporter en CSV"}
+           [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+                  :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+                  :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+                  :style {:vertical-align "middle" :margin-right "4px"}}
+            [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+            [:polyline {:points "7 10 12 15 17 10"}]
+            [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+           "Exporter"]]
+         (cond
+           loading?
+           [:p.loading "Chargement..."]
 
-       (empty? users)
-       [:p.admin__empty "Aucun utilisateur."]
+           (empty? users)
+           [:p.admin__empty "Aucun utilisateur."]
 
-       :else
-       [:table.admin-table
-        [:thead
-         [:tr
-          [:th "Nom"]
-          [:th "Email"]
-          [:th "Fournisseur"]
-          [:th "Role"]
-          [:th "Statut"]]]
-        [:tbody
-         (for [u users]
-           ^{:key (:user/id u)}
-           [:tr
-            [:td (:user/name u)]
-            [:td (:user/email u)]
-            [:td (:user/provider u)]
-            [:td {:class (when (= "admin" (:user/role u)) "admin-table__role--admin")}
-             (:user/role u)]
-            [:td (:user/lifecycle u)]])]])]))
+           :else
+           [:table.admin-table
+            [:thead
+             [:tr
+              [:th "Nom"]
+              [:th "Email"]
+              [:th "Fournisseur"]
+              [:th "Role"]
+              [:th "Statut"]]]
+            [:tbody
+             (for [u users]
+               ^{:key (:user/id u)}
+               [:tr
+                [:td [:a {:href "#" :style {:color "var(--color-primary)" :text-decoration "underline"
+                                            :cursor "pointer"}
+                          :on-click (fn [e]
+                                      (.preventDefault e)
+                                      (reset! selected-user u))}
+                      (:user/name u)]]
+                [:td (:user/email u)]
+                [:td (:user/provider u)]
+                [:td {:class (when (= "admin" (:user/role u)) "admin-table__role--admin")}
+                 (:user/role u)]
+                [:td (:user/lifecycle u)]])]])
+         (when-let [u @selected-user]
+           [user-profile-modal u #(reset! selected-user nil)])]))))
 
 ;; ── Create network modal ──────────────────────────────────────────────────────
 
