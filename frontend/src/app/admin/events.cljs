@@ -312,12 +312,11 @@
                   :on-success      [:admin/update-user-profile-ok on-success]
                   :on-failure      [:admin/update-user-profile-err]}}))
 
-(rf/reg-event-db :admin/update-user-profile-ok
-  (fn [db [_ on-success updated-user]]
+(rf/reg-event-fx :admin/update-user-profile-ok
+  (fn [{:keys [db]} [_ on-success _updated-user]]
     (when on-success (on-success))
-    (update db :admin/users
-            (fn [users]
-              (mapv #(if (= (:user/id %) (:user/id updated-user)) updated-user %) users)))))
+    {:dispatch-n [[:admin/fetch-users]
+                  [:auth/refresh-user]]}))
 
 (rf/reg-event-db :admin/update-user-profile-err
   (fn [db [_ response]]

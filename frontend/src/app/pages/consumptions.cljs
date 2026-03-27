@@ -371,11 +371,12 @@
      (fn []
        (let [consumptions @(rf/subscribe [:consumptions/list])
              loading?     @(rf/subscribe [:consumptions/loading?])
+             creating?    @(rf/subscribe [:consumptions/creating?])
              active-consos (filterv #(not (onboarding? %)) consumptions)
              onboarding-consos (filterv onboarding? consumptions)]
          [:div.consumptions
           (cond
-            loading?
+            (or loading? creating?)
             [:p.loading "Chargement..."]
 
             (seq onboarding-consos)
@@ -386,9 +387,11 @@
                  [onboarding/onboarding-form c]))]
 
             (empty? consumptions)
-            (do
-              (rf/dispatch [:consumptions/create])
-              [:p.loading "Création en cours..."])
+            [:div
+             [:p "Bienvenue ! Commencez votre première consommation."]
+             [:button.btn.btn--primary
+              {:on-click #(rf/dispatch [:consumptions/create])}
+              "Démarrer"]]
 
             :else
             [:div

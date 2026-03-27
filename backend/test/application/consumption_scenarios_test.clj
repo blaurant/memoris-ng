@@ -63,7 +63,7 @@
     (assoc ctx :consumption
            (scenarios/complete-billing-address
              (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-             "20 avenue de Lyon")))
+             "20 avenue de Lyon" "FR7630006000011234567890189" nil)))
   (THEN "the consumption is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 

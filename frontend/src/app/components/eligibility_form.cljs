@@ -123,7 +123,7 @@
          [:div.eligibility-form__group
           [:input.eligibility-form__input
            {:type        "text"
-            :placeholder "Entrez votre adresse…"
+            :placeholder "Entrez votre adresse et votre code postal…"
             :value       @input-val
             :on-change   #(do (reset! input-val (-> % .-target .-value))
                               (reset! geo-error nil))

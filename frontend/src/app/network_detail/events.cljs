@@ -7,7 +7,7 @@
   (fn [{:keys [db]} [_ network-id]]
     (let [admin?  (= "admin" (get-in db [:auth/user :role]))
           token   (:auth/token db)
-          uri     (if admin?
+          uri     (if (and admin? token)
                     (str config/API_BASE "/api/v1/admin/networks/" network-id "/detail")
                     (str config/API_BASE "/api/v1/networks/" network-id "/detail"))
           headers (if (and admin? token)
@@ -21,7 +21,7 @@
                     :headers         headers
                     :response-format (ajax/json-response-format {:keywords? true})
                     :on-success      [:network-detail/fetch-ok]
-                    :on-failure      [:network-detail/fetch-err]}})))
+                    :on-failure      [:network-detail/fetch-err network-id]}})))
 
 (rf/reg-event-db :network-detail/fetch-ok
   (fn [db [_ response]]
@@ -29,7 +29,22 @@
         (assoc :network-detail/data response)
         (assoc :network-detail/loading? false))))
 
-(rf/reg-event-db :network-detail/fetch-err
+(rf/reg-event-fx :network-detail/fetch-err
+  (fn [{:keys [db]} [_ network-id error]]
+    (let [admin?  (= "admin" (get-in db [:auth/user :role]))
+          status  (:status error)]
+      (if (and admin? (#{401 403} status))
+        ;; Admin token expired or invalid — fallback to public endpoint
+        {:http-xhrio {:method          :get
+                      :uri             (str config/API_BASE "/api/v1/networks/" network-id "/detail")
+                      :response-format (ajax/json-response-format {:keywords? true})
+                      :on-success      [:network-detail/fetch-ok]
+                      :on-failure      [:network-detail/fetch-public-err]}}
+        {:db (-> db
+                 (assoc :network-detail/error error)
+                 (assoc :network-detail/loading? false))}))))
+
+(rf/reg-event-db :network-detail/fetch-public-err
   (fn [db [_ error]]
     (-> db
         (assoc :network-detail/error error)

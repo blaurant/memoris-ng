@@ -3,7 +3,6 @@
             [app.consumptions.contract :as contract]
             [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
-            [reitit.frontend.easy :as rfee]
             [reagent.core :as r]))
 
 (def steps
@@ -141,6 +140,139 @@
                :on-click #(on-select (:network/id sel))}
               "Valider"]]]]))})))
 
+(def ^:private natural-required-fields
+  [:last-name :first-name :birth-date :address :postal-code :city :phone])
+
+(defn- postal-code-valid? [v]
+  (and (string? v)
+       (some? (re-matches #"^(0[1-9]|[1-8]\d|9[0-5]|97[1-6]|98[0-8])\d{3}$" v))))
+
+(defn- phone-valid? [v]
+  (and (string? v)
+       (re-matches #"[0-9+\-.()\s]+" v)
+       (>= (count (re-seq #"\d" v)) 10)))
+
+(defn- max-birth-date
+  "Returns today minus 17 years as YYYY-MM-DD string."
+  []
+  (let [d (js/Date.)
+        y (- (.getFullYear d) 17)
+        m (+ (.getMonth d) 1)
+        day (.getDate d)]
+    (str y "-" (when (< m 10) "0") m "-" (when (< day 10) "0") day)))
+
+(defn- birth-date-valid? [v]
+  (and (string? v) (seq v)
+       (>= (count v) 10)
+       (<= (compare "1920-01-01" v) 0)
+       (<= (compare v (max-birth-date)) 0)))
+
+(defn- natural-person-valid? [data]
+  (and (every? #(seq (str (get data %))) natural-required-fields)
+       (postal-code-valid? (:postal-code data))
+       (phone-valid? (:phone data))
+       (birth-date-valid? (:birth-date data))))
+
+(defn- filter-phone [v]
+  (apply str (re-seq #"[0-9+\-.()\s]" v)))
+
+(defn- field-row [label value on-change & [{:keys [placeholder type required? min max]}]]
+  [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+   [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+    label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
+   [:input (cond-> {:type        (or type "text")
+                    :value       (or value "")
+                    :placeholder (or placeholder "")
+                    :on-change   #(on-change (-> % .-target .-value))
+                    :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
+                                  :border-radius "var(--radius)" :font-size "0.95rem"}}
+             min (assoc :min min)
+             max (assoc :max max))]])
+
+(defn- phone-field-row [label value on-change & [{:keys [required?]}]]
+  (let [v         (or value "")
+        has-input? (seq v)
+        valid?    (or (empty? v) (phone-valid? v))]
+    [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+     [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+      label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
+     [:input {:type        "tel"
+              :inputMode   "tel"
+              :value       v
+              :placeholder "Ex: +33 6 12 34 56 78"
+              :on-change   #(on-change (filter-phone (-> % .-target .-value)))
+              :style       {:padding "0.5rem 0.75rem"
+                            :border (str "1px solid " (if (and has-input? (not valid?))
+                                                        "#d32f2f" "var(--color-border)"))
+                            :border-radius "var(--radius)" :font-size "0.95rem"}}]
+     (when (and has-input? (not valid?))
+       [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+        "Minimum 10 chiffres"])]))
+
+(defn- identity-modal
+  "Modal to fill natural person identity, same fields as the profile page."
+  [on-close]
+  (let [form (r/atom {})]
+    (fn [on-close]
+      (let [data   @form
+            valid? (natural-person-valid? data)]
+        [:div.modal-overlay {:on-click (fn [e]
+                                         (when (= (.-target e) (.-currentTarget e))
+                                           (on-close)))}
+         [:div.modal {:on-click #(.stopPropagation %)}
+          [:div.modal__header
+           [:span "Renseigner votre identité"]
+           [:button.btn.btn--small
+            {:on-click on-close
+             :style {:background "transparent" :color "var(--color-muted)"
+                     :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
+          [:div.modal__body
+           [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
+            [field-row "Prénom" (:first-name data)
+             #(swap! form assoc :first-name %) {:required? true}]
+            [field-row "Nom" (:last-name data)
+             #(swap! form assoc :last-name %) {:required? true}]
+            [field-row "Date de naissance" (:birth-date data)
+             #(swap! form assoc :birth-date %)
+             {:type "date" :required? true
+              :min "1920-01-01" :max (max-birth-date)}]]
+           [:h4 {:style {:margin-top "1rem" :margin-bottom "0.5rem" :font-size "0.95rem"}}
+            "Coordonnées"]
+           [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
+            [field-row "Adresse" (:address data)
+             #(swap! form assoc :address %) {:required? true}]
+            (let [pc (or (:postal-code data) "")]
+              [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+               [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+                "Code postal" [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"]]
+               [:input {:type "text" :inputMode "numeric" :maxLength 5
+                        :value pc :placeholder "Ex: 75001"
+                        :on-change #(swap! form assoc :postal-code (-> % .-target .-value))
+                        :style {:padding "0.5rem 0.75rem"
+                                :border (str "1px solid "
+                                             (if (and (seq pc) (not (postal-code-valid? pc)))
+                                               "#d32f2f" "var(--color-border)"))
+                                :border-radius "var(--radius)" :font-size "0.95rem"}}]
+               (when (and (seq pc) (not (postal-code-valid? pc)))
+                 [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+                  "Code postal français invalide"])])
+            [field-row "Ville" (:city data)
+             #(swap! form assoc :city %) {:required? true}]
+            [phone-field-row "Téléphone" (:phone data)
+             #(swap! form assoc :phone %) {:required? true}]]]
+          [:div.modal__actions
+           [:button.btn.btn--small.btn--outline
+            {:on-click on-close}
+            "Annuler"]
+           [:button {:class (str "btn btn--small btn--green" (when-not valid? " btn--disabled"))
+                     :style (when-not valid? {:opacity "0.5" :cursor "not-allowed"})
+                     :on-click (fn []
+                                 (when valid?
+                                   (rf/dispatch [:auth/update-natural-person data])
+                                   (on-close)))}
+            "Enregistrer"]]]]))))
+
 (defn- identity-selector
   "Lets the user pick which identity to use: natural person or one of their legal persons.
    Updates address atom when selection changes."
@@ -160,7 +292,7 @@
                     :checked   (= @selected-identity :natural)
                     :on-change (fn []
                                  (reset! selected-identity :natural)
-                                 (reset! address (or (:postal-address natural) "")))}]
+                                 (reset! address (str (:address natural) " " (:postal-code natural) " " (:city natural))))}]
            (str nat-label " (personne physique)")]
           (doall
             (for [[idx lp] (map-indexed vector legals)]
@@ -180,21 +312,23 @@
          (when @show-modal?
            [lpm/new-legal-person-modal #(reset! show-modal? false)])]))))
 
-(defn- step1-form [consumption-id]
-  (let [address           (r/atom nil)
-        network-id        (r/atom "")
+(defn- step1-form [consumption-id consumption]
+  (let [address           (r/atom (or (:consumption/consumer-address consumption) nil))
+        network-id        (r/atom (or (:consumption/network-id consumption) ""))
         show-map?         (r/atom false)
+        show-identity?    (r/atom false)
         selected-identity (r/atom :natural)
         prefilled?        (r/atom false)
         networks          @(rf/subscribe [:networks/list])]
     (fn []
       (let [user    @(rf/subscribe [:auth/user])
             natural (:natural-person user)]
-        ;; Pre-fill address from natural person on first render
+        ;; Pre-fill address from natural person on first render (only if not already set)
         (when (and (not @prefilled?)
+                   (empty? (str @address))
                    natural
-                   (seq (:postal-address natural)))
-          (reset! address (:postal-address natural))
+                   (seq (:address natural)))
+          (reset! address (str (:address natural) " " (:postal-code natural) " " (:city natural)))
           (reset! prefilled? true))
         (when (nil? @address)
           (reset! address ""))
@@ -202,7 +336,7 @@
          (if-not (and natural
                       (seq (:first-name natural))
                       (seq (:last-name natural)))
-           ;; No identity filled — show message + link to profile
+           ;; No identity filled — show message + modal to fill it
            [:div {:style {:background "#fff8e1" :border "1px solid #ffe082"
                           :border-radius "var(--radius)" :padding "1.25rem"
                           :text-align "center"}}
@@ -212,8 +346,10 @@
              "Pour créer une consommation, nous avons besoin de vos informations personnelles "
              "(nom, prénom, adresse, etc.)."]
             [:button.btn.btn--green.btn--small
-             {:on-click #(rf/dispatch [:portal/set-section :profile])}
-             "Compléter mon profil"]]
+             {:on-click #(reset! show-identity? true)}
+             "Renseigner mon identité"]
+            (when @show-identity?
+              [identity-modal #(reset! show-identity? false)])]
 
            ;; Identity filled — show selector + address form
            [:<>
@@ -254,8 +390,8 @@
                (fn []
                  (reset! show-map? false))])])]))))
 
-(defn- step2-form [consumption-id]
-  (let [linky-ref (r/atom "")]
+(defn- step2-form [consumption-id consumption]
+  (let [linky-ref (r/atom (or (:consumption/linky-reference consumption) ""))]
     (fn []
       [:div.onboarding__form
        [:input.onboarding__input
@@ -273,11 +409,13 @@
                                    consumption-id @linky-ref])}
          "Suivant"]]])))
 
-(defn- step3-form [consumption-id consumer-address]
-  (let [use-same?    (r/atom true)
-        billing-addr (r/atom "")
-        iban         (r/atom "")
-        bic          (r/atom "")]
+(defn- step3-form [consumption-id consumer-address consumption]
+  (let [existing-billing (:consumption/billing-address consumption)
+        use-same?    (r/atom (or (nil? existing-billing)
+                                 (= existing-billing consumer-address)))
+        billing-addr (r/atom (or existing-billing ""))
+        iban         (r/atom (or (:consumption/iban consumption) ""))
+        bic          (r/atom (or (:consumption/bic consumption) ""))]
     (fn []
       (let [user    @(rf/subscribe [:auth/user])
             natural (:natural-person user)
@@ -344,7 +482,7 @@
           [:button.btn.btn--green.btn--small
            {:disabled (or (empty? effective-addr) (empty? @iban))
             :on-click #(rf/dispatch [:consumptions/submit-step3
-                                     consumption-id effective-addr])}
+                                     consumption-id effective-addr @iban @bic])}
            "Suivant"]]]))))
 
 (def ^:private contract-configs
@@ -521,8 +659,8 @@
        "\u00D7"]]
      [stepper lifecycle]
      (case lifecycle
-       :consumer-information  [step1-form cid]
-       :linky-reference       [step2-form cid]
-       :billing-address       [step3-form cid (:consumption/consumer-address consumption)]
+       :consumer-information  [step1-form cid consumption]
+       :linky-reference       [step2-form cid consumption]
+       :billing-address       [step3-form cid (:consumption/consumer-address consumption) consumption]
        :contract-signature    [step4-form cid consumption]
        nil)]))

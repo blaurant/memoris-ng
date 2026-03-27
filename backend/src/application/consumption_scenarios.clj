@@ -106,10 +106,10 @@
         c'))
 
 (defn complete-billing-address
-      "Complete step 3: billing address."
-      [consumption-repo user-id consumption-id billing-addr]
+      "Complete step 3: billing address, IBAN, and optional BIC."
+      [consumption-repo user-id consumption-id billing-addr iban bic]
       (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
-            c' (consumption/complete-billing-address c billing-addr)
+            c' (consumption/complete-billing-address c billing-addr iban bic)
             c' (consumption/save! consumption-repo c c')]
         (mu/log ::billing-address-completed :consumption-id consumption-id)
         c'))

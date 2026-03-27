@@ -34,9 +34,15 @@
   [:map
    [:consumption/linky-reference linky-reference?]])
 
+(def iban?
+  [:and string?
+   [:fn {:error/message "must not be blank"} #(not (clojure.string/blank? %))]])
+
 (def BillingAddress
   [:map
-   [:consumption/billing-address address?]])
+   [:consumption/billing-address address?]
+   [:consumption/iban iban?]
+   [:consumption/bic {:optional true} [:maybe string?]]])
 
 (def ContractSignature
   [:map
@@ -121,16 +127,18 @@
                          :consumption/linky-reference linky-ref))))
 
 (defn complete-billing-address
-      "Transition :billing-address -> :contract-signature with billing address."
-      [c billing-addr]
+      "Transition :billing-address -> :contract-signature with billing address, IBAN, and optional BIC."
+      [c billing-addr iban bic]
       (let [_ (assert-lifecycle c :billing-address)]
         (validate (-> BaseConsumption
                       (mu/merge ConsumerInformation)
                       (mu/merge LinkyReference)
                       (mu/merge BillingAddress))
-                  (assoc c
-                         :consumption/lifecycle :contract-signature
-                         :consumption/billing-address billing-addr))))
+                  (cond-> (assoc c
+                                 :consumption/lifecycle :contract-signature
+                                 :consumption/billing-address billing-addr
+                                 :consumption/iban iban)
+                    (seq bic) (assoc :consumption/bic bic)))))
 
 (def ^:private contract-type->key
   {:producer  :consumption/producer-contract-signed-at

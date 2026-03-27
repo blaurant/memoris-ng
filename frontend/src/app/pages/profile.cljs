@@ -3,24 +3,75 @@
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
-(defn- field-row [label value on-change & [{:keys [placeholder type required?]}]]
+(defn- field-row [label value on-change & [{:keys [placeholder type required? min max]}]]
   [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
    [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
     label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
-   [:input {:type        (or type "text")
-            :value       (or value "")
-            :placeholder (or placeholder "")
-            :on-change   #(on-change (-> % .-target .-value))
-            :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
-                          :border-radius "var(--radius)" :font-size "0.95rem"}}]])
+   [:input (cond-> {:type        (or type "text")
+                    :value       (or value "")
+                    :placeholder (or placeholder "")
+                    :on-change   #(on-change (-> % .-target .-value))
+                    :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
+                                  :border-radius "var(--radius)" :font-size "0.95rem"}}
+             min (assoc :min min)
+             max (assoc :max max))]])
+
+(defn- phone-valid? [v]
+  (and (string? v)
+       (re-matches #"[0-9+\-.()\s]+" v)
+       (>= (count (re-seq #"\d" v)) 10)))
+
+(defn- filter-phone [v]
+  (apply str (re-seq #"[0-9+\-.()\s]" v)))
+
+(defn- phone-field-row [label value on-change & [{:keys [required?]}]]
+  (let [touched? (r/atom false)]
+    (fn [label value on-change & [{:keys [required?]}]]
+      (let [v         (or value "")
+            valid?    (or (empty? v) (phone-valid? v))
+            show-err? (and @touched? (seq v) (not valid?))]
+        [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+         [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+          label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
+         [:input {:type        "tel"
+                  :inputMode   "tel"
+                  :value       v
+                  :placeholder "Ex: +33 6 12 34 56 78"
+                  :on-blur     #(reset! touched? true)
+                  :on-change   #(on-change (filter-phone (-> % .-target .-value)))
+                  :style       {:padding "0.5rem 0.75rem"
+                                :border (str "1px solid " (if show-err? "#d32f2f" "var(--color-border)"))
+                                :border-radius "var(--radius)" :font-size "0.95rem"}}]
+         (when show-err?
+           [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+            "Minimum 10 chiffres, caractères autorisés : chiffres, +, -, ., (, ), espaces"])]))))
 
 ;; ── Natural person ──────────────────────────────────────────────────────────
 
 (def ^:private natural-required-fields
-  [:last-name :first-name :birth-date :birth-place :postal-address :phone])
+  [:last-name :first-name :birth-date :address :postal-code :city :phone])
+
+(defn- max-birth-date []
+  (let [d (js/Date.)
+        y (- (.getFullYear d) 17)
+        m (+ (.getMonth d) 1)
+        day (.getDate d)]
+    (str y "-" (when (< m 10) "0") m "-" (when (< day 10) "0") day)))
+
+(defn- birth-date-valid? [v]
+  (and (string? v) (seq v)
+       (>= (count v) 10)
+       (<= (compare "1920-01-01" v) 0)
+       (<= (compare v (max-birth-date)) 0)))
+
+(defn- postal-code-valid? [v]
+  (and (string? v)
+       (some? (re-matches #"^(0[1-9]|[1-8]\d|9[0-5]|97[1-6]|98[0-8])\d{3}$" v))))
 
 (defn- natural-person-valid? [data]
-  (every? #(seq (str (get data %))) natural-required-fields))
+  (and (every? #(seq (str (get data %))) natural-required-fields)
+       (postal-code-valid? (:postal-code data))
+       (birth-date-valid? (:birth-date data))))
 
 (defn- natural-person-section [form saved?]
   (fn [form saved?]
@@ -29,22 +80,23 @@
       [:<>
        [:h3 {:style {:margin-bottom "1rem" :font-size "1.1rem"}} "Identité"]
        [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
-        [field-row "Nom" (:last-name data)
-         #(do (swap! form assoc :last-name %) (reset! saved? false)) {:required? true}]
         [field-row "Prénom" (:first-name data)
          #(do (swap! form assoc :first-name %) (reset! saved? false)) {:required? true}]
+        [field-row "Nom" (:last-name data)
+         #(do (swap! form assoc :last-name %) (reset! saved? false)) {:required? true}]
         [field-row "Date de naissance" (:birth-date data)
          #(do (swap! form assoc :birth-date %) (reset! saved? false))
-         {:type "date" :required? true}]
-        [field-row "Lieu de naissance" (:birth-place data)
-         #(do (swap! form assoc :birth-place %) (reset! saved? false)) {:required? true}]
-        [field-row "Profession" (:profession data)
-         #(do (swap! form assoc :profession %) (reset! saved? false))]
-        [field-row "Adresse postale" (:postal-address data)
-         #(do (swap! form assoc :postal-address %) (reset! saved? false)) {:required? true}]
-        [field-row "Numéro de téléphone" (:phone data)
+         {:type "date" :required? true
+          :min "1920-01-01" :max (max-birth-date)}]
+        [field-row "Adresse" (:address data)
+         #(do (swap! form assoc :address %) (reset! saved? false)) {:required? true}]
+        [field-row "Code postal" (:postal-code data)
+         #(do (swap! form assoc :postal-code %) (reset! saved? false)) {:required? true}]
+        [field-row "Ville" (:city data)
+         #(do (swap! form assoc :city %) (reset! saved? false)) {:required? true}]
+        [phone-field-row "Numéro de téléphone" (:phone data)
          #(do (swap! form assoc :phone %) (reset! saved? false))
-         {:type "tel" :required? true}]]
+         {:required? true}]]
        [:div {:style {:margin-top "1rem" :display "flex" :align-items "center" :gap "1rem"}}
         [:button {:class (str "btn btn--green" (when-not valid? " btn--disabled"))
                   :style (when-not valid? {:opacity "0.5" :cursor "not-allowed"})
@@ -66,8 +118,23 @@
   [:company-name :siren :headquarters :representative-last-name
    :representative-first-name :representative-role :phone])
 
+(defn- luhn-valid? [s]
+  (let [digits (map #(- (.charCodeAt % 0) 48) s)]
+    (zero? (rem (reduce + (map-indexed
+                            (fn [i d]
+                              (let [v (if (even? i) d (* 2 d))]
+                                (if (> v 9) (- v 9) v)))
+                            digits))
+                10))))
+
+(defn- siren-valid? [v]
+  (and (string? v)
+       (some? (re-matches #"^\d{9}$" v))
+       (luhn-valid? v)))
+
 (defn- legal-person-valid? [data]
-  (every? #(seq (str (get data %))) legal-required-fields))
+  (and (every? #(seq (str (get data %))) legal-required-fields)
+       (siren-valid? (:siren data))))
 
 (defn- legal-person-card [index initial-data]
   (let [form   (r/atom (or initial-data {}))
@@ -96,9 +163,9 @@
            #(do (swap! form assoc :siren %) (reset! saved? false)) {:required? true}]
           [field-row "Siège social" (:headquarters data)
            #(do (swap! form assoc :headquarters %) (reset! saved? false)) {:required? true}]
-          [field-row "Numéro de téléphone" (:phone data)
+          [phone-field-row "Numéro de téléphone" (:phone data)
            #(do (swap! form assoc :phone %) (reset! saved? false))
-           {:type "tel" :required? true}]]
+           {:required? true}]]
          [:h4 {:style {:margin-top "1rem" :margin-bottom "0.5rem" :font-size "0.95rem"}}
           "Représentant légal"]
          [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}

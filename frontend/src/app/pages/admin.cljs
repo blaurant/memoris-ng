@@ -77,18 +77,18 @@
            [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Date de naissance"]
            [:p {:style {:font-weight "600"}} (or (:birth-date np) "—")]]
           [:div
-           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Lieu de naissance"]
-           [:p {:style {:font-weight "600"}} (or (:birth-place np) "—")]]
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Adresse"]
+           [:p {:style {:font-weight "600"}} (or (:address np) "—")]]
           [:div
-           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Adresse postale"]
-           [:p {:style {:font-weight "600"}} (or (:postal-address np) "—")]]
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Code postal"]
+           [:p {:style {:font-weight "600"}} (or (:postal-code np) "—")]]
+          [:div
+           [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Ville"]
+           [:p {:style {:font-weight "600"}} (or (:city np) "—")]]
           [:div
            [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Téléphone"]
            [:p {:style {:font-weight "600"}} (or (:phone np) "—")]]
-          (when (seq (:profession np))
-            [:div
-             [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} "Profession"]
-             [:p {:style {:font-weight "600"}} (:profession np)]])]
+]
          [:p {:style {:color "var(--color-muted)" :text-align "center" :padding "1rem 0"}}
           "Cet utilisateur n'a pas encore renseigné son identité."])]
       [:div.modal__actions
@@ -99,19 +99,55 @@
 ;; ── Edit user profile modal ───────────────────────────────────────────────────
 
 (def ^:private natural-required-fields
-  [:last-name :first-name :birth-date :birth-place :postal-address :phone])
+  [:last-name :first-name :birth-date :address :postal-code :city :phone])
+
+(defn- max-birth-date []
+  (let [d (js/Date.)
+        y (- (.getFullYear d) 17)
+        m (+ (.getMonth d) 1)
+        day (.getDate d)]
+    (str y "-" (when (< m 10) "0") m "-" (when (< day 10) "0") day)))
+
+(defn- birth-date-valid? [v]
+  (and (string? v) (seq v)
+       (>= (count v) 10)
+       (<= (compare "1920-01-01" v) 0)
+       (<= (compare v (max-birth-date)) 0)))
+
+(defn- postal-code-valid? [v]
+  (and (string? v)
+       (some? (re-matches #"^(0[1-9]|[1-8]\d|9[0-5]|97[1-6]|98[0-8])\d{3}$" v))))
 
 (defn- natural-person-valid? [data]
-  (every? #(seq (str (get data %))) natural-required-fields))
+  (and (every? #(seq (str (get data %))) natural-required-fields)
+       (postal-code-valid? (:postal-code data))
+       (birth-date-valid? (:birth-date data))))
 
-(defn- field-row [label value on-change & [{:keys [placeholder type required?]}]]
+(defn- field-row [label value on-change & [{:keys [placeholder type required? min max]}]]
   [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
    [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
     label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
-   [:input {:type        (or type "text")
+   [:input (cond-> {:type        (or type "text")
+                    :value       (or value "")
+                    :placeholder (or placeholder "")
+                    :on-change   #(on-change (-> % .-target .-value))
+                    :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
+                                  :border-radius "var(--radius)" :font-size "0.95rem"}}
+             min (assoc :min min)
+             max (assoc :max max))]])
+
+(defn- filter-phone [v]
+  (apply str (re-seq #"[0-9+\-.()\s]" v)))
+
+(defn- phone-field-row [label value on-change & [{:keys [required?]}]]
+  [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+   [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+    label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
+   [:input {:type        "tel"
+            :inputMode   "tel"
             :value       (or value "")
-            :placeholder (or placeholder "")
-            :on-change   #(on-change (-> % .-target .-value))
+            :placeholder "Ex: +33 6 12 34 56 78"
+            :on-change   #(on-change (filter-phone (-> % .-target .-value)))
             :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
                           :border-radius "var(--radius)" :font-size "0.95rem"}}]])
 
@@ -134,22 +170,23 @@
             "\u00D7"]]
           [:div.modal__body
            [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
-            [field-row "Nom" (:last-name data)
-             #(swap! form assoc :last-name %) {:required? true}]
             [field-row "Prénom" (:first-name data)
              #(swap! form assoc :first-name %) {:required? true}]
+            [field-row "Nom" (:last-name data)
+             #(swap! form assoc :last-name %) {:required? true}]
             [field-row "Date de naissance" (:birth-date data)
              #(swap! form assoc :birth-date %)
-             {:type "date" :required? true}]
-            [field-row "Lieu de naissance" (:birth-place data)
-             #(swap! form assoc :birth-place %) {:required? true}]
-            [field-row "Profession" (:profession data)
-             #(swap! form assoc :profession %)]
-            [field-row "Adresse postale" (:postal-address data)
-             #(swap! form assoc :postal-address %) {:required? true}]
-            [field-row "Téléphone" (:phone data)
+             {:type "date" :required? true
+              :min "1920-01-01" :max (max-birth-date)}]
+            [field-row "Adresse" (:address data)
+             #(swap! form assoc :address %) {:required? true}]
+            [field-row "Code postal" (:postal-code data)
+             #(swap! form assoc :postal-code %) {:required? true}]
+            [field-row "Ville" (:city data)
+             #(swap! form assoc :city %) {:required? true}]
+            [phone-field-row "Téléphone" (:phone data)
              #(swap! form assoc :phone %)
-             {:type "tel" :required? true}]]]
+             {:required? true}]]]
           [:div.modal__actions
            [:button.btn.btn--small.btn--outline {:on-click on-close} "Annuler"]
            [:button {:class (str "btn btn--small btn--green" (when-not valid? " btn--disabled"))
@@ -213,7 +250,7 @@
            [:table.admin-table
             [:thead
              [:tr
-              [:th "Nom"]
+              [:th "User"]
               [:th "Email"]
               [:th "Fournisseur"]
               [:th "Role"]

@@ -96,11 +96,13 @@
     (try
       (let [user-id        (user-id-from-request request)
             consumption-id (id/build-id (get-in request [:path-params :id]))
-            billing-addr   (require-param request :billing-address "billing-address")]
+            billing-addr   (require-param request :billing-address "billing-address")
+            iban           (require-param request :iban "iban")
+            bic            (get-in request [:body-params :bic])]
         {:status 200
          :body   (serialize-consumption
                    (scenarios/complete-billing-address
-                     consumption-repo user-id consumption-id billing-addr))})
+                     consumption-repo user-id consumption-id billing-addr iban bic))})
       (catch clojure.lang.ExceptionInfo e
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))

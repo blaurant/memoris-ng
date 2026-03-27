@@ -91,11 +91,13 @@
          "Vous n'avez pas encore de contrat. Que souhaitez-vous faire ?"]
         [:div {:style {:display "flex" :gap "1rem" :flex-wrap "wrap"}}
          [:button.btn.btn--green
-          {:on-click #(rf/dispatch [:portal/set-section :consumptions])}
-          "Je suis consommateur"]
+          {:on-click (fn []
+                       (rf/dispatch [:consumptions/create])
+                       (rf/dispatch [:portal/set-section :consumptions]))}
+          "Je veux devenir consommateur d'électricité local"]
          [:button.btn.btn--green
           {:on-click #(rf/dispatch [:portal/set-section :productions])}
-          "Je suis producteur"]]]
+          "Je veux devenir producteur d'électricité local"]]]
 
        :else
        [:div {:style {:margin-top "1.5rem" :display "flex" :flex-direction "column" :gap "1.5rem"}}

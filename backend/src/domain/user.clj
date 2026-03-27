@@ -1,7 +1,7 @@
 (ns ^{:domain/type :entity} domain.user
     (:require [domain.id :as id]
       [malli.core :as m])
-    (:import (java.time Instant)))
+    (:import (java.time Instant LocalDate)))
 
 
 (def email?
@@ -25,25 +25,59 @@
   [:and string?
    [:fn {:error/message "must not be blank"} #(not (clojure.string/blank? %))]])
 
+(def phone?
+  [:and string?
+   [:fn {:error/message "must contain only digits, spaces, +, -, ., () characters"}
+    #(re-matches #"[0-9+\-.()\s]+" %)]
+   [:fn {:error/message "must contain at least 10 digits"}
+    #(>= (count (re-seq #"\d" %)) 10)]])
+
+(def ^:private min-birth-year 1920)
+(def ^:private min-age-years 17)
+
+(def birth-date?
+  [:and non-blank-string?
+   [:fn {:error/message "must be a valid date, age between 17 and 105 years"}
+    (fn [s]
+      (try
+        (let [d   (LocalDate/parse s)
+              min (LocalDate/of min-birth-year 1 1)
+              max (.minusYears (LocalDate/now) min-age-years)]
+          (and (not (.isBefore d min))
+               (not (.isAfter d max))))
+        (catch Exception _ false)))]])
+
 (def NaturalPerson
   [:map
    [:first-name non-blank-string?]
    [:last-name non-blank-string?]
-   [:birth-date non-blank-string?]
-   [:birth-place non-blank-string?]
-   [:profession {:optional true} [:maybe string?]]
-   [:postal-address non-blank-string?]
-   [:phone non-blank-string?]])
+   [:birth-date birth-date?]
+   [:address non-blank-string?]
+   [:postal-code [:and non-blank-string?
+                  [:re {:error/message "must be a valid French postal code"}
+                   #"^(0[1-9]|[1-8]\d|9[0-5]|97[1-6]|98[0-8])\d{3}$"]]]
+   [:city non-blank-string?]
+   [:phone phone?]])
 
 (def LegalPerson
   [:map
    [:company-name non-blank-string?]
-   [:siren non-blank-string?]
+   [:siren [:and non-blank-string?
+            [:fn {:error/message "must be a valid 9-digit SIREN with valid Luhn checksum"}
+             (fn [s]
+               (and (some? (re-matches #"^\d{9}$" s))
+                    (let [digits (map #(Character/digit ^char % 10) s)]
+                      (zero? (rem (reduce + (map-indexed
+                                              (fn [i d]
+                                                (let [v (if (even? i) d (* 2 d))]
+                                                  (if (> v 9) (- v 9) v)))
+                                              digits))
+                                  10)))))]]]
    [:headquarters non-blank-string?]
    [:representative-first-name non-blank-string?]
    [:representative-last-name non-blank-string?]
    [:representative-role non-blank-string?]
-   [:phone non-blank-string?]])
+   [:phone phone?]])
 
 (def User
   [:map

@@ -79,14 +79,27 @@
 
 (rf/reg-event-fx :consumptions/create
   (fn [{:keys [db]} _]
-    {:http-xhrio {:method          :post
-                  :uri             (str config/API_BASE "/api/v1/consumptions")
-                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
-                  :params          {:id (str (random-uuid))}
-                  :format          (ajax/json-request-format)
-                  :response-format (ajax/json-response-format {:keywords? true})
-                  :on-success      [:consumptions/step-ok]
-                  :on-failure      [:consumptions/fetch-err]}}))
+    (when-not (:consumptions/creating? db)
+      {:db         (assoc db :consumptions/creating? true)
+       :http-xhrio {:method          :post
+                    :uri             (str config/API_BASE "/api/v1/consumptions")
+                    :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                    :params          {:id (str (random-uuid))}
+                    :format          (ajax/json-request-format)
+                    :response-format (ajax/json-response-format {:keywords? true})
+                    :on-success      [:consumptions/create-ok]
+                    :on-failure      [:consumptions/create-err]}})))
+
+(rf/reg-event-db :consumptions/create-ok
+  (fn [db [_ created]]
+    (-> db
+        (assoc :consumptions/creating? false)
+        (update :consumptions/list conj created))))
+
+(rf/reg-event-db :consumptions/create-err
+  (fn [db _]
+    (js/console.error "Failed to create consumption")
+    (assoc db :consumptions/creating? false)))
 
 ;; ── Submit step 1 ───────────────────────────────────────────────────────────
 
@@ -117,11 +130,12 @@
 ;; ── Submit step 3 ───────────────────────────────────────────────────────────
 
 (rf/reg-event-fx :consumptions/submit-step3
-  (fn [{:keys [db]} [_ consumption-id billing-address]]
+  (fn [{:keys [db]} [_ consumption-id billing-address iban bic]]
     {:http-xhrio {:method          :put
                   :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/step/billing-address")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
-                  :params          {:billing-address billing-address}
+                  :params          (cond-> {:billing-address billing-address :iban iban}
+                                    (seq bic) (assoc :bic bic))
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
                   :on-success      [:consumptions/step-ok]

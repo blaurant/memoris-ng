@@ -859,6 +859,7 @@ a { color: var(--color-green); }
 }
 .modal__body {
   margin-bottom: 1rem;
+  text-align: left;
 }
 .modal__actions {
   display: flex;

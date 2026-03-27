@@ -235,7 +235,7 @@
   [:section.nd-cta
    [:h2 "Rejoignez ce reseau"]
    [:p "Testez votre eligibilite et commencez a beneficier de l'energie locale."]
-   [:a.btn.btn--accent.nd-cta-btn {:href (rfee/href :page/home)} "Tester mon eligibilite"]])
+   [:a.btn.btn--accent.nd-cta-btn {:href (str (rfee/href :page/home) "#eligibility")} "Tester mon eligibilite"]])
 
 ;; ── Admin banner ───────────────────────────────────────────────────────────
 

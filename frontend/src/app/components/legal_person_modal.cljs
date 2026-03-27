@@ -6,8 +6,23 @@
   [:company-name :siren :headquarters :representative-last-name
    :representative-first-name :representative-role :phone])
 
+(defn- luhn-valid? [s]
+  (let [digits (map #(- (.charCodeAt % 0) 48) s)]
+    (zero? (rem (reduce + (map-indexed
+                            (fn [i d]
+                              (let [v (if (even? i) d (* 2 d))]
+                                (if (> v 9) (- v 9) v)))
+                            digits))
+                10))))
+
+(defn- siren-valid? [v]
+  (and (string? v)
+       (some? (re-matches #"^\d{9}$" v))
+       (luhn-valid? v)))
+
 (defn- valid? [data]
-  (every? #(seq (str (get data %))) required-fields))
+  (and (every? #(seq (str (get data %))) required-fields)
+       (siren-valid? (:siren data))))
 
 (defn- field-row [label value on-change & [{:keys [placeholder type required?]}]]
   [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
@@ -17,6 +32,21 @@
             :value       (or value "")
             :placeholder (or placeholder "")
             :on-change   #(on-change (-> % .-target .-value))
+            :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
+                          :border-radius "var(--radius)" :font-size "0.95rem"}}]])
+
+(defn- filter-phone [v]
+  (apply str (re-seq #"[0-9+\-.()\s]" v)))
+
+(defn- phone-field-row [label value on-change & [{:keys [required?]}]]
+  [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+   [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+    label (when required? [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"])]
+   [:input {:type        "tel"
+            :inputMode   "tel"
+            :value       (or value "")
+            :placeholder "Ex: +33 6 12 34 56 78"
+            :on-change   #(on-change (filter-phone (-> % .-target .-value)))
             :style       {:padding "0.5rem 0.75rem" :border "1px solid var(--color-border)"
                           :border-radius "var(--radius)" :font-size "0.95rem"}}]])
 
@@ -42,20 +72,35 @@
            [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
             [field-row "Raison sociale" (:company-name data)
              #(swap! form assoc :company-name %) {:required? true}]
-            [field-row "N° SIREN" (:siren data)
-             #(swap! form assoc :siren %) {:required? true}]
+            (let [s (or (:siren data) "")]
+              [:div {:style {:display "flex" :flex-direction "column" :gap "0.25rem"}}
+               [:label {:style {:font-size "0.85rem" :font-weight "600" :color "var(--color-text)"}}
+                "N° SIREN" [:span {:style {:color "#d32f2f" :margin-left "2px"}} "*"]]
+               [:input {:type "text" :inputMode "numeric" :maxLength 9
+                        :value s :placeholder "9 chiffres"
+                        :on-change #(swap! form assoc :siren (-> % .-target .-value))
+                        :style {:padding "0.5rem 0.75rem"
+                                :border (str "1px solid "
+                                             (if (and (seq s) (not (siren-valid? s)))
+                                               "#d32f2f" "var(--color-border)"))
+                                :border-radius "var(--radius)" :font-size "0.95rem"}}]
+               (when (and (seq s) (not (siren-valid? s)))
+                 [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+                  (if (not (re-matches #"^\d{9}$" s))
+                    "Le SIREN doit contenir exactement 9 chiffres"
+                    "Numéro SIREN invalide (clé de contrôle incorrecte)")])])
             [field-row "Siège social" (:headquarters data)
              #(swap! form assoc :headquarters %) {:required? true}]
-            [field-row "Numéro de téléphone" (:phone data)
+            [phone-field-row "Numéro de téléphone" (:phone data)
              #(swap! form assoc :phone %)
-             {:type "tel" :required? true}]]
+             {:required? true}]]
            [:h4 {:style {:margin-top "1rem" :margin-bottom "0.5rem" :font-size "0.95rem"}}
             "Représentant légal"]
            [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "1rem"}}
-            [field-row "Nom" (:representative-last-name data)
-             #(swap! form assoc :representative-last-name %) {:required? true}]
             [field-row "Prénom" (:representative-first-name data)
              #(swap! form assoc :representative-first-name %) {:required? true}]
+            [field-row "Nom" (:representative-last-name data)
+             #(swap! form assoc :representative-last-name %) {:required? true}]
             [field-row "Fonction" (:representative-role data)
              #(swap! form assoc :representative-role %)
              {:placeholder "Président, gérant, directeur général..." :required? true}]]]

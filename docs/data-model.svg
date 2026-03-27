@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 920" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <style>
+      .entity-header { fill: #2d3748; }
+      .entity-header-text { fill: #fff; font-size: 15px; font-weight: 700; }
+      .entity-bg { fill: #f7fafc; stroke: #cbd5e0; stroke-width: 1.5; rx: 8; }
+      .field { font-size: 11.5px; fill: #2d3748; }
+      .field-type { font-size: 11px; fill: #718096; }
+      .pk { font-size: 11px; fill: #d69e2e; font-weight: 700; }
+      .fk { font-size: 11px; fill: #e53e3e; font-weight: 700; }
+      .lifecycle { font-size: 10px; fill: #38a169; font-style: italic; }
+      .relation { stroke: #4a5568; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .relation-dashed { stroke: #a0aec0; stroke-width: 1.2; fill: none; stroke-dasharray: 6,3; marker-end: url(#arrow-light); }
+      .sub-header { fill: #edf2f7; }
+      .sub-header-text { font-size: 12px; fill: #4a5568; font-weight: 600; }
+      .legend-text { font-size: 11px; fill: #4a5568; }
+      .title { font-size: 22px; fill: #1a202c; font-weight: 700; }
+      .subtitle { font-size: 13px; fill: #718096; }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#4a5568"/>
+    </marker>
+    <marker id="arrow-light" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#a0aec0"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="640" y="35" text-anchor="middle" class="title">Elink-co  —  Modele de donnees</text>
+  <text x="640" y="55" text-anchor="middle" class="subtitle">Entites du domaine et relations</text>
+
+  <!-- ════════════════════════════════════════════ USER ════════════════════════════════════════════ -->
+  <g transform="translate(30, 80)">
+    <rect class="entity-bg" width="280" height="370" y="0"/>
+    <rect class="entity-header" width="280" height="30" rx="8"/>
+    <rect class="entity-header" width="280" height="15" y="15"/>
+    <text x="140" y="20" text-anchor="middle" class="entity-header-text">USER</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="200" y="50" class="field-type">UUID</text>
+    <text x="30" y="68" class="field">email</text><text x="200" y="68" class="field-type">string</text>
+    <text x="30" y="86" class="field">name</text><text x="200" y="86" class="field-type">string (max 100)</text>
+    <text x="30" y="104" class="field">provider</text><text x="200" y="104" class="field-type">enum</text>
+    <text x="30" y="122" class="field">role</text><text x="200" y="122" class="field-type">enum</text>
+    <text x="30" y="140" class="field">lifecycle</text><text x="200" y="140" class="field-type">enum</text>
+    <text x="30" y="158" class="field">password-hash</text><text x="200" y="158" class="field-type">string?</text>
+    <text x="30" y="176" class="field">email-verified?</text><text x="200" y="176" class="field-type">boolean?</text>
+    <text x="30" y="194" class="field">adhesion-signed-at</text><text x="200" y="194" class="field-type">string?</text>
+    <text x="30" y="212" class="field">docuseal-submission-id</text><text x="200" y="212" class="field-type">int?</text>
+
+    <!-- NaturalPerson sub -->
+    <rect class="sub-header" x="5" y="222" width="270" height="20" rx="4"/>
+    <text x="140" y="236" text-anchor="middle" class="sub-header-text">natural-person (map, optional)</text>
+    <text x="15" y="256" class="field">first-name, last-name</text><text x="200" y="256" class="field-type">string</text>
+    <text x="15" y="272" class="field">birth-date, birth-place</text><text x="200" y="272" class="field-type">string</text>
+    <text x="15" y="288" class="field">postal-address, phone</text><text x="200" y="288" class="field-type">string</text>
+    <text x="15" y="304" class="field">profession</text><text x="200" y="304" class="field-type">string?</text>
+
+    <!-- LegalPerson sub -->
+    <rect class="sub-header" x="5" y="314" width="270" height="20" rx="4"/>
+    <text x="140" y="328" text-anchor="middle" class="sub-header-text">legal-persons (vector, optional)</text>
+    <text x="15" y="348" class="field">company-name, siren, hq</text><text x="200" y="348" class="field-type">string</text>
+    <text x="15" y="364" class="field">representative-*, phone</text><text x="200" y="364" class="field-type">string</text>
+
+    <!-- Lifecycle -->
+    <text x="10" y="148" class="lifecycle">alive → suspended → deactivated</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ NETWORK ════════════════════════════════════════════ -->
+  <g transform="translate(500, 80)">
+    <rect class="entity-bg" width="260" height="220" y="0"/>
+    <rect class="entity-header" width="260" height="30" rx="8"/>
+    <rect class="entity-header" width="260" height="15" y="15"/>
+    <text x="130" y="20" text-anchor="middle" class="entity-header-text">NETWORK</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="180" y="50" class="field-type">UUID</text>
+    <text x="30" y="68" class="field">name</text><text x="180" y="68" class="field-type">string</text>
+    <text x="30" y="86" class="field">center-lat</text><text x="180" y="86" class="field-type">double (4 dec)</text>
+    <text x="30" y="104" class="field">center-lng</text><text x="180" y="104" class="field-type">double (4 dec)</text>
+    <text x="30" y="122" class="field">radius-km</text><text x="180" y="122" class="field-type">double (def 1.0)</text>
+    <text x="30" y="140" class="field">description</text><text x="180" y="140" class="field-type">string?</text>
+    <text x="30" y="158" class="field">price-per-kwh</text><text x="180" y="158" class="field-type">double?</text>
+    <text x="30" y="176" class="field">lifecycle</text><text x="180" y="176" class="field-type">enum</text>
+
+    <text x="10" y="200" class="lifecycle">pending-validation → private → public</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ CONSUMPTION ════════════════════════════════════════════ -->
+  <g transform="translate(30, 500)">
+    <rect class="entity-bg" width="340" height="310" y="0"/>
+    <rect class="entity-header" width="340" height="30" rx="8"/>
+    <rect class="entity-header" width="340" height="15" y="15"/>
+    <text x="170" y="20" text-anchor="middle" class="entity-header-text">CONSUMPTION</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="240" y="50" class="field-type">UUID</text>
+    <text x="10" y="68" class="fk">FK</text><text x="30" y="68" class="field">user-id</text><text x="240" y="68" class="field-type">UUID → User</text>
+    <text x="10" y="86" class="fk">FK</text><text x="30" y="86" class="field">network-id</text><text x="240" y="86" class="field-type">UUID → Network</text>
+    <text x="30" y="104" class="field">lifecycle</text><text x="240" y="104" class="field-type">enum (8 etats)</text>
+    <text x="30" y="126" class="field">consumer-address</text><text x="240" y="126" class="field-type">string</text>
+    <text x="30" y="144" class="field">linky-reference</text><text x="240" y="144" class="field-type">string</text>
+    <text x="30" y="162" class="field">billing-address</text><text x="240" y="162" class="field-type">string</text>
+    <text x="30" y="180" class="field">contract-signed-at</text><text x="240" y="180" class="field-type">string?</text>
+    <text x="30" y="198" class="field">producer-contract-signed-at</text><text x="240" y="198" class="field-type">string?</text>
+    <text x="30" y="216" class="field">sepa-mandate-signed-at</text><text x="240" y="216" class="field-type">string?</text>
+    <text x="30" y="234" class="field">docuseal-producer-submission-id</text><text x="240" y="234" class="field-type">int?</text>
+    <text x="30" y="252" class="field">docuseal-sepa-submission-id</text><text x="240" y="252" class="field-type">int?</text>
+    <text x="30" y="270" class="field">price-per-kwh</text><text x="240" y="270" class="field-type">double?</text>
+    <text x="30" y="288" class="field">last-monthly-kwh</text><text x="240" y="288" class="field-type">double?</text>
+
+    <text x="10" y="308" class="lifecycle">consumer-info → linky → billing → contract-sig → pending → active</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ PRODUCTION ════════════════════════════════════════════ -->
+  <g transform="translate(420, 500)">
+    <rect class="entity-bg" width="310" height="280" y="0"/>
+    <rect class="entity-header" width="310" height="30" rx="8"/>
+    <rect class="entity-header" width="310" height="15" y="15"/>
+    <text x="155" y="20" text-anchor="middle" class="entity-header-text">PRODUCTION</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="220" y="50" class="field-type">UUID</text>
+    <text x="10" y="68" class="fk">FK</text><text x="30" y="68" class="field">user-id</text><text x="220" y="68" class="field-type">UUID → User</text>
+    <text x="10" y="86" class="fk">FK</text><text x="30" y="86" class="field">network-id</text><text x="220" y="86" class="field-type">UUID → Network</text>
+    <text x="30" y="104" class="field">lifecycle</text><text x="220" y="104" class="field-type">enum (8 etats)</text>
+    <text x="30" y="126" class="field">producer-address</text><text x="220" y="126" class="field-type">string</text>
+    <text x="30" y="144" class="field">pdl-prm</text><text x="220" y="144" class="field-type">string</text>
+    <text x="30" y="162" class="field">installed-power</text><text x="220" y="162" class="field-type">number (&gt;0)</text>
+    <text x="30" y="180" class="field">energy-type</text><text x="220" y="180" class="field-type">enum (5 types)</text>
+    <text x="30" y="198" class="field">linky-meter</text><text x="220" y="198" class="field-type">string</text>
+    <text x="30" y="216" class="field">iban</text><text x="220" y="216" class="field-type">string</text>
+    <text x="30" y="234" class="field">adhesion-signed-at</text><text x="220" y="234" class="field-type">string?</text>
+    <text x="30" y="252" class="field">last-monthly-kwh</text><text x="220" y="252" class="field-type">double?</text>
+
+    <text x="10" y="275" class="lifecycle">producer-info → install → payment → contract-sig → pending → active</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ ELIGIBILITY CHECK ════════════════════════════════════════════ -->
+  <g transform="translate(810, 80)">
+    <rect class="entity-bg" width="240" height="200" y="0"/>
+    <rect class="entity-header" width="240" height="30" rx="8"/>
+    <rect class="entity-header" width="240" height="15" y="15"/>
+    <text x="120" y="20" text-anchor="middle" class="entity-header-text">ELIGIBILITY CHECK</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="170" y="50" class="field-type">UUID</text>
+    <text x="30" y="68" class="field">address</text><text x="170" y="68" class="field-type">string</text>
+    <text x="30" y="86" class="field">lat</text><text x="170" y="86" class="field-type">double</text>
+    <text x="30" y="104" class="field">lng</text><text x="170" y="104" class="field-type">double</text>
+    <text x="30" y="122" class="field">eligible?</text><text x="170" y="122" class="field-type">boolean</text>
+    <text x="30" y="140" class="field">network-name</text><text x="170" y="140" class="field-type">string?</text>
+    <text x="30" y="158" class="field">checked-at</text><text x="170" y="158" class="field-type">datetime</text>
+    <text x="30" y="176" class="field">notification-email</text><text x="170" y="176" class="field-type">string?</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ VERIFICATION TOKEN ════════════════════════════════════════════ -->
+  <g transform="translate(810, 320)">
+    <rect class="entity-bg" width="240" height="130" y="0"/>
+    <rect class="entity-header" width="240" height="30" rx="8"/>
+    <rect class="entity-header" width="240" height="15" y="15"/>
+    <text x="120" y="20" text-anchor="middle" class="entity-header-text">VERIFICATION TOKEN</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="170" y="50" class="field-type">UUID</text>
+    <text x="10" y="68" class="fk">FK</text><text x="30" y="68" class="field">user-id</text><text x="170" y="68" class="field-type">UUID → User</text>
+    <text x="30" y="86" class="field">token</text><text x="170" y="86" class="field-type">string</text>
+    <text x="30" y="104" class="field">expires-at</text><text x="170" y="104" class="field-type">Instant</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ ALERT BANNER ════════════════════════════════════════════ -->
+  <g transform="translate(810, 490)">
+    <rect class="entity-bg" width="240" height="100" y="0"/>
+    <rect class="entity-header" width="240" height="30" rx="8"/>
+    <rect class="entity-header" width="240" height="15" y="15"/>
+    <text x="120" y="20" text-anchor="middle" class="entity-header-text">ALERT BANNER</text>
+
+    <text x="10" y="50" class="pk">PK</text><text x="30" y="50" class="field">id</text><text x="170" y="50" class="field-type">UUID (singleton)</text>
+    <text x="30" y="68" class="field">message</text><text x="170" y="68" class="field-type">string</text>
+    <text x="30" y="86" class="field">active?</text><text x="170" y="86" class="field-type">boolean</text>
+  </g>
+
+  <!-- ════════════════════════════════════════════ RELATIONS ════════════════════════════════════════════ -->
+
+  <!-- User → Consumption (1:N) -->
+  <path class="relation" d="M 170,450 L 170,500"/>
+  <text x="130" y="480" class="field-type">1 : N</text>
+
+  <!-- User → Production (1:N) -->
+  <path class="relation" d="M 250,450 L 490,500"/>
+  <text x="350" y="470" class="field-type">1 : N</text>
+
+  <!-- User → VerificationToken (1:N) -->
+  <path class="relation" d="M 310,280 L 810,370"/>
+  <text x="560" y="310" class="field-type">1 : N</text>
+
+  <!-- Network → Consumption (1:N) -->
+  <path class="relation" d="M 560,300 L 280,500"/>
+  <text x="390" y="400" class="field-type">1 : N</text>
+
+  <!-- Network → Production (1:N) -->
+  <path class="relation" d="M 660,300 L 610,500"/>
+  <text x="650" y="400" class="field-type">1 : N</text>
+
+  <!-- EligibilityCheck ~~> Network (implicit geo) -->
+  <path class="relation-dashed" d="M 810,200 L 760,210"/>
+  <text x="770" y="225" class="field-type" style="font-style:italic">geo</text>
+
+  <!-- ════════════════════════════════════════════ LEGEND ════════════════════════════════════════════ -->
+  <g transform="translate(810, 640)">
+    <rect width="240" height="110" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="120" y="20" text-anchor="middle" class="sub-header-text">Legende</text>
+    <text x="15" y="40" class="pk">PK</text><text x="40" y="40" class="legend-text">Cle primaire</text>
+    <text x="15" y="58" class="fk">FK</text><text x="40" y="58" class="legend-text">Cle etrangere</text>
+    <line x1="15" y1="72" x2="55" y2="72" class="relation"/>
+    <text x="65" y="76" class="legend-text">Relation directe (1:N)</text>
+    <line x1="15" y1="92" x2="55" y2="92" class="relation-dashed"/>
+    <text x="65" y="96" class="legend-text">Relation implicite (geo)</text>
+  </g>
+</svg>

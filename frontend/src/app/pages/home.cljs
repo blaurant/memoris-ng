@@ -18,7 +18,7 @@
                                    (.preventDefault e)
                                    (when-let [el (.getElementById js/document "eligibility")]
                                      (.scrollIntoView el #js {:behavior "smooth"})))}
-     "Vérifier mon éligibilité"]
+     "Rejoindre un réseau"]
     [:div.hero__values
      [:span.hero__value
       [:svg {:width "16" :height "16" :viewBox "0 0 24 24" :fill "none"
@@ -131,10 +131,7 @@
 
      ]
 
-    [:p.acc-source
-     "Tarifs indicatifs basés sur le TRV août 2025, tarifs EDF OA T1 2026, "
-     "et accise à 0\u00a0€/MWh pour l'autoconsommation collective (loi de finances 2025)."]
-    [:div {:style {:text-align "center" :margin-top "2rem"}}
+[:div {:style {:text-align "center" :margin-top "2rem"}}
      [:a.btn.btn--accent {:href (rfee/href :page/signup)
                           :style {:padding "1rem 2.5rem" :font-size "1.1rem"
                                   :border-radius "2rem" :font-weight "700"}}
@@ -151,7 +148,7 @@
 (defn- eligibility-section []
   [:section#eligibility.section.section--alt
    [:div.container
-    [:h2.section__title "Vérifiez votre éligibilité"]
+    [:h2.section__title "Vérifiez votre éligibilité pour rejoindre un réseau"]
     [:p.section__subtitle
      "Entrez votre adresse pour savoir si vous êtes dans la zone d'un réseau Elink-co."]
     [eligibility-form/eligibility-form]]])

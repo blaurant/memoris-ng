@@ -125,14 +125,14 @@
     (let [c  (-> (consumption/create-new-consumption (id/build-id) user-id)
                  (consumption/register-consumer-information "addr" (id/build-id))
                  (consumption/associate-linky-reference "LINKY-12345"))
-          c' (consumption/complete-billing-address c "456 avenue de Lyon")]
+          c' (consumption/complete-billing-address c "456 avenue de Lyon" "FR7630006000011234567890189" nil)]
       (is (= :contract-signature (:consumption/lifecycle c')))
       (is (= "456 avenue de Lyon" (:consumption/billing-address c')))))
 
   (testing "throws when not in :billing-address state"
     (let [c (consumption/create-new-consumption (id/build-id) user-id)]
       (is (thrown? clojure.lang.ExceptionInfo
-                  (consumption/complete-billing-address c "456 avenue de Lyon"))))))
+                  (consumption/complete-billing-address c "456 avenue de Lyon" "FR7630006000011234567890189" nil))))))
 
 ;; ── sign-contract ─────────────────────────────────────────────────────────
 
@@ -141,7 +141,7 @@
     (let [c  (-> (consumption/create-new-consumption (id/build-id) user-id)
                  (consumption/register-consumer-information "addr" (id/build-id))
                  (consumption/associate-linky-reference "LINKY-12345")
-                 (consumption/complete-billing-address "456 avenue de Lyon"))
+                 (consumption/complete-billing-address "456 avenue de Lyon" "FR7630006000011234567890189" nil))
           c' (consumption/sign-contract c :producer true "2026-03-04T10:00:00Z")]
       (is (= :contract-signature (:consumption/lifecycle c')))
       (is (= "2026-03-04T10:00:00Z" (:consumption/producer-contract-signed-at c')))))
@@ -150,7 +150,7 @@
     (let [c  (-> (consumption/create-new-consumption (id/build-id) user-id)
                  (consumption/register-consumer-information "addr" (id/build-id))
                  (consumption/associate-linky-reference "LINKY-12345")
-                 (consumption/complete-billing-address "456 avenue de Lyon"))
+                 (consumption/complete-billing-address "456 avenue de Lyon" "FR7630006000011234567890189" nil))
           c' (-> c
                  (consumption/sign-contract :producer true "2026-03-04T10:01:00Z")
                  (consumption/sign-contract :sepa true "2026-03-04T10:02:00Z"))]
@@ -162,7 +162,7 @@
     (let [c  (-> (consumption/create-new-consumption (id/build-id) user-id)
                  (consumption/register-consumer-information "addr" (id/build-id))
                  (consumption/associate-linky-reference "LINKY-12345")
-                 (consumption/complete-billing-address "456 avenue de Lyon"))
+                 (consumption/complete-billing-address "456 avenue de Lyon" "FR7630006000011234567890189" nil))
           c' (-> c
                  (consumption/sign-contract :producer false "2026-03-04T10:01:00Z")
                  (consumption/sign-contract :sepa false "2026-03-04T10:02:00Z"))]

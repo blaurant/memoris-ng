@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elink-co — Schema HBDS</title>
+  <style>body{margin:0;background:#fff;overflow:auto}svg{display:block;margin:0 auto}</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1350 1050" font-family="'Segoe UI',Arial,sans-serif" style="max-width:1350px">
+  <defs>
+    <style>
+      .ce{font-size:15px;font-weight:700;fill:#b91c1c}
+      .cn{font-size:13px;font-weight:700;fill:#1a1a1a}
+      .at{font-size:9.5px;fill:#333}.ay{font-size:9px;fill:#aaa}
+      .ab{fill:#fafafa;stroke:#999;stroke-width:.8;rx:3}
+      .lk{stroke:#333;stroke-width:1.5;fill:none}
+      .ll{font-size:10.5px;fill:#333;font-weight:600;text-anchor:middle}
+      .lc{font-size:8.5px;fill:#666;font-style:italic;text-anchor:middle}
+      .fe{fill:#b91c1c}.fn{fill:#1a1a1a}
+      .oe{fill:none;stroke:#b91c1c;stroke-width:3}
+      .on{fill:none;stroke:#444;stroke-width:1.3}
+      .cy{font-size:8.5px;fill:#888;font-style:italic}
+      .conn{stroke:#999;stroke-width:.8}
+      .arr{fill:#333}
+      .tt{font-size:22px;fill:#1a1a1a;font-weight:700;text-anchor:middle}
+      .st{font-size:12px;fill:#888;text-anchor:middle}
+      .lt{font-size:11px;fill:#333;font-weight:700}
+      .lx{font-size:9.5px;fill:#666}
+    </style>
+  </defs>
+
+  <text x="675" y="38" class="tt">Elink-co — Schema conceptuel HBDS</text>
+  <text x="675" y="56" class="st">Notation Bouille — classes (ovales) · attributs (rectangles) · liens nommes (fleche au milieu, foyer → foyer)</text>
+
+  <!--
+    LAYOUT (foyer positions — dot is left-aligned in oval, same y as name):
+      USER              155, 260
+      NETWORK           755, 260
+      NATURAL PERSON    155, 510
+      LEGAL PERSON      490, 510
+      CONSUMPTION       220, 790
+      PRODUCTION        755, 790
+      ELIGIBILITY      1120, 510
+
+    Attr rects: TOP-LEFT of foyer, fully outside oval.
+    Conn line: right side at 3/4 height → foyer dot.
+  -->
+
+  <!-- ═══════════════════════════════════════
+       LINKS (behind everything)
+       ═══════════════════════════════════════ -->
+
+  <!-- User(155,260) → Consumption(220,790) : consomme 1:N -->
+  <!-- Route: left arc to avoid NatPerson -->
+  <path class="lk" d="M155,260 C40,400 40,650 220,790"/>
+  <polygon class="arr" points="0,-4.5 9,0 0,4.5" transform="translate(55,525) rotate(78)"/>
+  <text x="30" y="518" class="ll">consomme</text>
+  <text x="30" y="532" class="lc">1 : N</text>
+
+  <!-- User(155,260) → Production(755,790) : produit 1:N -->
+  <!-- Route: wide arc right-down, below LegalPerson -->
+  <path class="lk" d="M155,260 C200,440 500,680 755,790"/>
+  <polygon class="arr" points="0,-4.5 9,0 0,4.5" transform="translate(370,570) rotate(45)"/>
+  <text x="350" y="558" class="ll">produit</text>
+  <text x="350" y="572" class="lc">1 : N</text>
+
+  <!-- User(155,260) → NaturalPerson(155,510) : 0..1 -->
+  <line x1="155" y1="260" x2="155" y2="510" class="lk"/>
+  <polygon class="arr" points="0,-4 8,0 0,4" transform="translate(155,385) rotate(90)"/>
+  <text x="175" y="380" class="ll" style="text-anchor:start">0..1</text>
+
+  <!-- User(155,260) → LegalPerson(490,510) : 0..N -->
+  <!-- Route: curve right-down, below User oval, above NatPerson -->
+  <path class="lk" d="M155,260 C300,340 420,440 490,510"/>
+  <polygon class="arr" points="0,-4 8,0 0,4" transform="translate(335,400) rotate(45)"/>
+  <text x="318" y="390" class="ll" style="text-anchor:start">0..N</text>
+
+  <!-- Network(755,260) → Consumption(220,790) : alimente 1:N -->
+  <!-- Route: wide left arc, passing between rows -->
+  <path class="lk" d="M755,260 C650,430 420,630 220,790"/>
+  <polygon class="arr" points="0,-4.5 9,0 0,4.5" transform="translate(470,520) rotate(125)"/>
+  <text x="492" y="506" class="ll">alimente</text>
+  <text x="492" y="520" class="lc">1 : N</text>
+
+  <!-- Network(755,260) → Production(755,790) : heberge 1:N -->
+  <!-- Route: right arc to avoid center -->
+  <path class="lk" d="M755,260 C860,400 860,650 755,790"/>
+  <polygon class="arr" points="0,-4.5 9,0 0,4.5" transform="translate(855,525) rotate(95)"/>
+  <text x="882" y="518" class="ll">heberge</text>
+  <text x="882" y="532" class="lc">1 : N</text>
+
+  <!-- EligibilityCheck(1120,510) → Network(755,260) : localise -->
+  <!-- Route: arc up-left -->
+  <path class="lk" d="M1120,510 C1050,400 920,310 755,260"/>
+  <polygon class="arr" points="0,-4.5 9,0 0,4.5" transform="translate(945,370) rotate(-30)"/>
+  <text x="945" y="358" class="ll">localise</text>
+  <text x="945" y="372" class="lc">1 : N (geo)</text>
+
+  <!-- ═══════════════════════════════════════
+       CLASSES + ATTRIBUTES
+       ═══════════════════════════════════════ -->
+
+  <!-- ══════ USER (entity) — foyer (155, 260) ══════ -->
+  <g>
+    <ellipse cx="270" cy="260" rx="165" ry="55" class="oe"/>
+    <circle cx="155" cy="260" r="6" class="fe"/>
+    <text x="175" y="264" class="ce">USER</text>
+    <text x="175" y="278" class="cy">alive → suspended → deactivated</text>
+    <!-- Attr rect: top-left, well outside oval (oval top = 260-55 = 205) -->
+    <rect x="5" y="80" width="185" height="112" class="ab"/>
+    <!-- right side 3/4: x=5+185=190, y=80+112*.75=164 → foyer 155,260 -->
+    <line x1="190" y1="164" x2="155" y2="260" class="conn"/>
+    <text x="15" y="96" class="at">id <tspan class="ay">UUID</tspan></text>
+    <text x="15" y="110" class="at">email <tspan class="ay">string</tspan></text>
+    <text x="15" y="124" class="at">name <tspan class="ay">string (max 100)</tspan></text>
+    <text x="15" y="138" class="at">provider <tspan class="ay">enum: google|apple|fb|email</tspan></text>
+    <text x="15" y="152" class="at">role <tspan class="ay">enum: customer|admin</tspan></text>
+    <text x="15" y="166" class="at">password-hash <tspan class="ay">string?</tspan></text>
+    <text x="15" y="180" class="at">adhesion-signed-at <tspan class="ay">string?</tspan></text>
+  </g>
+
+  <!-- ══════ NETWORK (entity) — foyer (755, 260) ══════ -->
+  <g>
+    <ellipse cx="870" cy="260" rx="165" ry="55" class="oe"/>
+    <circle cx="755" cy="260" r="6" class="fe"/>
+    <text x="775" y="264" class="ce">NETWORK</text>
+    <text x="775" y="278" class="cy">pending-validation → private → public</text>
+    <rect x="600" y="80" width="175" height="112" class="ab"/>
+    <!-- right side 3/4: x=600+175=775, y=80+112*.75=164 → foyer 755,260 -->
+    <line x1="775" y1="164" x2="755" y2="260" class="conn"/>
+    <text x="610" y="96" class="at">id <tspan class="ay">UUID</tspan></text>
+    <text x="610" y="110" class="at">name <tspan class="ay">string</tspan></text>
+    <text x="610" y="124" class="at">center-lat <tspan class="ay">double (4 dec)</tspan></text>
+    <text x="610" y="138" class="at">center-lng <tspan class="ay">double (4 dec)</tspan></text>
+    <text x="610" y="152" class="at">radius-km <tspan class="ay">double (def 1.0)</tspan></text>
+    <text x="610" y="166" class="at">description <tspan class="ay">string?</tspan></text>
+    <text x="610" y="180" class="at">price-per-kwh <tspan class="ay">double?</tspan></text>
+  </g>
+
+  <!-- ══════ NATURAL PERSON (simple) — foyer (155, 510) ══════ -->
+  <g>
+    <ellipse cx="260" cy="510" rx="145" ry="42" class="on"/>
+    <circle cx="155" cy="510" r="5" class="fn"/>
+    <text x="173" y="514" class="cn">NATURAL PERSON</text>
+    <rect x="5" y="395" width="140" height="62" class="ab"/>
+    <!-- right side 3/4: x=5+140=145, y=395+62*.75=441 → foyer 155,510 -->
+    <line x1="145" y1="441" x2="155" y2="510" class="conn"/>
+    <text x="13" y="410" class="at">first-name, last-name</text>
+    <text x="13" y="424" class="at">birth-date, birth-place</text>
+    <text x="13" y="438" class="at">postal-address, phone</text>
+    <text x="13" y="452" class="at">profession <tspan class="ay">?</tspan></text>
+  </g>
+
+  <!-- ══════ LEGAL PERSON (simple) — foyer (490, 510) ══════ -->
+  <g>
+    <ellipse cx="590" cy="510" rx="140" ry="42" class="on"/>
+    <circle cx="490" cy="510" r="5" class="fn"/>
+    <text x="508" y="514" class="cn">LEGAL PERSON</text>
+    <rect x="370" y="395" width="135" height="52" class="ab"/>
+    <!-- right side 3/4: x=370+135=505, y=395+52*.75=434 → foyer 490,510 -->
+    <line x1="505" y1="434" x2="490" y2="510" class="conn"/>
+    <text x="378" y="410" class="at">company-name, siren</text>
+    <text x="378" y="424" class="at">headquarters</text>
+    <text x="378" y="438" class="at">representative-*, phone</text>
+  </g>
+
+  <!-- ══════ CONSUMPTION (entity) — foyer (220, 790) ══════ -->
+  <g>
+    <ellipse cx="345" cy="790" rx="175" ry="55" class="oe"/>
+    <circle cx="220" cy="790" r="6" class="fe"/>
+    <text x="240" y="794" class="ce">CONSUMPTION</text>
+    <text x="240" y="808" class="cy">consumer-info → linky → billing → contract → pending → active</text>
+    <rect x="35" y="620" width="210" height="100" class="ab"/>
+    <!-- right side 3/4: x=35+210=245, y=620+100*.75=695 → foyer 220,790 -->
+    <line x1="245" y1="695" x2="220" y2="790" class="conn"/>
+    <text x="43" y="636" class="at">id <tspan class="ay">UUID</tspan></text>
+    <text x="43" y="650" class="at">consumer-address <tspan class="ay">string</tspan></text>
+    <text x="43" y="664" class="at">linky-reference <tspan class="ay">string</tspan></text>
+    <text x="43" y="678" class="at">billing-address <tspan class="ay">string</tspan></text>
+    <text x="43" y="692" class="at">contract-signed-at <tspan class="ay">string?</tspan></text>
+    <text x="43" y="706" class="at">sepa-mandate-signed-at <tspan class="ay">string?</tspan></text>
+    <text x="43" y="720" class="at">price-per-kwh, last-monthly-kwh <tspan class="ay">double?</tspan></text>
+  </g>
+
+  <!-- ══════ PRODUCTION (entity) — foyer (755, 790) ══════ -->
+  <g>
+    <ellipse cx="875" cy="790" rx="170" ry="55" class="oe"/>
+    <circle cx="755" cy="790" r="6" class="fe"/>
+    <text x="775" y="794" class="ce">PRODUCTION</text>
+    <text x="775" y="808" class="cy">producer-info → install → payment → contract → pending → active</text>
+    <rect x="570" y="620" width="205" height="100" class="ab"/>
+    <!-- right side 3/4: x=570+205=775, y=620+100*.75=695 → foyer 755,790 -->
+    <line x1="775" y1="695" x2="755" y2="790" class="conn"/>
+    <text x="578" y="636" class="at">id <tspan class="ay">UUID</tspan></text>
+    <text x="578" y="650" class="at">producer-address <tspan class="ay">string</tspan></text>
+    <text x="578" y="664" class="at">pdl-prm <tspan class="ay">string</tspan></text>
+    <text x="578" y="678" class="at">installed-power <tspan class="ay">number (>0)</tspan></text>
+    <text x="578" y="692" class="at">energy-type <tspan class="ay">enum: solar|wind|hydro|...</tspan></text>
+    <text x="578" y="706" class="at">linky-meter, iban <tspan class="ay">string</tspan></text>
+    <text x="578" y="720" class="at">adhesion-signed-at <tspan class="ay">string?</tspan></text>
+  </g>
+
+  <!-- ══════ ELIGIBILITY CHECK (simple) — foyer (1120, 510) ══════ -->
+  <g>
+    <ellipse cx="1220" cy="510" rx="140" ry="48" class="on"/>
+    <circle cx="1120" cy="510" r="5" class="fn"/>
+    <text x="1138" y="514" class="cn">ELIGIBILITY CHECK</text>
+    <rect x="1010" y="380" width="155" height="72" class="ab"/>
+    <!-- right side 3/4: x=1010+155=1165, y=380+72*.75=434 → foyer 1120,510 -->
+    <line x1="1165" y1="434" x2="1120" y2="510" class="conn"/>
+    <text x="1018" y="396" class="at">id <tspan class="ay">UUID</tspan></text>
+    <text x="1018" y="410" class="at">address <tspan class="ay">string</tspan></text>
+    <text x="1018" y="424" class="at">lat, lng <tspan class="ay">double</tspan></text>
+    <text x="1018" y="438" class="at">eligible? <tspan class="ay">boolean</tspan></text>
+    <text x="1018" y="452" class="at">checked-at, notification-email</text>
+  </g>
+
+  <!-- ═══════════════ LEGEND ═══════════════ -->
+  <g transform="translate(30,920)">
+    <rect width="580" height="110" rx="6" fill="#fafafa" stroke="#ddd" stroke-width="1"/>
+    <text x="20" y="20" class="lt">Legende HBDS (Bouille, 1977)</text>
+
+    <ellipse cx="50" cy="44" rx="32" ry="13" fill="none" stroke="#b91c1c" stroke-width="3"/>
+    <circle cx="32" cy="44" r="5" fill="#b91c1c"/>
+    <text x="95" y="48" class="lx">Classe-entite (tag ^{:domain/type :entity}) — ovale rouge, lifecycle sous le nom</text>
+
+    <ellipse cx="50" cy="70" rx="32" ry="13" fill="none" stroke="#444" stroke-width="1.3"/>
+    <circle cx="32" cy="70" r="4" fill="#1a1a1a"/>
+    <text x="95" y="74" class="lx">Classe simple — ovale noir fin</text>
+
+    <rect x="26" y="85" width="45" height="14" rx="3" fill="#fafafa" stroke="#999" stroke-width=".8"/>
+    <line x1="71" y1="95" x2="80" y2="102" stroke="#999" stroke-width=".8"/>
+    <text x="95" y="99" class="lx">Attributs — rectangle relie au foyer (trait depuis 3/4 du cote droit)</text>
+  </g>
+
+</svg>
+</body>
+</html>

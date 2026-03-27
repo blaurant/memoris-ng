@@ -7,6 +7,9 @@
 (rf/reg-sub :consumptions/loading?
   (fn [db _] (:consumptions/loading? db)))
 
+(rf/reg-sub :consumptions/creating?
+  (fn [db _] (:consumptions/creating? db)))
+
 (rf/reg-sub :portal/active-section
   (fn [db _] (:portal/active-section db)))
 
