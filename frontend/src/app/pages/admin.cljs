@@ -361,15 +361,26 @@
                       :description   (or (:network/description network) "")
                       :price-per-kwh (if (:network/price-per-kwh network)
                                        (str (:network/price-per-kwh network))
-                                       "")})]
+                                       "")})
+        mousedown-on-overlay? (atom false)]
     (fn [_network on-close]
       (let [{:keys [name center-lat center-lng radius-km description price-per-kwh]} @form
             valid? (and (seq name) (seq center-lat) (seq center-lng) (seq radius-km))]
-        [:div.modal-overlay {:on-click on-close}
+        [:div.modal-overlay {:on-mouse-down (fn [e]
+                                              (reset! mousedown-on-overlay?
+                                                      (= (.-target e) (.-currentTarget e))))
+                             :on-click (fn [e]
+                                         (when (and (= (.-target e) (.-currentTarget e))
+                                                    @mousedown-on-overlay?)
+                                           (on-close)))}
          [:div.modal {:on-click #(.stopPropagation %)}
           [:div.modal__header
            [:span "Modifier le réseau"]
-           [:button.btn.btn--small {:on-click on-close} "X"]]
+           [:button.btn.btn--small
+            {:on-click on-close
+             :style {:background "transparent" :color "var(--color-muted)"
+                     :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
           [:div.modal__body
            [:div.onboarding__form
             [:label "Nom"]
@@ -475,7 +486,7 @@
     "pending-validation"  "admin-table__status--pending"
     "admin-table__status--private"))
 
-(defn- pending-networks-table [pending-networks on-edit]
+(defn- pending-networks-table [pending-networks on-edit on-delete]
   (when (seq pending-networks)
     [:div {:style {:margin-bottom "2rem"}}
      [:h3 {:style {:font-size "1rem" :font-weight "600" :margin-bottom "0.5rem"
@@ -506,7 +517,11 @@
              "Éditer"]
             [:button.btn.btn--small.btn--green
              {:on-click #(rf/dispatch [:admin/validate-network (:network/id n)])}
-             "Valider"]]]])]]]))
+             "Valider"]
+            [:button.btn.btn--small
+             {:on-click #(on-delete n)
+              :style {:background "#d32f2f" :color "#fff" :border "none"}}
+             "Supprimer"]]]])]]]))
 
 (defn- confirm-delete-modal [network on-confirm on-cancel]
   [:div.modal-overlay {:on-click on-cancel}
@@ -521,16 +536,66 @@
      [:p {:style {:margin-bottom "0.5rem" :font-weight "600" :color "#d32f2f"}}
       "Cette action est irréversible."]
      [:p {:style {:margin-bottom "0.5rem"}}
-      (str "Voulez-vous vraiment supprimer le réseau \"" (:network/name network) "\" ?")]
-     (when (pos? (or (:network/consumption-count network) 0))
-       [:p {:style {:color "#e65100"}}
-        (str "Attention : ce réseau contient " (:network/consumption-count network)
-             " consommation(s) en cours.")])]
+      (str "Voulez-vous vraiment supprimer le réseau \"" (:network/name network) "\" ?")]]
     [:div.modal__actions
      [:button.btn.btn--small {:on-click on-cancel} "Annuler"]
      [:button.btn.btn--small {:on-click on-confirm
                               :style {:background "#d32f2f" :color "#fff"}}
       "Supprimer"]]]])
+
+(defn- delete-blocked-modal []
+  (let [blocked @(rf/subscribe [:admin/network-delete-blocked])]
+    (when blocked
+      (let [{:keys [consumptions productions]} blocked
+            on-close #(rf/dispatch [:admin/dismiss-network-delete-blocked])]
+        [:div.modal-overlay {:on-click on-close}
+         [:div.modal {:on-click #(.stopPropagation %)}
+          [:div.modal__header
+           [:span "Suppression impossible"]
+           [:button.btn.btn--small {:on-click on-close
+                                    :style {:background "transparent" :color "var(--color-muted)"
+                                            :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
+          [:div.modal__body
+           [:p {:style {:margin-bottom "1rem"}}
+            "Ce réseau ne peut pas être supprimé car il contient des consommations et/ou des productions. "
+            "Veuillez les supprimer ou les réaffecter avant de supprimer le réseau."]
+           (when (seq consumptions)
+             [:div {:style {:margin-bottom "1rem"}}
+              [:h4 {:style {:font-size "0.95rem" :margin-bottom "0.5rem"}}
+               (str (count consumptions) " consommation(s)")]
+              [:ul {:style {:font-size "0.85rem" :color "var(--color-muted)" :padding-left "1.25rem"}}
+               (doall
+                 (for [c consumptions]
+                   ^{:key (str (:consumption/id c))}
+                   [:li
+                    [:div {:style {:margin-bottom "0.25rem"}}
+                     [:span {:style {:font-family "monospace" :font-size "0.8rem"}}
+                      (str (:consumption/id c))]
+                     [:span " — " (consumption-lifecycle-label (name (:consumption/lifecycle c)))]]
+                    (when (or (:user/name c) (:user/email c))
+                      [:div {:style {:font-size "0.8rem" :color "var(--color-muted)" :margin-left "0.5rem"}}
+                       (when (:user/name c) [:span (:user/name c)])
+                       (when (:user/email c) [:span " (" (:user/email c) ")"])])]))]])
+           (when (seq productions)
+             [:div
+              [:h4 {:style {:font-size "0.95rem" :margin-bottom "0.5rem"}}
+               (str (count productions) " production(s)")]
+              [:ul {:style {:font-size "0.85rem" :color "var(--color-muted)" :padding-left "1.25rem"}}
+               (doall
+                 (for [p productions]
+                   ^{:key (str (:production/id p))}
+                   [:li
+                    [:div {:style {:margin-bottom "0.25rem"}}
+                     [:span {:style {:font-family "monospace" :font-size "0.8rem"}}
+                      (str (:production/id p))]
+                     [:span " — " (:production/lifecycle p)]]
+                    (when (or (:user/name p) (:user/email p))
+                      [:div {:style {:font-size "0.8rem" :color "var(--color-muted)" :margin-left "0.5rem"}}
+                       (when (:user/name p) [:span (:user/name p)])
+                       (when (:user/email p) [:span " (" (:user/email p) ")"])])]))]])]
+          [:div.modal__actions
+           [:button.btn.btn--small.btn--green {:on-click on-close} "Compris"]]]]))))
 
 (defn networks-tab []
   (let [show-modal?       (r/atom false)
@@ -582,7 +647,9 @@
 
            :else
            [:<>
-            [pending-networks-table pending #(reset! edit-network %)]
+            [pending-networks-table pending
+             #(reset! edit-network %)
+             #(reset! delete-network %)]
             (when (seq networks)
               [:table.admin-table
                [:thead
@@ -637,7 +704,8 @@
             (fn []
               (rf/dispatch [:admin/delete-network (:network/id net)])
               (reset! delete-network nil))
-            #(reset! delete-network nil)])]))))
+            #(reset! delete-network nil)])
+         [delete-blocked-modal]]))))
 
 ;; ── Productions table ────────────────────────────────────────────────────────
 
@@ -649,10 +717,11 @@
    "cogeneration" "Cogeneration"})
 
 (defn- export-productions-csv [productions]
-  (let [header "ID;Utilisateur;Adresse;Réseau;PDL/PRM;Puissance (kWh);Type;Compteur Linky;IBAN;Statut"
+  (let [header "ID;Utilisateur;Email;Adresse;Réseau;PDL/PRM;Puissance (kWh);Type;Compteur Linky;IBAN;Statut"
         rows   (map (fn [p]
                       (str/join ";" [(:production/id p)
                                      (or (:production/user-name p) (:production/user-id p))
+                                     (or (:production/user-email p) "")
                                      (or (:production/producer-address p) "")
                                      (or (:production/network-id p) "")
                                      (or (:production/pdl-prm p) "")
@@ -692,13 +761,256 @@
       {:on-click #(rf/dispatch [:admin/dismiss-production-error])}
       "Compris"]]]])
 
-(defn- productions-table [productions]
+;; ── Consumptions tab ──────────────────────────────────────────────────────────
+
+(defn- consumption-lifecycle-label [lifecycle]
+  (case lifecycle
+    "consumer-information" "Étape 1 — Adresse"
+    "linky-reference"      "Étape 2 — Linky"
+    "billing-address"      "Étape 3 — Facturation"
+    "contract-signature"   "Étape 4 — Contrats"
+    "pending"              "En attente"
+    "active"               "Active"
+    "terminated"           "Résiliée"
+    "abandoned"            "Abandonnée"
+    lifecycle))
+
+(defn- consumption-status-class [lifecycle]
+  (case lifecycle
+    "active"    "admin-table__status--public"
+    "pending"   "admin-table__status--pending"
+    "abandoned" "admin-table__status--private"
+    "terminated" "admin-table__status--private"
+    nil))
+
+(defn- export-consumptions-csv [consumptions]
+  (let [header "ID;Utilisateur;Email;Réseau;Statut;Réf. Linky;Créé le"
+        rows   (map (fn [c]
+                      (str/join ";" [(subs (str (:consumption/id c)) 0 8)
+                                     (or (:consumption/user-name c) "")
+                                     (or (:consumption/user-email c) "")
+                                     (or (:consumption/network-name c) "")
+                                     (:consumption/lifecycle c)
+                                     (or (:consumption/linky-reference c) "")
+                                     (subs (str (:consumption/id c)) 0 8)]))
+                    consumptions)
+        csv    (str/join "\n" (cons header rows))
+        blob   (js/Blob. #js [csv] #js {:type "text/csv;charset=utf-8;"})
+        url    (.createObjectURL js/URL blob)
+        a      (.createElement js/document "a")]
+    (set! (.-href a) url)
+    (set! (.-download a) "consommations.csv")
+    (.click a)
+    (.revokeObjectURL js/URL url)))
+
+(defn- format-datetime-fr
+  "Formats an ISO datetime string to French format: dd/MM/yyyy HH:mm:ss"
+  [s]
+  (when (and (string? s) (seq s))
+    (try
+      (let [d (js/Date. s)
+            pad #(if (< % 10) (str "0" %) (str %))]
+        (str (pad (.getDate d)) "/" (pad (inc (.getMonth d))) "/" (.getFullYear d)
+             " " (pad (.getHours d)) ":" (pad (.getMinutes d)) ":" (pad (.getSeconds d))))
+      (catch :default _ s))))
+
+(defn- detail-field [label value]
+  (when value
+    [:div
+     [:span {:style {:font-size "0.8rem" :color "var(--color-muted)"}} label]
+     [:p {:style {:font-weight "600" :margin "0 0 0.5rem 0"}} value]]))
+
+(defn- consumption-detail-modal [c on-close]
+  (let [confirm-delete? (r/atom false)]
+    (fn [c on-close]
+      [:div.modal-overlay {:on-click (fn [e]
+                                        (when (= (.-target e) (.-currentTarget e))
+                                          (on-close)))}
+       [:div.modal {:on-click #(.stopPropagation %)
+                    :style {:max-width "600px"}}
+        [:div.modal__header
+         [:span (str "Consommation — "
+                     (or (:consumption/user-name c)
+                         (subs (str (:consumption/user-id c)) 0 8)))]
+         [:button.btn.btn--small
+          {:on-click on-close
+           :style {:background "transparent" :color "var(--color-muted)"
+                   :border "none" :font-size "1.2rem" :padding "0"}}
+          "\u00D7"]]
+        [:div.modal__body
+         [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "0.5rem 1.5rem"}}
+          [detail-field "Statut"
+           (consumption-lifecycle-label (:consumption/lifecycle c))]
+          [detail-field "Utilisateur"
+           (or (:consumption/user-name c) (subs (str (:consumption/user-id c)) 0 8))]
+          [detail-field "Email" (:consumption/user-email c)]
+          [detail-field "Réseau"
+           (or (:consumption/network-name c) (:consumption/network-id c))]
+          [detail-field "Adresse de consommation" (:consumption/consumer-address c)]
+          [detail-field "Référence Linky" (:consumption/linky-reference c)]
+          [detail-field "Adresse de facturation" (:consumption/billing-address c)]
+          [detail-field "IBAN"
+           (when-let [iban (:consumption/iban c)]
+             (if (> (count iban) 8)
+               (str (subs iban 0 4) " •••• •••• " (subs iban (- (count iban) 4)))
+               iban))]
+          [detail-field "BIC" (:consumption/bic c)]
+          [detail-field "Contrat producteur signé le"
+           (format-datetime-fr (:consumption/producer-contract-signed-at c))]
+          [detail-field "Mandat SEPA signé le"
+           (format-datetime-fr (:consumption/sepa-mandate-signed-at c))]]
+         (when @confirm-delete?
+           [:div {:style {:margin-top "1rem" :padding "1rem"
+                          :background "#fdecea" :border "1px solid #f5c6cb"
+                          :border-radius "var(--radius)"}}
+            (when (= "active" (:consumption/lifecycle c))
+              [:p {:style {:color "#d32f2f" :font-weight "700" :margin-bottom "0.5rem"
+                           :animation "blink 1s step-end infinite"}}
+               "Attention, consommation active !"])
+            [:p {:style {:font-weight "600" :margin-bottom "0.75rem"}}
+             "Cette action est irréversible. Confirmer la suppression ?"]
+            [:div {:style {:display "flex" :gap "0.5rem" :justify-content "flex-end"}}
+             [:button.btn.btn--small.btn--outline
+              {:on-click #(reset! confirm-delete? false)}
+              "Annuler"]
+             [:button.btn.btn--small
+              {:style {:background "#d32f2f" :color "#fff" :border "none"}
+               :on-click (fn []
+                           (rf/dispatch [:admin/delete-consumption (:consumption/id c)])
+                           (on-close))}
+              "Confirmer la suppression"]]])]
+        [:div.modal__actions
+         (when (= "pending" (:consumption/lifecycle c))
+           [:button.btn.btn--green.btn--small
+            {:on-click (fn []
+                         (rf/dispatch [:admin/activate-consumption (:consumption/id c)])
+                         (on-close))}
+            "Activer"])
+         [:button.btn.btn--small
+          {:style {:background "#d32f2f" :color "#fff" :border "none"}
+           :on-click #(reset! confirm-delete? true)}
+          "Supprimer"]
+         [:button.btn.btn--small.btn--outline
+          {:on-click on-close}
+          "Fermer"]]]])))
+
+(defn- consumptions-table [consumptions selected]
   [:table.admin-table
    [:thead
     [:tr
      [:th "Utilisateur"]
-     [:th "Adresse"]
-     [:th "PDL/PRM"]
+     [:th "Réseau"]
+     [:th "Statut"]
+     [:th "Réf. Linky"]
+     [:th "Actions"]]]
+   [:tbody
+    (doall
+      (for [c consumptions]
+        ^{:key (:consumption/id c)}
+        [:tr {:style    {:cursor "pointer"}
+              :on-click #(reset! selected c)}
+         [:td
+          [:div (or (:consumption/user-name c)
+                    (subs (str (:consumption/user-id c)) 0 8))]
+          (when-let [email (:consumption/user-email c)]
+            [:div {:style {:font-size "0.8rem" :color "var(--color-muted)"}} email])]
+         [:td (if-let [nid (:consumption/network-id c)]
+                [:a {:href (rfee/href :page/network-detail {:id nid})
+                     :style {:color "var(--color-green)" :text-decoration "underline"}
+                     :on-click #(.stopPropagation %)}
+                 (or (:consumption/network-name c) (subs nid 0 8))]
+                "—")]
+         [:td [:span {:class (consumption-status-class (:consumption/lifecycle c))}
+               (consumption-lifecycle-label (:consumption/lifecycle c))]]
+         [:td (or (:consumption/linky-reference c) "—")]
+         [:td (when (= "pending" (:consumption/lifecycle c))
+                [:button.btn.btn--green.btn--small
+                 {:on-click (fn [e]
+                              (.stopPropagation e)
+                              (rf/dispatch [:admin/activate-consumption (:consumption/id c)]))}
+                 "Activer"])]]))]])
+
+(defn consumptions-tab []
+  (let [selected (r/atom nil)]
+    (fn []
+      (let [consumptions @(rf/subscribe [:admin/consumptions])
+            loading?     @(rf/subscribe [:admin/consumptions-loading?])]
+        [:div
+         [:div.consumptions__header
+          [:h2.admin__tab-title "Consommations"]
+          [:button.btn.btn--small
+           {:on-click #(export-consumptions-csv consumptions)
+            :disabled (empty? consumptions)
+            :title    "Exporter en CSV"}
+           [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+                  :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+                  :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+                  :style {:vertical-align "middle" :margin-right "4px"}}
+            [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+            [:polyline {:points "7 10 12 15 17 10"}]
+            [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+           "Exporter"]]
+         (cond
+           loading?              [:p.loading "Chargement..."]
+           (empty? consumptions) [:p.admin__empty "Aucune consommation."]
+           :else                 [consumptions-table consumptions selected])
+         (when-let [c @selected]
+           [consumption-detail-modal c #(reset! selected nil)])]))))
+
+;; ── Productions tab ──────────────────────────────────────────────────────────
+
+(defn- production-detail-modal [p on-close]
+  [:div.modal-overlay {:on-click (fn [e]
+                                    (when (= (.-target e) (.-currentTarget e))
+                                      (on-close)))}
+   [:div.modal {:on-click #(.stopPropagation %)
+                :style {:max-width "600px"}}
+    [:div.modal__header
+     [:span (str "Production — "
+                 (or (:production/user-name p)
+                     (subs (str (:production/user-id p)) 0 8)))]
+     [:button.btn.btn--small
+      {:on-click on-close
+       :style {:background "transparent" :color "var(--color-muted)"
+               :border "none" :font-size "1.2rem" :padding "0"}}
+      "\u00D7"]]
+    [:div.modal__body
+     [:div {:style {:display "grid" :grid-template-columns "1fr 1fr" :gap "0.5rem 1.5rem"}}
+      [detail-field "Statut" (:production/lifecycle p)]
+      [detail-field "Utilisateur"
+       (or (:production/user-name p) (subs (str (:production/user-id p)) 0 8))]
+      [detail-field "Email" (:production/user-email p)]
+      [detail-field "Réseau"
+       (or (:production/network-name p) (:production/network-id p))]
+      [detail-field "Adresse de production" (:production/producer-address p)]
+      [detail-field "PDL / PRM" (:production/pdl-prm p)]
+      [detail-field "Puissance installée"
+       (when-let [pw (:production/installed-power p)] (str pw " kWh"))]
+      [detail-field "Type d'énergie"
+       (get energy-type-labels (:production/energy-type p))]
+      [detail-field "Compteur Linky" (:production/linky-meter p)]
+      [detail-field "IBAN"
+       (when-let [iban (:production/iban p)]
+         (if (> (count iban) 8)
+           (str (subs iban 0 4) " •••• •••• " (subs iban (- (count iban) 4)))
+           iban))]
+      [detail-field "Contrat signé le" (format-datetime-fr (:production/adhesion-signed-at p))]]]
+    [:div.modal__actions
+     (when (= "pending" (:production/lifecycle p))
+       [:button.btn.btn--green.btn--small
+        {:on-click (fn []
+                     (rf/dispatch [:admin/activate-production (:production/id p)])
+                     (on-close))}
+        "Activer"])
+     [:button.btn.btn--small.btn--outline
+      {:on-click on-close}
+      "Fermer"]]]])
+
+(defn- productions-table [productions selected]
+  [:table.admin-table
+   [:thead
+    [:tr
+     [:th "Utilisateur"]
      [:th "Puissance"]
      [:th "Type"]
      [:th "Compteur"]
@@ -708,44 +1020,52 @@
     (doall
       (for [p productions]
         ^{:key (:production/id p)}
-        [:tr
-         [:td (or (:production/user-name p) (subs (str (:production/user-id p)) 0 8))]
-         [:td (or (:production/producer-address p) "-")]
-         [:td (or (:production/pdl-prm p) "-")]
+        [:tr {:style    {:cursor "pointer"}
+              :on-click #(reset! selected p)}
+         [:td
+          [:div (or (:production/user-name p) (subs (str (:production/user-id p)) 0 8))]
+          (when-let [email (:production/user-email p)]
+            [:div {:style {:font-size "0.8rem" :color "var(--color-muted)"}} email])]
          [:td (when-let [pw (:production/installed-power p)] (str pw " kWh"))]
          [:td (get energy-type-labels (:production/energy-type p) "-")]
          [:td (or (:production/linky-meter p) "-")]
          [:td (:production/lifecycle p)]
          [:td (when (= "pending" (:production/lifecycle p))
                 [:button.btn.btn--green.btn--small
-                 {:on-click #(rf/dispatch [:admin/activate-production (:production/id p)])}
+                 {:on-click (fn [e]
+                              (.stopPropagation e)
+                              (rf/dispatch [:admin/activate-production (:production/id p)]))}
                  "Activer"])]]))]])
 
 (defn productions-tab []
-  (let [productions @(rf/subscribe [:admin/productions])
-        loading?    @(rf/subscribe [:admin/productions-loading?])
-        error-msg   @(rf/subscribe [:admin/production-error])]
-    [:div
-     [:div.consumptions__header
-      [:h2.admin__tab-title "Productions"]
-      [:button.btn.btn--small
-       {:on-click #(export-productions-csv productions)
-        :disabled (empty? productions)
-        :title    "Exporter en CSV"}
-       [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
-              :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
-              :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
-              :style {:vertical-align "middle" :margin-right "4px"}}
-        [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
-        [:polyline {:points "7 10 12 15 17 10"}]
-        [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
-       "Exporter"]]
-     (cond
-       loading?         [:p.loading "Chargement..."]
-       (empty? productions) [:p.admin__empty "Aucune production."]
-       :else            [productions-table productions])
-     (when error-msg
-       [activation-error-modal error-msg])]))
+  (let [selected (r/atom nil)]
+    (fn []
+      (let [productions @(rf/subscribe [:admin/productions])
+            loading?    @(rf/subscribe [:admin/productions-loading?])
+            error-msg   @(rf/subscribe [:admin/production-error])]
+        [:div
+         [:div.consumptions__header
+          [:h2.admin__tab-title "Productions"]
+          [:button.btn.btn--small
+           {:on-click #(export-productions-csv productions)
+            :disabled (empty? productions)
+            :title    "Exporter en CSV"}
+           [:svg {:xmlns "http://www.w3.org/2000/svg" :width "16" :height "16"
+                  :viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+                  :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"
+                  :style {:vertical-align "middle" :margin-right "4px"}}
+            [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+            [:polyline {:points "7 10 12 15 17 10"}]
+            [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+           "Exporter"]]
+         (cond
+           loading?         [:p.loading "Chargement..."]
+           (empty? productions) [:p.admin__empty "Aucune production."]
+           :else            [productions-table productions selected])
+         (when-let [p @selected]
+           [production-detail-modal p #(reset! selected nil)])
+         (when error-msg
+           [activation-error-modal error-msg])]))))
 
 ;; ── Eligibility checks table ────────────────────────────────────────────────
 

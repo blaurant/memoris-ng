@@ -188,6 +188,12 @@
                           {:lifecycle current})))
         (assoc c :consumption/lifecycle prev)))
 
+(defn activate
+      "Activate a pending consumption. Transitions :pending -> :active."
+      [c]
+      (assert-lifecycle c :pending)
+      (assoc c :consumption/lifecycle :active))
+
 (defn abandon
       "Abandon a consumption during onboarding. Transitions to :abandoned."
       [c]
@@ -199,6 +205,7 @@
 ;; ── Repository protocol ───────────────────────────────────────────────────
 
 (defprotocol ConsumptionRepo
+  (find-all        [repo]                        "Returns all consumptions.")
   (find-by-id      [repo id]                    "Find a consumption by ID.")
   (find-by-user-id [repo user-id]               "Find all consumptions for a user. Returns a vector.")
   (find-by-network-id [repo network-id]         "Find all consumptions linked to a network. Returns a vector.")

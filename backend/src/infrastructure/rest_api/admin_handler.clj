@@ -1,5 +1,6 @@
 (ns infrastructure.rest-api.admin-handler
-  (:require [application.network-scenarios :as network-scenarios]
+  (:require [application.consumption-scenarios :as consumption-scenarios]
+            [application.network-scenarios :as network-scenarios]
             [application.production-scenarios :as production-scenarios]
             [application.user-scenarios :as user-scenarios]
             [domain.alert-banner :as alert]
@@ -120,8 +121,7 @@
         net-name (when nid
                    (some-> (network/find-by-id network-repo nid)
                            :network/name))
-        user-name (some-> (user/find-by-id user-repo (:production/user-id p))
-                          :user/name)]
+        user (user/find-by-id user-repo (:production/user-id p))]
     (-> p
         (update :production/id str)
         (update :production/user-id str)
@@ -132,8 +132,9 @@
                 (update :production/network-id str)
                 net-name
                 (assoc :production/network-name net-name)
-                user-name
-                (assoc :production/user-name user-name)))))
+                user
+                (assoc :production/user-name (:user/name user)
+                       :production/user-email (:user/email user))))))
 
 (defn- list-productions-handler [production-repo network-repo user-repo]
   (fn [_request]
@@ -173,17 +174,27 @@
         {:status 404
          :body   {:error (.getMessage e)}}))))
 
-(defn- delete-network-handler [user-repo network-repo email-sender]
+(defn- delete-network-handler [user-repo network-repo consumption-repo production-repo email-sender]
   (fn [request]
     (try
       (let [network-id (id/build-id (get-in request [:path-params :id]))
             n (network-scenarios/delete-network
-                network-repo user-repo email-sender (user-id request) network-id)]
+                network-repo consumption-repo production-repo
+                user-repo email-sender (user-id request) network-id)]
         {:status 200
          :body   {:ok true :deleted-network (:network/name n)}})
       (catch clojure.lang.ExceptionInfo e
-        {:status (if (.contains (.getMessage e) "not found") 404 400)
-         :body   {:error (.getMessage e)}}))))
+        (let [data (ex-data e)]
+          (cond
+            (:consumptions data)
+            {:status 409
+             :body   {:error        (.getMessage e)
+                      :consumptions (:consumptions data)
+                      :productions  (:productions data)}}
+            (.contains (.getMessage e) "not found")
+            {:status 404 :body {:error (.getMessage e)}}
+            :else
+            {:status 400 :body {:error (.getMessage e)}}))))))
 
 (defn- activate-production-handler [production-repo network-repo user-repo]
   (fn [request]
@@ -192,6 +203,48 @@
             p' (production-scenarios/activate-production production-repo network-repo production-id)]
         {:status 200
          :body   (serialize-production p' network-repo user-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
+(defn- serialize-consumption [c network-repo user-repo]
+  (let [nid (:consumption/network-id c)
+        net-name (when nid
+                   (some-> (network/find-by-id network-repo nid)
+                           :network/name))
+        user (user/find-by-id user-repo (:consumption/user-id c))]
+    (-> c
+        (update :consumption/id str)
+        (update :consumption/user-id str)
+        (update :consumption/lifecycle name)
+        (cond-> nid       (update :consumption/network-id str)
+                net-name  (assoc :consumption/network-name net-name)
+                user      (assoc :consumption/user-name (:user/name user)
+                                 :consumption/user-email (:user/email user))))))
+
+(defn- list-consumptions-handler [consumption-repo network-repo user-repo]
+  (fn [_request]
+    {:status 200
+     :body   (mapv #(serialize-consumption % network-repo user-repo) (consumption/find-all consumption-repo))}))
+
+(defn- delete-consumption-handler [consumption-repo]
+  (fn [request]
+    (try
+      (let [consumption-id (id/build-id (get-in request [:path-params :id]))]
+        (consumption/delete! consumption-repo consumption-id)
+        {:status 200
+         :body   {:ok true}})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
+(defn- activate-consumption-handler [consumption-repo network-repo user-repo]
+  (fn [request]
+    (try
+      (let [consumption-id (id/build-id (get-in request [:path-params :id]))
+            c' (consumption-scenarios/activate-consumption consumption-repo consumption-id)]
+        {:status 200
+         :body   (serialize-consumption c' network-repo user-repo)})
       (catch clojure.lang.ExceptionInfo e
         {:status 400
          :body   {:error (.getMessage e)}}))))
@@ -219,7 +272,7 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/networks/:id"
     {:put        (update-network-handler user-repo network-repo)
-     :delete     (delete-network-handler user-repo network-repo email-sender)
+     :delete     (delete-network-handler user-repo network-repo consumption-repo production-repo email-sender)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/networks/:id/toggle-visibility"
@@ -232,6 +285,18 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/eligibility-checks"
     {:get        (list-eligibility-checks-handler ec-repo user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/consumptions"
+    {:get        (list-consumptions-handler consumption-repo network-repo user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/consumptions/:id"
+    {:delete     (delete-consumption-handler consumption-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/consumptions/:id/activate"
+    {:put        (activate-consumption-handler consumption-repo network-repo user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions"

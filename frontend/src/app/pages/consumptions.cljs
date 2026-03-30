@@ -1,6 +1,5 @@
 (ns app.pages.consumptions
   (:require [app.components.onboarding-form :as onboarding]
-            [app.consumptions.contract :as contract]
             [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
             [reagent.core :as r]
@@ -83,45 +82,6 @@
                 "#757575")]
     [:span.prod-dash__badge {:style {:background color}} label]))
 
-;; ── Contract row ────────────────────────────────────────────────────────────
-
-(defn- contract-doc-link [label text show-atom]
-  [:<>
-   [:div.prod-dash__field
-    [:span.prod-dash__field-label label]
-    [:span.consumption-block__contract-link
-     {:on-click #(reset! show-atom true)}
-     [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
-            :fill "none" :stroke "currentColor" :stroke-width "2"
-            :stroke-linecap "round" :stroke-linejoin "round"
-            :style {:vertical-align "middle" :margin-right "0.3rem"}}
-      [:path {:d "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}]
-      [:polyline {:points "14 2 14 8 20 8"}]
-      [:line {:x1 "16" :y1 "13" :x2 "8" :y2 "13"}]
-      [:line {:x1 "16" :y1 "17" :x2 "8" :y2 "17"}]]
-     "Consulter"]]
-   (when @show-atom
-     [:div.modal-overlay {:on-click (fn [e]
-                                       (when (= (.-target e) (.-currentTarget e))
-                                         (reset! show-atom false)))}
-      [:div.modal
-       [:div.modal__header
-        [:span label]
-        [:button.btn.btn--small
-         {:on-click #(reset! show-atom false)
-          :style {:background "transparent" :color "var(--color-muted)"
-                  :border "none" :font-size "1.2rem" :padding "0"}}
-         "\u00D7"]]
-       [:div.modal__body
-        [:pre {:style {:white-space "pre-wrap" :font-size "0.85rem"
-                       :line-height "1.5" :background-color "var(--color-green-pale)"
-                       :padding "1rem" :border-radius "var(--radius)"
-                       :max-height "400px" :overflow-y "auto"}}
-         text]]
-       [:div.modal__actions
-        [:button.btn.btn--small.btn--green
-         {:on-click #(reset! show-atom false)}
-         "Fermer"]]]])])
 
 ;; ── Editable field ──────────────────────────────────────────────────────────
 
@@ -209,10 +169,7 @@
 ;; ── Dashboard view ──────────────────────────────────────────────────────────
 
 (defn- consumption-dashboard [consumption]
-  (let [cid               (:consumption/id consumption)
-        show-producer?    (r/atom false)
-        show-sepa?        (r/atom false)
-        show-adhesion?    (r/atom false)]
+  (let [cid (:consumption/id consumption)]
     (r/create-class
      {:component-did-mount
       (fn [_]
@@ -302,15 +259,23 @@
                 [:span.prod-dash__field-label "Adresse de facturation"]
                 [editable-field (:consumption/billing-address consumption)
                  #(rf/dispatch [:consumptions/update-billing-address cid %])]]])
-            [:div.prod-dash__finance-preview
-             [:div.prod-dash__finance-badge "Bientôt disponible"]
-             [:div.prod-dash__details
-              [:div.prod-dash__field
-               [:span.prod-dash__field-label "IBAN"]
-               [:span "FR76 •••• •••• •••• •••• •••"]]
-              [:div.prod-dash__field
-               [:span.prod-dash__field-label "Mandat SEPA"]
-               [:span "Signé"]]]]]
+            (when (:consumption/iban consumption)
+              [:div.prod-dash__details
+               [:div.prod-dash__field
+                [:span.prod-dash__field-label "IBAN"]
+                [:span (let [iban (:consumption/iban consumption)]
+                         (if (> (count iban) 8)
+                           (str (subs iban 0 4) " •••• •••• " (subs iban (- (count iban) 4)))
+                           iban))]]
+               (when (:consumption/bic consumption)
+                 [:div.prod-dash__field
+                  [:span.prod-dash__field-label "BIC"]
+                  [:span (:consumption/bic consumption)]])
+               [:div.prod-dash__field
+                [:span.prod-dash__field-label "Mandat SEPA"]
+                [:span (if (:consumption/sepa-mandate-signed-at consumption)
+                         "Signé"
+                         "Non signé")]]])]
 
            ;; Contracts
            (when (or (:consumption/producer-contract-signed-at consumption)
@@ -320,14 +285,44 @@
               [:h3 "Contrats"]
               [:div.prod-dash__details
                (when adhesion?
-                 [contract-doc-link "Adhésion Elink-co"
-                  contract/contract-text show-adhesion?])
+                 [:div.prod-dash__field
+                  [:span.prod-dash__field-label "Adhésion Elink-co"]
+                  [:span.consumption-block__contract-link
+                   {:on-click #(rf/dispatch [:auth/download-adhesion])}
+                   [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
+                          :fill "none" :stroke "currentColor" :stroke-width "2"
+                          :stroke-linecap "round" :stroke-linejoin "round"
+                          :style {:vertical-align "middle" :margin-right "0.3rem"}}
+                    [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+                    [:polyline {:points "7 10 12 15 17 10"}]
+                    [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+                   "Télécharger"]])
                (when (:consumption/producer-contract-signed-at consumption)
-                 [contract-doc-link "Contrat Producteur"
-                  contract/producer-contract-text show-producer?])
+                 [:div.prod-dash__field
+                  [:span.prod-dash__field-label "Contrat Producteur"]
+                  [:span.consumption-block__contract-link
+                   {:on-click #(rf/dispatch [:consumptions/download-contract cid :producer])}
+                   [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
+                          :fill "none" :stroke "currentColor" :stroke-width "2"
+                          :stroke-linecap "round" :stroke-linejoin "round"
+                          :style {:vertical-align "middle" :margin-right "0.3rem"}}
+                    [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+                    [:polyline {:points "7 10 12 15 17 10"}]
+                    [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+                   "Télécharger"]])
                (when (:consumption/sepa-mandate-signed-at consumption)
-                 [contract-doc-link "Mandat SEPA"
-                  contract/sepa-mandate-text show-sepa?])]])
+                 [:div.prod-dash__field
+                  [:span.prod-dash__field-label "Mandat SEPA"]
+                  [:span.consumption-block__contract-link
+                   {:on-click #(rf/dispatch [:consumptions/download-contract cid :sepa])}
+                   [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
+                          :fill "none" :stroke "currentColor" :stroke-width "2"
+                          :stroke-linecap "round" :stroke-linejoin "round"
+                          :style {:vertical-align "middle" :margin-right "0.3rem"}}
+                    [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+                    [:polyline {:points "7 10 12 15 17 10"}]
+                    [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+                   "Télécharger"]])]])
 
            ;; Invoices (draft)
            [:div.prod-dash__section

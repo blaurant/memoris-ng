@@ -163,9 +163,19 @@
               (filterv #(not= network-id (:network/id %)) networks)))))
 
 (rf/reg-event-db :admin/delete-network-err
+  (fn [db [_ error]]
+    (let [status  (:status error)
+          resp    (:response error)]
+      (if (= 409 status)
+        (assoc db :admin/network-delete-blocked
+               {:consumptions (:consumptions resp)
+                :productions  (:productions resp)})
+        (do (js/console.error "Failed to delete network")
+            db)))))
+
+(rf/reg-event-db :admin/dismiss-network-delete-blocked
   (fn [db _]
-    (js/console.error "Failed to delete network")
-    db))
+    (dissoc db :admin/network-delete-blocked)))
 
 ;; ── Fetch eligibility checks ─────────────────────────────────────────────────
 
@@ -247,6 +257,29 @@
     (js/console.error "Failed to update alert")
     db))
 
+;; ── Fetch consumptions (admin) ────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/fetch-consumptions
+  (fn [{:keys [db]} _]
+    {:db         (assoc db :admin/consumptions-loading? true)
+     :http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/admin/consumptions")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/fetch-consumptions-ok]
+                  :on-failure      [:admin/fetch-consumptions-err]}}))
+
+(rf/reg-event-db :admin/fetch-consumptions-ok
+  (fn [db [_ consumptions]]
+    (-> db
+        (assoc :admin/consumptions consumptions)
+        (assoc :admin/consumptions-loading? false))))
+
+(rf/reg-event-db :admin/fetch-consumptions-err
+  (fn [db _]
+    (js/console.error "Failed to fetch admin consumptions")
+    (assoc db :admin/consumptions-loading? false)))
+
 ;; ── Fetch productions (admin) ────────────────────────────────────────────────
 
 (rf/reg-event-fx :admin/fetch-productions
@@ -298,6 +331,55 @@
 (rf/reg-event-db :admin/dismiss-production-error
   (fn [db _]
     (dissoc db :admin/production-error)))
+
+;; ── Delete consumption (admin) ──────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/delete-consumption
+  (fn [{:keys [db]} [_ consumption-id]]
+    {:http-xhrio {:method          :delete
+                  :uri             (str config/API_BASE "/api/v1/admin/consumptions/" consumption-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/delete-consumption-ok consumption-id]
+                  :on-failure      [:admin/delete-consumption-err]}}))
+
+(rf/reg-event-db :admin/delete-consumption-ok
+  (fn [db [_ consumption-id _response]]
+    (update db :admin/consumptions
+            (fn [consumptions]
+              (filterv #(not= consumption-id (:consumption/id %)) consumptions)))))
+
+(rf/reg-event-db :admin/delete-consumption-err
+  (fn [db [_ response]]
+    (js/console.error "Failed to delete consumption"
+                      (get-in response [:response :error] "unknown"))
+    db))
+
+;; ── Activate consumption (admin) ─────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/activate-consumption
+  (fn [{:keys [db]} [_ consumption-id]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/consumptions/" consumption-id "/activate")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/activate-consumption-ok]
+                  :on-failure      [:admin/activate-consumption-err]}}))
+
+(rf/reg-event-db :admin/activate-consumption-ok
+  (fn [db [_ updated]]
+    (let [cid (:consumption/id updated)]
+      (update db :admin/consumptions
+              (fn [consumptions]
+                (mapv #(if (= cid (:consumption/id %)) updated %) consumptions))))))
+
+(rf/reg-event-db :admin/activate-consumption-err
+  (fn [db [_ response]]
+    (js/console.error "Failed to activate consumption"
+                      (get-in response [:response :error] "unknown"))
+    db))
 
 ;; ── Update user profile (admin) ──────────────────────────────────────────────
 

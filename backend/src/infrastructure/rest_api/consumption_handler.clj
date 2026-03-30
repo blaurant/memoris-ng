@@ -61,16 +61,24 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- register-consumer-information-handler [consumption-repo]
+(defn- register-consumer-information-handler [consumption-repo network-repo]
   (fn [request]
     (try
       (let [user-id        (user-id-from-request request)
             consumption-id (id/build-id (get-in request [:path-params :id]))
             address        (require-param request :address "address")
-            network-id     (id/build-id (require-param request :network-id "network-id"))
+            network-id     (get-in request [:body-params :network-id])
+            network-opts   (cond-> {}
+                             network-id
+                             (assoc :network-id network-id)
+                             (not network-id)
+                             (merge {:network-name   (require-param request :network-name "network-name")
+                                     :network-lat    (double (require-param request :network-lat "network-lat"))
+                                     :network-lng    (double (require-param request :network-lng "network-lng"))
+                                     :network-radius (some-> (get-in request [:body-params :network-radius]) double)}))
             c'             (scenarios/register-consumer-information
-                             consumption-repo user-id consumption-id
-                             address network-id)]
+                             consumption-repo network-repo user-id consumption-id
+                             address network-opts)]
         {:status 200
          :body   (serialize-consumption c')})
       (catch clojure.lang.ExceptionInfo e
@@ -312,7 +320,7 @@
         {:put        (abandon-consumption-handler consumption-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/step/consumer-information"
-        {:put        (register-consumer-information-handler consumption-repo)
+        {:put        (register-consumer-information-handler consumption-repo network-repo)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/step/linky-reference"
         {:put        (associate-linky-reference-handler consumption-repo)

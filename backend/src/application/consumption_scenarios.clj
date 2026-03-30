@@ -4,6 +4,7 @@
             [domain.consumption :as consumption]
             [domain.contract-html :as contract-html]
             [domain.document-signer :as document-signer]
+            [domain.id]
             [domain.network :as network]
             [domain.production :as production]
             [domain.user :as user]))
@@ -88,11 +89,25 @@
          c))
 
 (defn register-consumer-information
-      "Register step 1: consumer address and network-id."
-      [consumption-repo user-id consumption-id address network-id]
-      (let [c  (find-and-check-ownership consumption-repo user-id consumption-id)
-            c' (consumption/register-consumer-information c address network-id)
-            c' (consumption/save! consumption-repo c c')]
+      "Register step 1: consumer address and network.
+       If network-id is nil, create a new pending-validation network."
+      [consumption-repo network-repo user-id consumption-id address
+       {:keys [network-id network-name network-lat network-lng network-radius]}]
+      (let [c   (find-and-check-ownership consumption-repo user-id consumption-id)
+            nid (if network-id
+                  (domain.id/build-id network-id)
+                  (let [n (network/build-network
+                            {:network/id         (domain.id/build-id)
+                             :network/name       network-name
+                             :network/center-lat (double network-lat)
+                             :network/center-lng (double network-lng)
+                             :network/radius-km  (double (or network-radius 1.0))
+                             :network/lifecycle  :pending-validation})]
+                    (network/save! network-repo n)
+                    (mu/log ::network-created-pending :network-id (:network/id n) :name network-name)
+                    (:network/id n)))
+            c'  (consumption/register-consumer-information c address nid)
+            c'  (consumption/save! consumption-repo c c')]
         (mu/log ::consumer-information-registered :consumption-id consumption-id)
         c'))
 
@@ -123,6 +138,17 @@
         (mu/log ::consumption-went-back :consumption-id consumption-id
                 :from (:consumption/lifecycle c) :to (:consumption/lifecycle c'))
         c'))
+
+(defn activate-consumption
+      "Admin: activate a pending consumption."
+      [consumption-repo consumption-id]
+      (let [c (consumption/find-by-id consumption-repo consumption-id)]
+        (when-not c
+          (throw (ex-info "Consumption not found" {:consumption-id consumption-id})))
+        (let [c' (consumption/activate c)
+              c' (consumption/save! consumption-repo c c')]
+          (mu/log ::consumption-activated :consumption-id consumption-id)
+          c')))
 
 (defn abandon-consumption
       "Abandon a consumption during onboarding."

@@ -104,11 +104,11 @@
 ;; ── Submit step 1 ───────────────────────────────────────────────────────────
 
 (rf/reg-event-fx :consumptions/submit-step1
-  (fn [{:keys [db]} [_ consumption-id address network-id]]
+  (fn [{:keys [db]} [_ consumption-id address network-opts]]
     {:http-xhrio {:method          :put
                   :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/step/consumer-information")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
-                  :params          {:address address :network-id network-id}
+                  :params          (merge {:address address} network-opts)
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
                   :on-success      [:consumptions/step-ok]

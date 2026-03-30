@@ -17,9 +17,10 @@
       (throw (ex-info "Admin access required" {:user-id user-id})))))
 
 (defn list-networks
-  "Returns all public networks from the repository."
+  "Returns all public and pending-validation networks from the repository."
   [network-repo]
-  (filterv #(= :public (:network/lifecycle %)) (network/find-all network-repo)))
+  (filterv #(#{:public :pending-validation} (:network/lifecycle %))
+           (network/find-all network-repo)))
 
 (defn check-eligibility
   "Checks whether the point (lat, lng) falls within any public network.
@@ -105,13 +106,43 @@
       (mu/log ::network-validated :network-id network-id)
       n')))
 
+(defn check-network-dependencies
+  "Returns consumptions and productions linked to a network."
+  [consumption-repo production-repo network-id]
+  (let [consumptions (consumption/find-by-network-id consumption-repo network-id)
+        productions  (production/find-by-network-id production-repo network-id)
+        ;; Exclude abandoned/terminated
+        active-consos (filterv #(not (#{:abandoned :terminated} (:consumption/lifecycle %))) consumptions)
+        active-prods  (filterv #(not (#{:terminated} (:production/lifecycle %))) productions)]
+    {:consumptions active-consos
+     :productions  active-prods}))
+
 (defn delete-network
-  "Delete a network. Requires admin role. Sends notification to all admins."
-  [network-repo user-repo email-sender user-id network-id]
+  "Delete a network. Requires admin role. Checks for dependencies first.
+  Sends notification to all admins."
+  [network-repo consumption-repo production-repo user-repo email-sender user-id network-id]
   (assert-admin user-repo user-id)
   (let [n (network/find-by-id network-repo network-id)]
     (when-not n
       (throw (ex-info "Network not found" {:network-id network-id})))
+    (let [{:keys [consumptions productions]} (check-network-dependencies
+                                               consumption-repo production-repo network-id)]
+      (when (or (seq consumptions) (seq productions))
+        (let [enrich-user (fn [m user-id-key]
+                            (if-let [u (user/find-by-id user-repo (get m user-id-key))]
+                              (assoc m :user/name (:user/name u)
+                                       :user/email (:user/email u))
+                              m))]
+          (throw (ex-info "Network has active dependencies"
+                          {:network-id   network-id
+                           :consumptions (mapv #(-> (select-keys % [:consumption/id :consumption/user-id
+                                                                     :consumption/lifecycle])
+                                                    (enrich-user :consumption/user-id))
+                                               consumptions)
+                           :productions  (mapv #(-> (select-keys % [:production/id :production/user-id
+                                                                     :production/lifecycle])
+                                                    (enrich-user :production/user-id))
+                                               productions)})))))
     (network/delete! network-repo network-id)
     (mu/log ::network-deleted :network-id network-id :network-name (:network/name n))
     ;; Notify all admins
@@ -188,13 +219,13 @@
      :energy-mix      (or energy-mix {})}))
 
 (defn get-network-detail
-  "Aggregate a public network with its active productions and consumer count.
-  Throws ex-info if the network does not exist or is not public."
+  "Aggregate a network with its active productions and consumer count.
+  Throws ex-info if the network does not exist or is private."
   [network-repo production-repo consumption-repo network-id]
   (let [net (network/find-by-id network-repo network-id)]
     (when-not net
       (throw (ex-info "Network not found" {:network-id network-id})))
-    (when (not= :public (:network/lifecycle net))
+    (when (= :private (:network/lifecycle net))
       (throw (ex-info "Network not found" {:network-id network-id})))
     (aggregate-network-detail net production-repo consumption-repo)))
 

@@ -5,6 +5,7 @@
             [domain.user :as user]
             [infrastructure.in-memory-repo.mem-consumption-repo :as mem-repo]
             [infrastructure.in-memory-repo.mem-document-signer :as mem-signer]
+            [infrastructure.in-memory-repo.mem-network-repo :as mem-net-repo]
             [infrastructure.in-memory-repo.mem-user-repo :as mem-user-repo]))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
@@ -45,10 +46,11 @@
           c         (scenarios/create-consumption repo (id/build-id) user-id)]
       (assoc ctx :repo repo :user-repo user-repo :user-id user-id :consumption c)))
   (WHEN "the user submits step 1 (consumer informations)" [ctx]
-    (let [network-id (id/build-id)
+    (let [network-id  (id/build-id)
+          network-repo (mem-net-repo/->InMemoryNetworkRepo (atom {}))
           c' (scenarios/register-consumer-information
-               (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-               "10 rue de Paris" network-id)]
+               (:repo ctx) network-repo (:user-id ctx) (:consumption/id (:consumption ctx))
+               "10 rue de Paris" {:network-id network-id})]
       (assoc ctx :consumption c' :network-id network-id)))
   (THEN "the consumption is in :linky-reference state" [ctx]
     (assert (= :linky-reference (:consumption/lifecycle (:consumption ctx)))))
@@ -127,9 +129,10 @@
 
   (WHEN "user B tries to submit step 1" [ctx]
     (try
-      (scenarios/register-consumer-information
-        (:repo ctx) (:user-b ctx) (:consumption/id (:consumption ctx))
-        "addr" (id/build-id))
+      (let [network-repo (mem-net-repo/->InMemoryNetworkRepo (atom {}))]
+        (scenarios/register-consumer-information
+          (:repo ctx) network-repo (:user-b ctx) (:consumption/id (:consumption ctx))
+          "addr" {:network-id (id/build-id)}))
       (assoc ctx :exception nil)
       (catch clojure.lang.ExceptionInfo e
         (assoc ctx :exception (.getMessage e)))))

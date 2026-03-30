@@ -42,68 +42,93 @@
              (str number))]
           [:div.stepper__label label]])))])
 
+(defn- check-in-any-network?
+  "Returns true if (lat, lng) falls inside at least one network circle."
+  [lat lng networks]
+  (some (fn [net]
+          (let [dlat (- lat (:network/center-lat net))
+                dlng (- lng (:network/center-lng net))
+                cos-lat (js/Math.cos (* lat (/ js/Math.PI 180)))
+                dist-km (js/Math.sqrt (+ (* dlat dlat 111.32 111.32)
+                                          (* dlng dlng 111.32 111.32 cos-lat cos-lat)))]
+            (<= dist-km (:network/radius-km net))))
+        networks))
+
+(defn- draw-network-circles!
+  "Draw clickable circles for each network on the map."
+  [gm circles-atom networks selected-network no-network? creating?]
+  (doseq [c @circles-atom] (.setMap ^js c nil))
+  (reset! circles-atom
+    (mapv (fn [net]
+            (let [circle (js/google.maps.Circle.
+                           #js {:map          gm
+                                :center       #js {:lat (:network/center-lat net)
+                                                   :lng (:network/center-lng net)}
+                                :radius       (* (:network/radius-km net) 1000)
+                                :strokeColor  "#2e7d32"
+                                :strokeWeight 2
+                                :fillColor    "#4caf50"
+                                :fillOpacity  0.2
+                                :clickable    true})]
+              (.addListener circle "click"
+                (fn [_e]
+                  (doseq [c @circles-atom]
+                    (.setOptions ^js c #js {:fillOpacity 0.2 :strokeWeight 2}))
+                  (.setOptions circle #js {:fillOpacity 0.5 :strokeWeight 3})
+                  (reset! selected-network net)
+                  (reset! no-network? false)
+                  (reset! creating? false)))
+              circle))
+          networks)))
+
 (defn- network-map-modal
-  "Form-3 modal with a Google Map for selecting a network by clicking its circle."
-  [address networks on-select on-cancel]
+  "Modal with a Google Map for selecting a network by clicking its circle,
+   or proposing a new network if the address is outside all existing zones."
+  [address networks on-select-existing on-create-new on-cancel]
   (let [map-el           (atom nil)
         map-inst         (atom nil)
         circles          (atom [])
-        selected-network (r/atom nil)]
+        selected-network (r/atom nil)
+        addr-lat         (atom nil)
+        addr-lng         (atom nil)
+        no-network?      (r/atom false)
+        creating?        (r/atom false)
+        net-name         (r/atom "")
+        geocoding?       (r/atom false)
+        geo-error        (r/atom nil)]
     (r/create-class
      {:display-name "network-map-modal"
 
       :component-did-mount
       (fn [_this]
-        (let [init-map!
+        (let [create-map!
+              (fn [center zoom]
+                (when @map-el
+                  (let [gmap (js/google.maps.Map.
+                               @map-el
+                               #js {:center center :zoom zoom :mapTypeId "roadmap"})]
+                    (reset! map-inst gmap)
+                    (js/google.maps.Marker.
+                      #js {:map gmap :position center :title "Votre adresse"})
+                    (draw-network-circles! gmap circles networks
+                                           selected-network no-network? creating?))))
+              init-map!
               (fn []
-                (let [geocoder (js/google.maps.Geocoder.)
-                      create-map!
-                      (fn [center zoom]
-                        (when @map-el
-                          (let [gmap (js/google.maps.Map.
-                                      @map-el
-                                      #js {:center center :zoom zoom :mapTypeId "roadmap"})]
-                            (reset! map-inst gmap)
-                            ;; Draw circles with click listeners
-                            (doseq [c @circles] (.setMap ^js c nil))
-                            (reset! circles
-                                    (mapv (fn [net]
-                                            (let [circle (js/google.maps.Circle.
-                                                          #js {:map          gmap
-                                                               :center       #js {:lat (:network/center-lat net)
-                                                                                  :lng (:network/center-lng net)}
-                                                               :radius       (* (:network/radius-km net) 1000)
-                                                               :strokeColor  "#2e7d32"
-                                                               :strokeWeight 2
-                                                               :fillColor    "#4caf50"
-                                                               :fillOpacity  0.2
-                                                               :clickable    true})]
-                                              (.addListener circle "click"
-                                                (fn [_e]
-                                                  ;; Reset all circles to default style
-                                                  (doseq [c @circles]
-                                                    (.setOptions ^js c #js {:fillOpacity  0.2
-                                                                           :strokeWeight 2}))
-                                                  ;; Highlight selected circle
-                                                  (.setOptions circle #js {:fillOpacity  0.5
-                                                                          :strokeWeight 3})
-                                                  (reset! selected-network net)))
-                                              circle))
-                                          networks)))))]
+                (let [geocoder (js/google.maps.Geocoder.)]
                   (if (seq address)
                     (-> (.geocode geocoder #js {:address address})
                         (.then (fn [^js response]
-                                 (let [results      (.-results response)
-                                       ^js first-r  (when (and results (pos? (.-length results)))
-                                                      (aget results 0))
-                                       ^js loc      (some-> first-r .-geometry .-location)]
+                                 (let [results     (.-results response)
+                                       ^js first-r (when (and results (pos? (.-length results)))
+                                                     (aget results 0))
+                                       ^js loc     (some-> first-r .-geometry .-location)]
                                    (if loc
-                                     (let [pos #js {:lat (.lat loc) :lng (.lng loc)}]
-                                       (create-map! pos 10)
-                                       (js/google.maps.Marker.
-                                         #js {:map   @map-inst
-                                              :position pos
-                                              :title "Votre adresse"}))
+                                     (do
+                                       (reset! addr-lat (.lat loc))
+                                       (reset! addr-lng (.lng loc))
+                                       (create-map! #js {:lat (.lat loc) :lng (.lng loc)} 10)
+                                       (when-not (check-in-any-network? (.lat loc) (.lng loc) networks)
+                                         (reset! no-network? true)))
                                      (create-map! #js {:lat 46.6 :lng 1.9} 6)))))
                         (.catch (fn [_err]
                                   (create-map! #js {:lat 46.6 :lng 1.9} 6))))
@@ -117,14 +142,14 @@
         (doseq [c @circles] (.setMap ^js c nil)))
 
       :reagent-render
-      (fn [_address _networks _on-select on-cancel]
+      (fn [_address _networks _on-select-existing on-create-new on-cancel]
         (let [sel @selected-network]
           [:div.modal-overlay {:on-click (fn [e]
                                            (when (= (.-target e) (.-currentTarget e))
                                              (on-cancel)))}
-           [:div.modal
+           [:div.modal {:style {:max-width "650px"}}
             [:div.modal__header
-             [:span "Sélectionner un réseau sur la carte"]
+             [:span "Choisir un réseau"]
              [:button.btn.btn--small
               {:on-click on-cancel
                :style {:background "transparent" :color "var(--color-muted)"
@@ -132,18 +157,88 @@
               "\u00D7"]]
             [:div.modal__map
              {:ref (fn [el] (when el (reset! map-el el)))}]
-            [:div.modal__selection
-             (if sel
-               (str "Réseau sélectionné : " (:network/name sel))
-               "Aucun réseau sélectionné")]
+            ;; Selection feedback
+            (cond
+              sel
+              [:div.modal__selection
+               {:style {:color "var(--color-green)" :font-weight "600"}}
+               (str "Réseau sélectionné : " (:network/name sel))]
+
+              (and @no-network? (not @creating?))
+              [:div.modal__selection
+               {:style {:color "#e65100"}}
+               "Pas de réseau dans votre zone."
+               [:button.btn.btn--small.btn--outline
+                {:on-click #(reset! creating? true)
+                 :style    {:margin-left "0.75rem"}}
+                "Proposer un nouveau réseau"]]
+
+              @creating?
+              [:div {:style {:padding "0.5rem 1rem"}}
+               [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-right "8px"}}
+                "Nom du nouveau réseau"]
+               [:input.onboarding__input
+                {:value       @net-name
+                 :placeholder "Ex: Réseau Montpellier Sud"
+                 :on-change   #(reset! net-name (.-value (.-target %)))
+                 :style       {:margin-top "4px"}}]
+               [:p {:style {:font-size "0.8rem" :color "var(--color-muted)" :margin-top "4px"}}
+                "Le réseau sera centré sur votre adresse (rayon : 1 km) et soumis à validation. "
+                "La taille et la localisation du réseau pourront être ajustées par l'administrateur. "
+                "Pour les réseaux périurbains (rayon 10 km) et ruraux (rayon 20 km), une validation Enedis sera également requise."]
+               (when @geo-error
+                 [:p {:style {:font-size "0.85rem" :color "var(--color-error)" :margin-top "4px"}}
+                  @geo-error])]
+
+              :else
+              [:div.modal__selection
+               "Cliquez sur un réseau sur la carte pour le sélectionner."])
+            ;; Actions
             [:div.modal__actions
-             [:button.btn.btn--small.btn--outline
-              {:on-click on-cancel}
-              "Annuler"]
-             [:button.btn.btn--small.btn--green
-              {:disabled (nil? sel)
-               :on-click #(on-select (:network/id sel))}
-              "Valider"]]]]))})))
+             [:button.btn.btn--small {:on-click on-cancel} "Annuler"]
+             (cond
+               sel
+               [:button.btn.btn--small.btn--green
+                {:on-click #(on-select-existing (:network/id sel))}
+                "Valider"]
+
+               @creating?
+               [:button.btn.btn--small.btn--green
+                {:disabled (or (empty? @net-name) @geocoding?)
+                 :on-click (fn []
+                             (if (and @addr-lat @addr-lng)
+                               (on-create-new {:network-name   @net-name
+                                               :network-lat    @addr-lat
+                                               :network-lng    @addr-lng
+                                               :network-radius 1.0})
+                               (do
+                                 (reset! geocoding? true)
+                                 (reset! geo-error nil)
+                                 (let [do-geocode!
+                                       (fn []
+                                         (let [geocoder (js/google.maps.Geocoder.)]
+                                           (-> (.geocode geocoder #js {:address address})
+                                               (.then
+                                                 (fn [^js response]
+                                                   (let [results     (.-results response)
+                                                         ^js first-r (when (and results (pos? (.-length results)))
+                                                                       (aget results 0))
+                                                         ^js loc     (some-> first-r .-geometry .-location)]
+                                                     (reset! geocoding? false)
+                                                     (if loc
+                                                       (on-create-new {:network-name   @net-name
+                                                                       :network-lat    (.lat loc)
+                                                                       :network-lng    (.lng loc)
+                                                                       :network-radius 1.0})
+                                                       (reset! geo-error "Impossible de géolocaliser cette adresse.")))))
+                                               (.catch
+                                                 (fn [_err]
+                                                   (reset! geocoding? false)
+                                                   (reset! geo-error "Erreur de géolocalisation."))))))]
+                                   (if (and (exists? js/google) (exists? js/google.maps))
+                                     (do-geocode!)
+                                     (google-maps/load-google-maps-script! do-geocode!))))))}
+                (if @geocoding? "Géolocalisation..." "Valider")])]]]))})))
 
 (def ^:private natural-required-fields
   [:last-name :first-name :birth-date :address :postal-code :city :phone])
@@ -439,16 +534,23 @@
             [:button.btn.btn--green.btn--small
              {:disabled (or (empty? @address) (empty? @network-id))
               :on-click #(rf/dispatch [:consumptions/submit-step1
-                                       consumption-id @address @network-id])}
+                                       consumption-id @address {:network-id @network-id}])}
              "Suivant"]
             (when @show-map?
               [network-map-modal
                @address
                networks
+               ;; on-select-existing
                (fn [selected-id]
                  (reset! network-id (str selected-id))
                  (reset! show-map? false)
                  (validate-network! @address (str selected-id)))
+               ;; on-create-new
+               (fn [net-opts]
+                 (reset! show-map? false)
+                 (rf/dispatch [:consumptions/submit-step1
+                                consumption-id @address net-opts]))
+               ;; on-cancel
                (fn []
                  (reset! show-map? false))])])]))))
 
