@@ -19,7 +19,17 @@
 (def password?
   [:and
    string?
-   [:fn {:error/message "must be at least 8 characters"} #(>= (count %) 8)]])
+   [:fn {:error/message "must be at least 8 characters"} #(>= (count %) 8)]
+   [:fn {:error/message "must contain at least one special character"}
+    #(re-find #"[^a-zA-Z0-9]" %)]])
+
+(defn assert-valid-password
+  "Validates a raw password against the password policy.
+   Throws ex-info if invalid."
+  [raw-password]
+  (when-not (m/validate password? raw-password)
+    (throw (ex-info "Password must be at least 8 characters with at least one special character"
+                    {:errors (m/explain password? raw-password)}))))
 
 (def non-blank-string?
   [:and string?

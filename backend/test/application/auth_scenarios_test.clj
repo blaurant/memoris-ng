@@ -138,7 +138,7 @@
     (let [uid (id/build-id)
           u   (auth/register-with-email
                 (:repo ctx) (:hasher ctx) (:sender ctx) (:vt-repo ctx)
-                uid "bob@example.com" "Bob" "password123")]
+                uid "bob@example.com" "Bob" "p@ssword123")]
       (assoc ctx :user u :user-id uid)))
 
   (THEN "user is created with email-verified? false and email is sent" [ctx]
@@ -154,13 +154,13 @@
           vt-repo (fresh-vt-repo)
           uid     (id/build-id)]
       (auth/register-with-email repo hasher sender vt-repo
-                                uid "bob@example.com" "Bob" "password123")
+                                uid "bob@example.com" "Bob" "p@ssword123")
       (assoc ctx :repo repo :hasher hasher :sender sender :vt-repo vt-repo :uid uid)))
 
   (WHEN "registering with the same user ID" [ctx]
     (try
       (auth/register-with-email (:repo ctx) (:hasher ctx) (:sender ctx) (:vt-repo ctx)
-                                (:uid ctx) "other@example.com" "Other" "password456")
+                                (:uid ctx) "other@example.com" "Other" "p@ssword456")
       (assoc ctx :exception nil)
       (catch clojure.lang.ExceptionInfo e
         (assoc ctx :exception (.getMessage e)))))
@@ -175,13 +175,13 @@
           sender  (fresh-email-sender)
           vt-repo (fresh-vt-repo)]
       (auth/register-with-email repo hasher sender vt-repo
-                                (id/build-id) "bob@example.com" "Bob" "password123")
+                                (id/build-id) "bob@example.com" "Bob" "p@ssword123")
       (assoc ctx :repo repo :hasher hasher :sender sender :vt-repo vt-repo)))
 
   (WHEN "registering with the same email" [ctx]
     (try
       (auth/register-with-email (:repo ctx) (:hasher ctx) (:sender ctx) (:vt-repo ctx)
-                                (id/build-id) "bob@example.com" "Bob2" "password456")
+                                (id/build-id) "bob@example.com" "Bob2" "p@ssword456")
       (assoc ctx :exception nil)
       (catch clojure.lang.ExceptionInfo e
         (assoc ctx :exception (.getMessage e)))))
@@ -196,7 +196,7 @@
           sender  (fresh-email-sender)
           vt-repo (fresh-vt-repo)]
       (auth/register-with-email repo hasher sender vt-repo
-                                (id/build-id) "bob@example.com" "Bob" "password123")
+                                (id/build-id) "bob@example.com" "Bob" "p@ssword123")
       (assoc ctx :repo repo :vt-repo vt-repo :sender sender
              :token (:token (first @(:sent sender))))))
 
@@ -214,14 +214,14 @@
           sender  (fresh-email-sender)
           vt-repo (fresh-vt-repo)]
       (auth/register-with-email repo hasher sender vt-repo
-                                (id/build-id) "bob@example.com" "Bob" "password123")
+                                (id/build-id) "bob@example.com" "Bob" "p@ssword123")
       (let [token (:token (first @(:sent sender)))]
         (auth/verify-email repo vt-repo sender token))
       (assoc ctx :repo repo :hasher hasher)))
 
   (WHEN "the user logs in with correct password" [ctx]
     (assoc ctx :user (auth/login-with-email (:repo ctx) (:hasher ctx)
-                                            "bob@example.com" "password123")))
+                                            "bob@example.com" "p@ssword123")))
 
   (THEN "the user is returned" [ctx]
     (assert (= "bob@example.com" (:user/email (:user ctx))))))
@@ -233,7 +233,7 @@
           sender  (fresh-email-sender)
           vt-repo (fresh-vt-repo)]
       (auth/register-with-email repo hasher sender vt-repo
-                                (id/build-id) "bob@example.com" "Bob" "password123")
+                                (id/build-id) "bob@example.com" "Bob" "p@ssword123")
       (let [token (:token (first @(:sent sender)))]
         (auth/verify-email repo vt-repo sender token))
       (assoc ctx :repo repo :hasher hasher)))
@@ -241,7 +241,7 @@
   (WHEN "the user logs in with wrong password" [ctx]
     (try
       (auth/login-with-email (:repo ctx) (:hasher ctx)
-                             "bob@example.com" "wrongpassword")
+                             "bob@example.com" "wr@ngpassword")
       (assoc ctx :exception nil)
       (catch clojure.lang.ExceptionInfo e
         (assoc ctx :exception (.getMessage e)))))
@@ -256,13 +256,13 @@
           sender  (fresh-email-sender)
           vt-repo (fresh-vt-repo)]
       (auth/register-with-email repo hasher sender vt-repo
-                                (id/build-id) "bob@example.com" "Bob" "password123")
+                                (id/build-id) "bob@example.com" "Bob" "p@ssword123")
       (assoc ctx :repo repo :hasher hasher)))
 
   (WHEN "the user tries to log in" [ctx]
     (try
       (auth/login-with-email (:repo ctx) (:hasher ctx)
-                             "bob@example.com" "password123")
+                             "bob@example.com" "p@ssword123")
       (assoc ctx :exception nil)
       (catch clojure.lang.ExceptionInfo e
         (assoc ctx :exception (.getMessage e)))))

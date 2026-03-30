@@ -33,6 +33,10 @@
                          :font-size "0.85rem" :color "var(--color-muted)"}}
           "Mot de passe oublié ?"]]))))
 
+(defn- password-valid? [pw]
+  (and (>= (count pw) 8)
+       (re-find #"[^a-zA-Z0-9]" pw)))
+
 (defn- email-register-form []
   (let [name*    (r/atom "")
         email    (r/atom "")
@@ -41,8 +45,10 @@
     (fn []
       (let [loading?      @(rf/subscribe [:auth/loading?])
             error         @(rf/subscribe [:auth/error])
-            passwords-ok? (and (seq @password) (= @password @confirm))
-            valid?        (and (seq @name*) (seq @email) passwords-ok?)]
+            pw            @password
+            pw-ok?        (password-valid? pw)
+            match?        (= pw @confirm)
+            valid?        (and (seq @name*) (seq @email) pw-ok? (seq @confirm) match?)]
         [:div.email-auth-form
          (when error
            [:div.auth-error error])
@@ -58,15 +64,18 @@
            :on-change   #(reset! email (.. % -target -value))}]
          [:input.onboarding__input
           {:type        "password"
-           :placeholder "Mot de passe (8 caractères minimum)"
-           :value       @password
+           :placeholder "Mot de passe"
+           :value       pw
            :on-change   #(reset! password (.. % -target -value))}]
+         (when (and (seq pw) (not pw-ok?))
+           [:div {:style {:font-size "0.8rem" :color "#d32f2f" :margin-top "-0.25rem"}}
+            "8 caractères minimum dont 1 caractère spécial"])
          [:input.onboarding__input
           {:type        "password"
            :placeholder "Confirmer le mot de passe"
            :value       @confirm
            :on-change   #(reset! confirm (.. % -target -value))}]
-         (when (and (seq @password) (seq @confirm) (not= @password @confirm))
+         (when (and (seq pw) (seq @confirm) (not match?))
            [:div.auth-error "Les mots de passe ne correspondent pas"])
          [:button.btn.btn--green
           {:disabled (or loading? (not valid?))

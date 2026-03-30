@@ -54,6 +54,7 @@
         (throw (ex-info "User ID already exists" {:user-id user-id})))
       (when (user/find-by-email user-repo :email email)
         (throw (ex-info "An account with this email already exists" {:email email})))
+      (user/assert-valid-password raw-password)
       (let [hashed (password-hasher/hash-password password-hasher raw-password)
             u      (user/create-email-user user-id email name hashed)
             u      (user/save! user-repo u)
@@ -131,6 +132,7 @@
         (let [u (user/find-by-id user-repo (:verification-token/user-id token))]
           (when-not u
             (throw (ex-info "User not found" {})))
+          (user/assert-valid-password new-password)
           (let [hashed (password-hasher/hash-password password-hasher new-password)
                 u'     (assoc u :user/password-hash hashed)]
             (user/save! user-repo u')

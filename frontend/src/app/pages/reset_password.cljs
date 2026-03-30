@@ -2,6 +2,10 @@
   (:require [re-frame.core :as rf]
             [reagent.core :as r]))
 
+(defn- password-valid? [pw]
+  (and (>= (count pw) 8)
+       (re-find #"[^a-zA-Z0-9]" pw)))
+
 (defn reset-password-page []
   (let [password (r/atom "")
         confirm  (r/atom "")
@@ -10,7 +14,9 @@
       (let [loading? @(rf/subscribe [:auth/loading?])
             error    @(rf/subscribe [:auth/error])
             success? @(rf/subscribe [:auth/reset-password-success?])
-            match?   (and (seq @password) (= @password @confirm))]
+            pw       @password
+            pw-ok?   (password-valid? pw)
+            match?   (and pw-ok? (= pw @confirm))]
         [:div.login-container
          [:h1 "Nouveau mot de passe"]
          (cond
@@ -29,17 +35,20 @@
               [:div.auth-error error])
             [:input.onboarding__input
              {:type        "password"
-              :placeholder "Nouveau mot de passe (8 caractères minimum)"
-              :value       @password
+              :placeholder "Nouveau mot de passe"
+              :value       pw
               :on-change   #(reset! password (.. % -target -value))}]
+            (when (and (seq pw) (not pw-ok?))
+              [:div {:style {:font-size "0.8rem" :color "#d32f2f" :margin-top "-0.25rem"}}
+               "8 caractères minimum dont 1 caractère spécial"])
             [:input.onboarding__input
              {:type        "password"
               :placeholder "Confirmer le mot de passe"
               :value       @confirm
               :on-change   #(reset! confirm (.. % -target -value))}]
-            (when (and (seq @password) (seq @confirm) (not= @password @confirm))
+            (when (and (seq pw) (seq @confirm) (not= pw @confirm))
               [:div.auth-error "Les mots de passe ne correspondent pas"])
             [:button.btn.btn--green
-             {:disabled (or loading? (not match?) (< (count @password) 8))
-              :on-click #(rf/dispatch [:auth/reset-password token @password])}
+             {:disabled (or loading? (not match?))
+              :on-click #(rf/dispatch [:auth/reset-password token pw])}
              (if loading? "Enregistrement..." "Enregistrer le nouveau mot de passe")]])]))))
