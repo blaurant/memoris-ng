@@ -98,7 +98,12 @@
                                                       (aget results 0))
                                        ^js loc      (some-> first-r .-geometry .-location)]
                                    (if loc
-                                     (create-map! #js {:lat (.lat loc) :lng (.lng loc)} 10)
+                                     (let [pos #js {:lat (.lat loc) :lng (.lng loc)}]
+                                       (create-map! pos 10)
+                                       (js/google.maps.Marker.
+                                         #js {:map   @map-inst
+                                              :position pos
+                                              :title "Votre adresse"}))
                                      (create-map! #js {:lat 46.6 :lng 1.9} 6)))))
                         (.catch (fn [_err]
                                   (create-map! #js {:lat 46.6 :lng 1.9} 6))))
