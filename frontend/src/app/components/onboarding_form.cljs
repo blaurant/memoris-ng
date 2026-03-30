@@ -312,6 +312,38 @@
          (when @show-modal?
            [lpm/new-legal-person-modal #(reset! show-modal? false)])]))))
 
+(defn- check-address-in-network
+  "Geocodes `addr` and checks whether the result falls inside the network
+   identified by `nid` in `networks`. Calls `(on-result true/false)`.
+   Does nothing when `addr` or `nid` is blank."
+  [addr nid networks on-result]
+  (when (and (seq addr) (seq nid))
+    (let [net (some #(when (= (str (:network/id %)) (str nid)) %) networks)]
+      (when net
+        (let [init! (fn []
+                      (let [geocoder (js/google.maps.Geocoder.)]
+                        (-> (.geocode geocoder #js {:address addr})
+                            (.then (fn [^js response]
+                                     (let [results     (.-results response)
+                                           ^js first-r (when (and results (pos? (.-length results)))
+                                                         (aget results 0))
+                                           ^js loc     (some-> first-r .-geometry .-location)]
+                                       (if loc
+                                         (let [lat  (.lat loc)
+                                               lng  (.lng loc)
+                                               dlat (- lat (:network/center-lat net))
+                                               dlng (- lng (:network/center-lng net))
+                                               cos-lat (js/Math.cos (* lat (/ js/Math.PI 180)))
+                                               dist-km (js/Math.sqrt
+                                                         (+ (* dlat dlat 111.32 111.32)
+                                                            (* dlng dlng 111.32 111.32 cos-lat cos-lat)))]
+                                           (on-result (<= dist-km (:network/radius-km net))))
+                                         (on-result true)))))
+                            (.catch (fn [_] (on-result true))))))]
+          (if (and (exists? js/google) (exists? js/google.maps))
+            (init!)
+            (google-maps/load-google-maps-script! init!)))))))
+
 (defn- step1-form [consumption-id consumption]
   (let [address           (r/atom (or (:consumption/consumer-address consumption) nil))
         network-id        (r/atom (or (:consumption/network-id consumption) ""))
@@ -319,7 +351,20 @@
         show-identity?    (r/atom false)
         selected-identity (r/atom :natural)
         prefilled?        (r/atom false)
-        networks          @(rf/subscribe [:networks/list])]
+        network-error     (r/atom nil)
+        networks          @(rf/subscribe [:networks/list])
+        validate-network! (fn [addr nid]
+                            (reset! network-error nil)
+                            (check-address-in-network
+                              addr nid networks
+                              (fn [in-network?]
+                                (when-not in-network?
+                                  (let [net (some #(when (= (str (:network/id %)) (str nid)) %) networks)]
+                                    (reset! network-error
+                                            (str "Votre adresse ne se situe pas dans la zone du réseau "
+                                                 (:network/name net)
+                                                 ". Veuillez choisir un autre réseau."))
+                                    (reset! network-id ""))))))]
     (fn []
       (let [user    @(rf/subscribe [:auth/user])
             natural (:natural-person user)]
@@ -360,13 +405,19 @@
              {:type        "text"
               :placeholder "Votre adresse de consommation"
               :value       @address
-              :on-change   #(reset! address (.. % -target -value))}]
+              :on-change   (fn [e]
+                             (reset! address (.. e -target -value))
+                             (reset! network-error nil))}]
             [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-bottom "0.25rem" :display "block"}}
              "Sélectionnez votre réseau"]
             [:div.onboarding__network-row
              [:select.onboarding__select
               {:value     @network-id
-               :on-change #(reset! network-id (.. % -target -value))}
+               :on-change (fn [e]
+                            (let [nid (.. e -target -value)]
+                              (reset! network-id nid)
+                              (reset! network-error nil)
+                              (validate-network! @address nid)))}
               [:option {:value ""} "Choisir un réseau"]
               (doall
                 (for [n networks]
@@ -375,6 +426,11 @@
              [:button.btn.btn--small.btn--outline
               {:on-click #(reset! show-map? true)}
               "Sélectionner sur la carte"]]
+            (when @network-error
+              [:div {:style {:background "#fdecea" :border "1px solid #f5c6cb"
+                             :border-radius "var(--radius)" :padding "0.75rem 1rem"
+                             :margin-top "0.5rem" :color "#d32f2f" :font-size "0.9rem"}}
+               @network-error])
             [:button.btn.btn--green.btn--small
              {:disabled (or (empty? @address) (empty? @network-id))
               :on-click #(rf/dispatch [:consumptions/submit-step1
@@ -385,8 +441,9 @@
                @address
                networks
                (fn [selected-id]
-                 (reset! network-id selected-id)
-                 (reset! show-map? false))
+                 (reset! network-id (str selected-id))
+                 (reset! show-map? false)
+                 (validate-network! @address (str selected-id)))
                (fn []
                  (reset! show-map? false))])])]))))
 
