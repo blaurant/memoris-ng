@@ -1,5 +1,6 @@
 (ns app.pages.login
   (:require [app.components.auth-buttons :as auth-buttons]
+            [app.components.password-input :refer [password-input]]
             [re-frame.core :as rf]
             [reagent.core :as r]
             [reitit.frontend.easy :as rfee]))
@@ -18,9 +19,8 @@
            :placeholder "Adresse email"
            :value       @email
            :on-change   #(reset! email (.. % -target -value))}]
-         [:input.onboarding__input
-          {:type        "password"
-           :placeholder "Mot de passe"
+         [password-input
+          {:placeholder "Mot de passe"
            :value       @password
            :on-change   #(reset! password (.. % -target -value))}]
          [:button.btn.btn--green
@@ -62,17 +62,15 @@
            :placeholder "Adresse email"
            :value       @email
            :on-change   #(reset! email (.. % -target -value))}]
-         [:input.onboarding__input
-          {:type        "password"
-           :placeholder "Mot de passe"
+         [password-input
+          {:placeholder "Mot de passe"
            :value       pw
            :on-change   #(reset! password (.. % -target -value))}]
          (when (and (seq pw) (not pw-ok?))
            [:div {:style {:font-size "0.8rem" :color "#d32f2f" :margin-top "-0.25rem"}}
             "8 caractères minimum dont 1 caractère spécial"])
-         [:input.onboarding__input
-          {:type        "password"
-           :placeholder "Confirmer le mot de passe"
+         [password-input
+          {:placeholder "Confirmer le mot de passe"
            :value       @confirm
            :on-change   #(reset! confirm (.. % -target -value))}]
          (when (and (seq pw) (seq @confirm) (not match?))
@@ -88,11 +86,14 @@
      (if signup?
        [:<>
         [:h1 (if join-network
-               (str "Pour adhérer et rejoindre le réseau " join-network)
-               "Inscription")]
+               (str "Créer un compte pour rejoindre le réseau " join-network)
+               "Créer un compte")]
         [:p (if join-network
-              "Créez votre compte pour finaliser votre adhésion."
-              "Créez votre compte et accédez à votre espace client.")]
+              "Créez votre compte gratuitement pour finaliser votre inscription au réseau."
+              "Créez votre compte gratuitement chez Elink-co. Cela ne vous engage en rien.")]
+        [:p {:style {:font-size "0.9rem" :color "var(--color-muted)" :margin-top "0.5rem"}}
+         "Votre compte vous permettra ensuite d'adhérer à l'association, "
+         "de créer un réseau, de consommer ou de produire de l'énergie locale."]
         [email-register-form]
         [:div.auth-separator
          [:span "ou"]]]

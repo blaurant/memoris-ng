@@ -21,7 +21,9 @@
     ["/producteur-particulier"   {:name :page/for-individual-producer}]
     ["/entreprise"               {:name :page/for-business}]
     ["/agriculteurs"             {:name :page/for-farmers}]
-    ["/temoignages"              {:name :page/testimonials}]]))
+    ["/temoignages"              {:name :page/testimonials}]
+    ["/actualites"               {:name :page/news}]
+    ["/contact"                  {:name :page/contact}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."

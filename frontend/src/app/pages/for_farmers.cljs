@@ -69,6 +69,6 @@
 
      ;; CTA
      [:div {:style {:text-align "center" :margin-top "2.5rem"}}
-      [:a.btn.btn--green {:href (rfee/href :page/how-it-works)} "Comment ça marche"]
+      [:a.btn.btn--green {:href "/comment-ca-marche#producteur"} "Comment ça marche"]
       [:a.btn.btn--accent {:href (rfee/href :page/signup)
                            :style {:margin-left "1rem"}} "Adhérer"]]]]])
