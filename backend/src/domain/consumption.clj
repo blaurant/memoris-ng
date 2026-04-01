@@ -62,7 +62,27 @@
       (mu/merge [:map
                  [:consumption/price-per-kwh {:optional true} [:maybe double?]]
                  [:consumption/contract-start-date {:optional true} [:maybe string?]]
-                 [:consumption/last-monthly-kwh {:optional true} [:maybe double?]]])))
+                 [:consumption/monthly-history {:optional true}
+                  [:maybe [:vector [:map
+                                    [:year int?]
+                                    [:month [:int {:min 1 :max 12}]]
+                                    [:kwh double?]]]]]])))
+
+;; ── Monthly history helpers ────────────────────────────────────────────────
+
+(defn last-monthly-kwh
+  "Derives the most recent month's kWh from monthly-history, or nil."
+  [c]
+  (when-let [history (seq (:consumption/monthly-history c))]
+    (:kwh (first (sort-by (juxt :year :month) #(compare %2 %1) history)))))
+
+(defn set-monthly-history
+  "Replace the monthly-history on a consumption. Entries sorted desc by date."
+  [c entries]
+  (let [sorted (->> entries
+                    (sort-by (juxt :year :month) #(compare %2 %1))
+                    vec)]
+    (assoc c :consumption/monthly-history sorted)))
 
 ;; ── Validation ──────────────────────────────────────────────────────────────
 

@@ -183,9 +183,9 @@
                  :on-change   #(reset! net-name (.-value (.-target %)))
                  :style       {:margin-top "4px"}}]
                [:p {:style {:font-size "0.8rem" :color "var(--color-muted)" :margin-top "4px"}}
-                "Le réseau sera centré sur votre adresse (rayon : 1 km) et soumis à validation. "
-                "La taille et la localisation du réseau pourront être ajustées par l'administrateur. "
-                "Pour les réseaux périurbains (rayon 10 km) et ruraux (rayon 20 km), une validation Enedis sera également requise."]
+                "Le r\u00e9seau sera centr\u00e9 sur votre adresse (diam\u00e8tre : 2 km) et soumis \u00e0 validation. "
+                "La taille et la localisation du r\u00e9seau pourront \u00eatre ajust\u00e9es par l'administrateur. "
+                "Pour les r\u00e9seaux p\u00e9riurbains (diam\u00e8tre 20 km) et ruraux (diam\u00e8tre 40 km), une validation Enedis sera \u00e9galement requise."]
                (when @geo-error
                  [:p {:style {:font-size "0.85rem" :color "var(--color-error)" :margin-top "4px"}}
                   @geo-error])]

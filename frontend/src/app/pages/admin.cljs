@@ -282,13 +282,13 @@
 ;; ── Create network modal ──────────────────────────────────────────────────────
 
 (defn- create-network-modal [on-close]
-  (let [form (r/atom {:name "" :center-lat "" :center-lng "" :radius-km "1" :description "" :price-per-kwh ""})]
+  (let [form (r/atom {:name "" :center-lat "" :center-lng "" :diameter-km "2" :description "" :price-per-kwh ""})]
     (fn [on-close]
-      (let [{:keys [name center-lat center-lng radius-km description price-per-kwh]} @form
+      (let [{:keys [name center-lat center-lng diameter-km description price-per-kwh]} @form
             valid? (and (seq name)
                         (seq center-lat)
                         (seq center-lng)
-                        (seq radius-km))]
+                        (seq diameter-km))]
         [:div.modal-overlay {:on-click on-close}
          [:div.modal {:on-click #(.stopPropagation %)}
           [:div.modal__header
@@ -329,13 +329,13 @@
               :value       center-lng
               :placeholder "ex: 2.3522"
               :on-change   #(swap! form assoc :center-lng (.-value (.-target %)))}]
-            [:label "Rayon (km)"]
+            [:label "Diam\u00e8tre (km)"]
             [:input.onboarding__input
              {:type        "number"
               :step        "any"
-              :value       radius-km
+              :value       diameter-km
               :placeholder "10"
-              :on-change   #(swap! form assoc :radius-km (.-value (.-target %)))}]]]
+              :on-change   #(swap! form assoc :diameter-km (.-value (.-target %)))}]]]
           [:div.modal__actions
            [:button.btn.btn--small {:on-click on-close} "Annuler"]
            [:button.btn.btn--green.btn--small
@@ -345,7 +345,7 @@
                                        (cond-> {:name       name
                                                 :center-lat (js/parseFloat center-lat)
                                                 :center-lng (js/parseFloat center-lng)
-                                                :radius-km  (js/parseFloat radius-km)}
+                                                :radius-km  (/ (js/parseFloat diameter-km) 2)}
                                          (seq description)   (assoc :description description)
                                          (seq price-per-kwh) (assoc :price-per-kwh (js/parseFloat price-per-kwh)))])
                          (on-close))}
@@ -357,15 +357,15 @@
   (let [form (r/atom {:name          (:network/name network)
                       :center-lat    (str (:network/center-lat network))
                       :center-lng    (str (:network/center-lng network))
-                      :radius-km     (str (:network/radius-km network))
+                      :diameter-km   (str (* 2 (:network/radius-km network)))
                       :description   (or (:network/description network) "")
                       :price-per-kwh (if (:network/price-per-kwh network)
                                        (str (:network/price-per-kwh network))
                                        "")})
         mousedown-on-overlay? (atom false)]
     (fn [_network on-close]
-      (let [{:keys [name center-lat center-lng radius-km description price-per-kwh]} @form
-            valid? (and (seq name) (seq center-lat) (seq center-lng) (seq radius-km))]
+      (let [{:keys [name center-lat center-lng diameter-km description price-per-kwh]} @form
+            valid? (and (seq name) (seq center-lat) (seq center-lng) (seq diameter-km))]
         [:div.modal-overlay {:on-mouse-down (fn [e]
                                               (reset! mousedown-on-overlay?
                                                       (= (.-target e) (.-currentTarget e))))
@@ -406,10 +406,10 @@
             [:input.onboarding__input
              {:type "number" :step "any" :value center-lng
               :on-change #(swap! form assoc :center-lng (.-value (.-target %)))}]
-            [:label "Rayon (km)"]
+            [:label "Diam\u00e8tre (km)"]
             [:input.onboarding__input
-             {:type "number" :step "any" :value radius-km
-              :on-change #(swap! form assoc :radius-km (.-value (.-target %)))}]]]
+             {:type "number" :step "any" :value diameter-km
+              :on-change #(swap! form assoc :diameter-km (.-value (.-target %)))}]]]
           [:div.modal__actions
            [:button.btn.btn--small {:on-click on-close} "Annuler"]
            [:button.btn.btn--green.btn--small
@@ -420,7 +420,7 @@
                                        (cond-> {:name        name
                                                 :center-lat  (js/parseFloat center-lat)
                                                 :center-lng  (js/parseFloat center-lng)
-                                                :radius-km   (js/parseFloat radius-km)
+                                                :radius-km   (/ (js/parseFloat diameter-km) 2)
                                                 :description description}
                                          (seq price-per-kwh) (assoc :price-per-kwh (js/parseFloat price-per-kwh)))])
                          (on-close))}
@@ -429,13 +429,13 @@
 ;; ── Networks export ──────────────────────────────────────────────────────────
 
 (defn- export-networks-csv [networks]
-  (let [header "ID;Nom;Latitude;Longitude;Rayon (km);Statut"
+  (let [header "ID;Nom;Latitude;Longitude;Diam\u00e8tre (km);Statut"
         rows   (map (fn [n]
                       (str/join ";" [(:network/id n)
                                      (:network/name n)
                                      (:network/center-lat n)
                                      (:network/center-lng n)
-                                     (:network/radius-km n)
+                                     (* 2 (:network/radius-km n))
                                      (or (:network/lifecycle n) "private")]))
                     networks)
         csv    (str/join "\n" (cons header rows))
@@ -498,7 +498,7 @@
         [:th "Nom"]
         [:th "Latitude"]
         [:th "Longitude"]
-        [:th "Rayon (km)"]
+        [:th "Diam\u00e8tre (km)"]
         [:th ""]]]
       [:tbody
        (for [n pending-networks]
@@ -509,7 +509,7 @@
                 (:network/name n)]]
           [:td (:network/center-lat n)]
           [:td (:network/center-lng n)]
-          [:td (:network/radius-km n)]
+          [:td (* 2 (:network/radius-km n))]
           [:td
            [:div {:style {:display "flex" :gap "0.25rem"}}
             [:button.btn.btn--small
@@ -657,7 +657,7 @@
                  [:th "Nom"]
                  [:th "Latitude"]
                  [:th "Longitude"]
-                 [:th "Rayon (km)"]
+                 [:th "Diam\u00e8tre (km)"]
                  [:th "Statut"]
                  [:th ""]]]
                [:tbody
@@ -669,7 +669,7 @@
                          (:network/name n)]]
                    [:td (:network/center-lat n)]
                    [:td (:network/center-lng n)]
-                   [:td (:network/radius-km n)]
+                   [:td (* 2 (:network/radius-km n))]
                    [:td {:class (network-status-class (:network/lifecycle n))}
                     (network-status-label (:network/lifecycle n))]
                    [:td
@@ -894,7 +894,100 @@
           {:on-click on-close}
           "Fermer"]]]])))
 
-(defn- consumptions-table [consumptions selected]
+(defn- month-label [m]
+  (get {1 "Jan" 2 "Fév" 3 "Mar" 4 "Avr" 5 "Mai" 6 "Juin"
+        7 "Juil" 8 "Août" 9 "Sep" 10 "Oct" 11 "Nov" 12 "Déc"} m "?"))
+
+(defn- monthly-history-modal [consumption on-close]
+  (let [now    (js/Date.)
+        cur-y  (.getFullYear now)
+        cur-m  (inc (.getMonth now))
+        existing (or (:consumption/monthly-history consumption) [])
+        ;; Initialize with existing entries, or prefill 6 months if empty
+        init   (if (seq existing)
+                 (mapv (fn [e] {:year (int (:year e)) :month (int (:month e)) :kwh (str (:kwh e))})
+                       (sort-by (juxt :year :month) #(compare %2 %1) existing))
+                 (vec (for [i (range 6)]
+                        (let [m (- cur-m i)
+                              y (if (<= m 0) (dec cur-y) cur-y)
+                              m (if (<= m 0) (+ 12 m) m)]
+                          {:year y :month m :kwh ""}))))
+        form   (r/atom init)]
+    (fn [_consumption on-close]
+      (let [entries @form
+            can-save? (every? #(and (pos? (:year %))
+                                   (<= 1 (:month %) 12)
+                                   (seq (str (:kwh %)))
+                                   (js/parseFloat (str (:kwh %))))
+                              entries)]
+        [:div.modal-overlay {:on-click (fn [e]
+                                         (when (= (.-target e) (.-currentTarget e))
+                                           (on-close)))}
+         [:div.modal {:on-click #(.stopPropagation %)
+                      :style {:max-width "500px"}}
+          [:div.modal__header
+           [:span "Historique consommation"]
+           [:button.btn.btn--small {:on-click on-close
+                                    :style {:background "transparent" :color "var(--color-muted)"
+                                            :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
+          [:div.modal__body
+           [:table {:style {:width "100%" :border-collapse "collapse"}}
+            [:thead
+             [:tr
+              [:th {:style {:text-align "left" :padding "0.3rem" :font-size "0.8rem" :color "var(--color-muted)"}} "Année"]
+              [:th {:style {:text-align "left" :padding "0.3rem" :font-size "0.8rem" :color "var(--color-muted)"}} "Mois"]
+              [:th {:style {:text-align "left" :padding "0.3rem" :font-size "0.8rem" :color "var(--color-muted)"}} "kWh"]
+              [:th {:style {:width "30px"}}]]]
+            [:tbody
+             (doall
+               (for [idx (range (count entries))]
+                 ^{:key idx}
+                 [:tr
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:input.onboarding__input
+                    {:type "number" :value (:year (nth entries idx))
+                     :style {:width "80px" :margin "0" :padding "0.3rem"}
+                     :on-change #(swap! form assoc-in [idx :year] (js/parseInt (.. % -target -value)))}]]
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:select.onboarding__input
+                    {:value (:month (nth entries idx))
+                     :style {:margin "0" :padding "0.3rem"}
+                     :on-change #(swap! form assoc-in [idx :month] (js/parseInt (.. % -target -value)))}
+                    (for [m (range 1 13)]
+                      ^{:key m}
+                      [:option {:value m} (month-label m)])]]
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:input.onboarding__input
+                    {:type "number" :step "0.1" :value (:kwh (nth entries idx))
+                     :style {:width "90px" :margin "0" :padding "0.3rem"}
+                     :on-change #(swap! form assoc-in [idx :kwh] (.. % -target -value))}]]
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:button {:on-click #(swap! form (fn [v] (vec (concat (subvec v 0 idx) (subvec v (inc idx))))))
+                             :style {:background "transparent" :border "none" :cursor "pointer"
+                                     :color "#d32f2f" :font-size "1.1rem" :padding "0"}}
+                    "\u00D7"]]]))]]
+           [:button.btn.btn--small.btn--outline
+            {:on-click #(swap! form conj {:year cur-y :month cur-m :kwh ""})
+             :style {:margin-top "0.5rem"}}
+            "+ Ajouter un mois"]]
+          [:div.modal__actions
+           [:button.btn.btn--small {:on-click on-close} "Annuler"]
+           [:button.btn.btn--small.btn--green
+            {:on-click (fn []
+                         (let [parsed (mapv (fn [e]
+                                              {:year  (int (:year e))
+                                               :month (int (:month e))
+                                               :kwh   (js/parseFloat (str (:kwh e)))})
+                                            entries)]
+                           (rf/dispatch [:admin/update-monthly-history
+                                         (:consumption/id consumption)
+                                         parsed
+                                         on-close])))
+             :disabled (not can-save?)}
+            "Enregistrer"]]]]))))
+
+(defn- consumptions-table [consumptions selected history-modal]
   [:table.admin-table
    [:thead
     [:tr
@@ -923,15 +1016,22 @@
          [:td [:span {:class (consumption-status-class (:consumption/lifecycle c))}
                (consumption-lifecycle-label (:consumption/lifecycle c))]]
          [:td (or (:consumption/linky-reference c) "—")]
-         [:td (when (= "pending" (:consumption/lifecycle c))
-                [:button.btn.btn--green.btn--small
-                 {:on-click (fn [e]
-                              (.stopPropagation e)
-                              (rf/dispatch [:admin/activate-consumption (:consumption/id c)]))}
-                 "Activer"])]]))]])
+         [:td {:style {:display "flex" :gap "0.3rem"}}
+          (when (= "pending" (:consumption/lifecycle c))
+            [:button.btn.btn--green.btn--small
+             {:on-click (fn [e]
+                          (.stopPropagation e)
+                          (rf/dispatch [:admin/activate-consumption (:consumption/id c)]))}
+             "Activer"])
+          [:button.btn.btn--small.btn--outline
+           {:on-click (fn [e]
+                        (.stopPropagation e)
+                        (reset! history-modal c))}
+           "Conso"]]]))]])
 
 (defn consumptions-tab []
-  (let [selected (r/atom nil)]
+  (let [selected      (r/atom nil)
+        history-modal (r/atom nil)]
     (fn []
       (let [consumptions @(rf/subscribe [:admin/consumptions])
             loading?     @(rf/subscribe [:admin/consumptions-loading?])]
@@ -953,9 +1053,11 @@
          (cond
            loading?              [:p.loading "Chargement..."]
            (empty? consumptions) [:p.admin__empty "Aucune consommation."]
-           :else                 [consumptions-table consumptions selected])
+           :else                 [consumptions-table consumptions selected history-modal])
          (when-let [c @selected]
-           [consumption-detail-modal c #(reset! selected nil)])]))))
+           [consumption-detail-modal c #(reset! selected nil)])
+         (when-let [c @history-modal]
+           [monthly-history-modal c #(reset! history-modal nil)])]))))
 
 ;; ── Productions tab ──────────────────────────────────────────────────────────
 
@@ -1147,3 +1249,261 @@
              (if (:eligibility-check/eligible? c) "Oui" "Non")]
             [:td (or (:eligibility-check/network-name c) "-")]
             [:td (or (:eligibility-check/notification-email c) "-")]])]])]))
+
+;; ── News tab ────────────────────────────────────────────────────────────────
+
+(defn- news-format-date [iso-str]
+  (when iso-str
+    (try
+      (let [d (js/Date. iso-str)]
+        (str (.getDate d) "/" (inc (.getMonth d)) "/" (.getFullYear d)))
+      (catch :default _ iso-str))))
+
+(defn- news-edit-modal [news-item on-close]
+  (let [creating? (nil? news-item)
+        draft     (r/atom (if creating?
+                            {:title "" :content "" :image-url "" :published true}
+                            {:title        (or (:news/title news-item) "")
+                             :content      (or (:news/content news-item) "")
+                             :image-url    (or (:news/image-url news-item) "")
+                             :published    (some? (:news/published-at news-item))}))]
+    (fn [_news-item on-close]
+      (let [{:keys [title content image-url published]} @draft
+            valid? (and (seq (str/trim title)) (seq content))]
+        [:div.modal-overlay {:on-click (fn [e]
+                                         (when (= (.-target e) (.-currentTarget e))
+                                           (on-close)))}
+         [:div.modal {:on-click #(.stopPropagation %)
+                      :style {:max-width "600px"}}
+          [:div.modal__header
+           [:span (if creating? "Nouvelle actualit\u00e9" "Modifier l'actualit\u00e9")]
+           [:button.btn.btn--small {:on-click on-close
+                                    :style {:background "transparent" :color "var(--color-muted)"
+                                            :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
+          [:div.modal__body
+           [:div {:style {:display "flex" :flex-direction "column" :gap "0.75rem"}}
+            [:div
+             [:label {:style {:font-weight "600" :font-size "0.85rem" :display "block" :margin-bottom "4px"}} "Titre"]
+             [:input.onboarding__input
+              {:type "text" :value title
+               :style {:margin "0"}
+               :on-change #(swap! draft assoc :title (.. % -target -value))}]]
+            [:div
+             [:label {:style {:font-weight "600" :font-size "0.85rem" :display "block" :margin-bottom "4px"}} "Contenu"]
+             [:textarea.onboarding__input
+              {:rows 8 :value content
+               :style {:margin "0"}
+               :on-change #(swap! draft assoc :content (.. % -target -value))}]]
+            [:div
+             [:label {:style {:font-weight "600" :font-size "0.85rem" :display "block" :margin-bottom "4px"}} "URL de l'image"]
+             [:input.onboarding__input
+              {:type "text" :value image-url :placeholder "https://..."
+               :style {:margin "0"}
+               :on-change #(swap! draft assoc :image-url (.. % -target -value))}]
+             (when (seq image-url)
+               [:img {:src image-url :alt "Preview"
+                      :style {:max-width "100%" :max-height "150px" :margin-top "0.5rem"
+                              :border-radius "var(--radius)" :object-fit "cover"}}])]
+            [:div {:style {:display "flex" :align-items "center" :gap "0.5rem"}}
+             [:input {:type "checkbox" :checked published
+                      :on-change #(swap! draft assoc :published (.. % -target -checked))}]
+             [:label {:style {:font-size "0.85rem"}} "Publi\u00e9"]]]]
+          [:div.modal__actions
+           [:button.btn.btn--small {:on-click on-close} "Annuler"]
+           [:button.btn.btn--small.btn--green
+            {:on-click (fn []
+                         (let [params {:title     (str/trim title)
+                                       :content   content
+                                       :image-url (when (seq image-url) image-url)
+                                       :published-at (when published
+                                                       (or (:news/published-at news-item)
+                                                           (.toISOString (js/Date.))))}]
+                           (if creating?
+                             (rf/dispatch [:admin/create-news params on-close])
+                             (rf/dispatch [:admin/update-news (:news/id news-item) params on-close]))))
+             :disabled (not valid?)}
+            "Enregistrer"]]]]))))
+
+(defn- news-table [news-list edit-modal]
+  [:table.admin-table
+   [:thead
+    [:tr
+     [:th "Titre"]
+     [:th "Date"]
+     [:th "Statut"]
+     [:th "Actions"]]]
+   [:tbody
+    (doall
+      (for [n news-list]
+        ^{:key (:news/id n)}
+        [:tr
+         [:td {:style {:max-width "300px" :overflow "hidden" :text-overflow "ellipsis" :white-space "nowrap"}}
+          (:news/title n)]
+         [:td (news-format-date (or (:news/published-at n) (:news/created-at n)))]
+         [:td (if (:news/published-at n)
+                [:span {:style {:color "#2e7d32"}} "Publi\u00e9"]
+                [:span {:style {:color "#e65100"}} "Brouillon"])]
+         [:td {:style {:display "flex" :gap "0.3rem"}}
+          [:button.btn.btn--small.btn--outline
+           {:on-click #(reset! edit-modal n)}
+           "\u00c9diter"]
+          [:button.btn.btn--small
+           {:on-click #(when (js/confirm "Supprimer cette actualit\u00e9 ?")
+                         (rf/dispatch [:admin/delete-news (:news/id n)]))
+            :style {:background "#d32f2f" :color "#fff"}}
+           "Supprimer"]]]))]])
+
+(defn news-tab []
+  (let [edit-modal (r/atom nil)]
+    (fn []
+      (let [news-list @(rf/subscribe [:admin/news-list])
+            loading?  @(rf/subscribe [:admin/news-loading?])]
+        [:div
+         [:div {:style {:display "flex" :justify-content "space-between" :align-items "center"
+                        :margin-bottom "1rem"}}
+          [:h2.admin__tab-title "Actualit\u00e9s"]
+          [:button.btn.btn--green.btn--small
+           {:on-click #(reset! edit-modal :new)}
+           "+ Nouvelle"]]
+         (cond
+           loading?           [:p.loading "Chargement..."]
+           (empty? news-list) [:p.admin__empty "Aucune actualit\u00e9."]
+           :else              [news-table news-list edit-modal])
+         (when-let [item @edit-modal]
+           [news-edit-modal
+            (when (not= item :new) item)
+            #(reset! edit-modal nil)])]))))
+
+;; ── Contracts tab ─────────────────────────────────────────────────────────────
+
+(def ^:private energy-type-labels
+  {"solar"        "Solaire"
+   "wind"         "\u00c9olien"
+   "hydro"        "Hydraulique"
+   "biomass"      "Biomasse"
+   "cogeneration" "Cog\u00e9n\u00e9ration"})
+
+(defn- contract-status-badge [signed-at]
+  (if signed-at
+    [:span {:style {:background "#e8f5e9" :color "#2a4137" :padding "2px 10px"
+                    :border-radius "12px" :font-size "0.8rem" :font-weight "600"}}
+     (str "Sign\u00e9 le " (format-datetime-fr signed-at))]
+    [:span {:style {:background "#fff3e0" :color "#e65100" :padding "2px 10px"
+                    :border-radius "12px" :font-size "0.8rem" :font-weight "600"}}
+     "Non sign\u00e9"]))
+
+(defn- contracts-table-section [title rows]
+  (when (seq rows)
+    [:<>
+     [:h3 {:style {:margin "1.5rem 0 0.75rem" :color "var(--color-green)" :font-size "1rem"}} title]
+     [:table.admin-table
+      [:thead
+       [:tr
+        [:th "Utilisateur"]
+        [:th "Type"]
+        [:th "D\u00e9tail"]
+        [:th "Statut"]]]
+      [:tbody
+       (doall
+         (for [{:keys [id user-name user-email contract-type detail signed-at]} rows]
+           ^{:key id}
+           [:tr
+            [:td
+             [:div {:style {:font-weight "600"}} (or user-name "-")]
+             [:div {:style {:font-size "0.8rem" :color "var(--color-muted)"}} (or user-email "")]]
+            [:td contract-type]
+            [:td (or detail "")]
+            [:td [contract-status-badge signed-at]]]))]]]))
+
+(defn- export-contracts-csv [adhesions productions consumptions]
+  (let [all-rows (concat
+                   (map (fn [r] [(:user-name r) (:user-email r) (:contract-type r) (:detail r) (or (:signed-at r) "")]) adhesions)
+                   (map (fn [r] [(:user-name r) (:user-email r) (:contract-type r) (:detail r) (or (:signed-at r) "")]) productions)
+                   (map (fn [r] [(:user-name r) (:user-email r) (:contract-type r) (:detail r) (or (:signed-at r) "")]) consumptions))
+        header "Utilisateur,Email,Type,D\u00e9tail,Sign\u00e9 le"
+        rows   (map (fn [[n e t d s]] (str/join "," [n e t d s])) all-rows)
+        csv    (str/join "\n" (cons header rows))
+        blob   (js/Blob. #js [csv] #js {:type "text/csv;charset=utf-8;"})
+        url    (.createObjectURL js/URL blob)
+        a      (.createElement js/document "a")]
+    (set! (.-href a) url)
+    (set! (.-download a) "contrats.csv")
+    (.click a)
+    (.revokeObjectURL js/URL url)))
+
+(defn contracts-tab []
+  (fn []
+    (let [users         @(rf/subscribe [:admin/users])
+          consumptions  @(rf/subscribe [:admin/consumptions])
+          productions   @(rf/subscribe [:admin/productions])
+          users-load?   @(rf/subscribe [:admin/users-loading?])
+          conso-load?   @(rf/subscribe [:admin/consumptions-loading?])
+          prod-load?    @(rf/subscribe [:admin/productions-loading?])
+          loading?      (or users-load? conso-load? prod-load?)
+
+          ;; Adhesions from users
+          adhesion-rows (keep (fn [u]
+                                (when (:adhesion-signed-at u)
+                                  {:id            (str "adh-" (:user/id u))
+                                   :user-name     (or (:user/name u) (:user/email u))
+                                   :user-email    (:user/email u)
+                                   :contract-type "Adh\u00e9sion"
+                                   :detail        "Association Elink-co"
+                                   :signed-at     (:adhesion-signed-at u)}))
+                              users)
+
+          ;; Production contracts
+          prod-rows     (keep (fn [p]
+                                (when (:production/adhesion-signed-at p)
+                                  {:id            (str "prod-" (:production/id p))
+                                   :user-name     (:production/user-name p)
+                                   :user-email    (:production/user-email p)
+                                   :contract-type "Producteur"
+                                   :detail        (str (get energy-type-labels (:production/energy-type p) (:production/energy-type p))
+                                                       " \u2014 " (:production/installed-power p) " kWh")
+                                   :signed-at     (:production/adhesion-signed-at p)}))
+                              productions)
+
+          ;; Consumption contracts (producer + SEPA)
+          conso-rows    (mapcat (fn [c]
+                                  (let [cid  (:consumption/id c)
+                                        name (:consumption/user-name c)
+                                        email (:consumption/user-email c)
+                                        net  (or (:consumption/network-name c) "")]
+                                    (cond-> []
+                                      (:consumption/producer-contract-signed-at c)
+                                      (conj {:id            (str "conso-prod-" cid)
+                                             :user-name     name
+                                             :user-email    email
+                                             :contract-type "Contrat Producteur"
+                                             :detail        net
+                                             :signed-at     (:consumption/producer-contract-signed-at c)})
+
+                                      (:consumption/sepa-mandate-signed-at c)
+                                      (conj {:id            (str "conso-sepa-" cid)
+                                             :user-name     name
+                                             :user-email    email
+                                             :contract-type "Mandat SEPA"
+                                             :detail        net
+                                             :signed-at     (:consumption/sepa-mandate-signed-at c)}))))
+                                consumptions)]
+      [:div
+       [:div {:style {:display "flex" :justify-content "space-between" :align-items "center"
+                      :margin-bottom "1rem"}}
+        [:h2.admin__tab-title "Contrats"]
+        [:button.btn.btn--green.btn--small
+         {:on-click #(export-contracts-csv adhesion-rows prod-rows conso-rows)}
+         "Exporter CSV"]]
+       (cond
+         loading?
+         [:p.loading "Chargement..."]
+
+         (and (empty? adhesion-rows) (empty? prod-rows) (empty? conso-rows))
+         [:p.admin__empty "Aucun contrat sign\u00e9."]
+
+         :else
+         [:div
+          [contracts-table-section "Adh\u00e9sions" adhesion-rows]
+          [contracts-table-section "Productions" prod-rows]
+          [contracts-table-section "Consommations" conso-rows]])])))

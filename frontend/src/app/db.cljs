@@ -44,6 +44,11 @@
    :alert/message  nil
    :alert/active?  false
 
+   :news/list      []
+   :news/loading?  false
+   :admin/news-list     []
+   :admin/news-loading? false
+
    :network-detail/data     nil
    :network-detail/loading? false
    :network-detail/error    nil})

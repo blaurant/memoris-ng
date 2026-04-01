@@ -5,6 +5,8 @@
             [app.auth.subs]
             [app.consumptions.events]
             [app.consumptions.subs]
+            [app.news.events]
+            [app.news.subs]
             [app.network-detail.events]
             [app.network-detail.subs]
             [app.productions.events]

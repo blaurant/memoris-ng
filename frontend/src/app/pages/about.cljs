@@ -41,8 +41,8 @@
      [:p.section__subtitle {:style {:max-width "700px" :margin "0 auto"}}
       "Elink-co est une association loi 1901 qui organise des opérations d'autoconsommation collective "
       "pour permettre à chacun de consommer une énergie renouvelable, locale et à prix juste."]
-     [:img {:src "/img/about-community.jpg"
-            :alt "Voisins partageant un moment devant des panneaux solaires"
+     [:img {:src "/img/qui-sommes-nous.png"
+            :alt "L'\u00e9quipe Elink-co au travail"
             :style {:width "100%" :max-width "700px" :margin "2rem auto 0"
                     :border-radius "var(--radius)" :display "block"
                     :box-shadow "var(--shadow)"}}]]]

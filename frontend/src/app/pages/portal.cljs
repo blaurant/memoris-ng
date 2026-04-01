@@ -1,5 +1,6 @@
 (ns app.pages.portal
-  (:require [app.pages.admin :as admin]
+  (:require [app.consumptions.utils :as conso-utils]
+            [app.pages.admin :as admin]
             [app.pages.consumptions :as consumptions]
             [app.pages.contracts :as contracts]
             [app.pages.productions :as productions]
@@ -50,15 +51,32 @@
                           (rf/dispatch [:admin/fetch-eligibility-checks]))}
           "Visiteurs"]
          [:li.sidebar__item
+          {:class    (when (= :admin-consumptions active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-consumptions])
+                          (rf/dispatch [:admin/fetch-consumptions]))}
+          "Consommations"]
+         [:li.sidebar__item
           {:class    (when (= :admin-productions active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-productions])
                           (rf/dispatch [:admin/fetch-productions]))}
           "Productions"]
          [:li.sidebar__item
+          {:class    (when (= :admin-contracts active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-contracts])
+                          (rf/dispatch [:admin/fetch-users])
+                          (rf/dispatch [:admin/fetch-consumptions])
+                          (rf/dispatch [:admin/fetch-productions]))}
+          "Contrats"]
+         [:li.sidebar__item
           {:class    (when (= :admin-alert active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-alert])
                           (rf/dispatch [:admin/fetch-alert]))}
-          "Alerte"]])]]))
+          "Alerte"]
+         [:li.sidebar__item
+          {:class    (when (= :admin-news active) "sidebar__item--active")
+           :on-click #(do (rf/dispatch [:portal/set-section :admin-news])
+                          (rf/dispatch [:admin/fetch-news]))}
+          "Actualit\u00e9s"]])]]))
 
 (defn- dashboard-section []
   ;; Fetch on mount
@@ -77,7 +95,7 @@
           has-prod?     (seq productions)
           active-consos (filterv #(= "active" (:consumption/lifecycle %)) consumptions)
           active-prods  (filterv #(= "active" (:production/lifecycle %)) productions)
-          total-conso-monthly (reduce + 0 (keep :consumption/last-monthly-kwh active-consos))
+          total-conso-monthly (reduce + 0 (keep conso-utils/latest-monthly-kwh active-consos))
           total-prod-monthly  (reduce + 0 (keep :production/last-monthly-kwh active-prods))]
     [:div.dashboard
      [:h1 "Bienvenue, " user-name]
@@ -135,7 +153,10 @@
         :profile           [profile/profile-page]
         :admin-users       [admin/users-tab]
         :admin-networks    [admin/networks-tab]
+        :admin-consumptions [admin/consumptions-tab]
         :admin-eligibility [admin/eligibility-checks-tab]
         :admin-productions [admin/productions-tab]
+        :admin-contracts   [admin/contracts-tab]
         :admin-alert       [admin/alert-tab]
+        :admin-news        [admin/news-tab]
         [dashboard-section])]]))

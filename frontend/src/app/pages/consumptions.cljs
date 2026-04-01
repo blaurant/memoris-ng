@@ -1,5 +1,6 @@
 (ns app.pages.consumptions
   (:require [app.components.onboarding-form :as onboarding]
+            [app.consumptions.utils :as conso-utils]
             [app.utils.google-maps :as google-maps]
             [re-frame.core :as rf]
             [reagent.core :as r]
@@ -14,6 +15,47 @@
 (def ^:private energy-type-labels
   {"solar" "Solaire" "wind" "Eolien" "hydro" "Hydraulique"
    "biomass" "Biomasse" "cogeneration" "Cogénération"})
+
+(def ^:private month-labels
+  {1 "Jan" 2 "Fév" 3 "Mar" 4 "Avr" 5 "Mai" 6 "Juin"
+   7 "Juil" 8 "Août" 9 "Sep" 10 "Oct" 11 "Nov" 12 "Déc"})
+
+(defn- monthly-bar-chart [monthly-history]
+  (let [sorted  (->> monthly-history
+                     (sort-by (juxt :year :month))
+                     (take-last 6)
+                     vec)
+        max-kwh (apply max 1 (map :kwh sorted))
+        n       (count sorted)
+        w       280
+        h       130
+        bar-w   30
+        gap     (if (> n 1) (/ (- w (* n bar-w)) (dec n)) 0)
+        chart-h 90
+        label-y (+ chart-h 15)]
+    (when (seq sorted)
+      [:svg {:viewBox (str "0 0 " w " " h) :width "100%"
+             :style {:max-width "320px" :display "block" :margin "0 auto"}}
+       (doall
+         (for [[idx entry] (map-indexed vector sorted)]
+           (let [x      (* idx (+ bar-w gap))
+                 bar-h  (* chart-h (/ (:kwh entry) max-kwh))
+                 y      (- chart-h bar-h)
+                 cx     (+ x (/ bar-w 2))]
+             ^{:key idx}
+             [:g
+              ;; Bar
+              [:rect {:x x :y y :width bar-w :height bar-h
+                      :rx 3 :fill "#43a047"}]
+              ;; kWh value above bar
+              [:text {:x cx :y (- y 4) :text-anchor "middle"
+                      :font-size "9" :fill "#333" :font-weight "600"}
+               (str (.toFixed (:kwh entry) 0))]
+              ;; Month label below
+              [:text {:x cx :y label-y :text-anchor "middle"
+                      :font-size "9" :fill "#888"}
+               (get month-labels (:month entry) "?")]])))])))
+
 
 ;; ── Dashboard map ───────────────────────────────────────────────────────────
 
@@ -169,7 +211,8 @@
 ;; ── Dashboard view ──────────────────────────────────────────────────────────
 
 (defn- consumption-dashboard [consumption]
-  (let [cid (:consumption/id consumption)]
+  (let [cid       (:consumption/id consumption)
+        expanded? (r/atom false)]
     (r/create-class
      {:component-did-mount
       (fn [_]
@@ -214,144 +257,163 @@
            ;; Stats + Map grid
            [:div.prod-dash__grid
             [:div.prod-dash__stats
-             (when-let [kwh (:consumption/last-monthly-kwh consumption)]
+             (when-let [kwh (conso-utils/latest-monthly-kwh consumption)]
                [:div.prod-dash__stat-card
                 [:span.prod-dash__stat-value (str (.toFixed kwh 1) " kWh")]
                 [:span.prod-dash__stat-label "Consommation du mois"]])
-             (when (:network/price-per-kwh network)
-               [:div.prod-dash__stat-card
-                [:span.prod-dash__stat-value (str (:network/price-per-kwh network) " €")]
-                [:span.prod-dash__stat-label "Prix HT/kWh"]])
              [:div.prod-dash__stat-card
-              [:span.prod-dash__stat-value (count producers)]
-              [:span.prod-dash__stat-label
-               (str "Producteur" (when (> (count producers) 1) "s") " sur le réseau")]]
-             ;; Draft stats
-             [:div.prod-dash__finance-preview
-              [:div.prod-dash__finance-badge "Bientôt disponible"]
-              [:div.prod-dash__stat-card
-               [:span.prod-dash__stat-value "187 kWh"]
-               [:span.prod-dash__stat-label "Consommation locale du dernier mois"]]
-              [:div.prod-dash__stat-card
-               [:span.prod-dash__stat-value "5,61 €"]
-               [:span.prod-dash__stat-label "Gain réalisé le dernier mois"]]]]
+              {:style {:display "flex" :flex-direction "row" :justify-content "space-around" :gap "1rem"}}
+              [:div {:style {:text-align "center"}}
+               [:span.prod-dash__stat-value (count producers)]
+               [:span.prod-dash__stat-label
+                (str "Producteur" (when (> (count producers) 1) "s") " sur le r\u00e9seau")]]
+              (when (:network/price-per-kwh network)
+                [:div {:style {:text-align "center"}}
+                 [:span.prod-dash__stat-value (str (:network/price-per-kwh network) " \u20ac")]
+                 [:span.prod-dash__stat-label "Prix HT/kWh"]])]
+             ;; Bar chart — last 6 months
+             (if (seq (:consumption/monthly-history consumption))
+               [:div.prod-dash__stat-card
+                [:span.prod-dash__stat-label {:style {:margin-bottom "0.5rem"}}
+                 "Consommation des 6 derniers mois"]
+                [monthly-bar-chart (:consumption/monthly-history consumption)]]
+               ;; Draft placeholder when no history
+               [:div.prod-dash__finance-preview
+                [:div.prod-dash__finance-badge "Bientôt disponible"]
+                [:div.prod-dash__stat-card
+                 [:span.prod-dash__stat-value "— kWh"]
+                 [:span.prod-dash__stat-label "Consommation des 6 derniers mois"]]])]
 
             ;; Map
             (when network
               [dashboard-map network producers
                (:consumption/consumer-address consumption)])]
 
-           ;; Technical details
-           [:div.prod-dash__section
-            [:h3 "Détails techniques"]
-            [:div.prod-dash__details
-             (when (:consumption/linky-reference consumption)
-               [:div.prod-dash__field
-                [:span.prod-dash__field-label "Compteur Linky"]
-                [:span (:consumption/linky-reference consumption)]])]]
+           ;; Toggle bar
+           [:div.prod-dash__toggle
+            {:on-click #(swap! expanded? not)}
+            [:span.prod-dash__toggle-arrow
+             {:class (when @expanded? "prod-dash__toggle-arrow--open")}
+             "›"]
+            [:span.prod-dash__toggle-label
+             (if @expanded? "Masquer les détails" "Voir les détails")]
+            [:span.prod-dash__toggle-line]]
 
-           ;; Banking info (draft)
-           [:div.prod-dash__section
-            [:h3 "Informations bancaires"]
-            (when (:consumption/billing-address consumption)
-              [:div.prod-dash__details {:style {:margin-bottom "0.75rem"}}
-               [:div.prod-dash__field
-                [:span.prod-dash__field-label "Adresse de facturation"]
-                [editable-field (:consumption/billing-address consumption)
-                 #(rf/dispatch [:consumptions/update-billing-address cid %])]]])
-            (when (:consumption/iban consumption)
-              [:div.prod-dash__details
-               [:div.prod-dash__field
-                [:span.prod-dash__field-label "IBAN"]
-                [:span (let [iban (:consumption/iban consumption)]
-                         (if (> (count iban) 8)
-                           (str (subs iban 0 4) " •••• •••• " (subs iban (- (count iban) 4)))
-                           iban))]]
-               (when (:consumption/bic consumption)
-                 [:div.prod-dash__field
-                  [:span.prod-dash__field-label "BIC"]
-                  [:span (:consumption/bic consumption)]])
-               [:div.prod-dash__field
-                [:span.prod-dash__field-label "Mandat SEPA"]
-                [:span (if (:consumption/sepa-mandate-signed-at consumption)
-                         "Signé"
-                         "Non signé")]]])]
+           ;; Collapsible details
+           [:div.prod-dash__collapsible
+            {:class (when-not @expanded? "prod-dash__collapsible--closed")}
 
-           ;; Contracts
-           (when (or (:consumption/producer-contract-signed-at consumption)
-                     (:consumption/sepa-mandate-signed-at consumption)
-                     adhesion?)
-             [:div.prod-dash__section
-              [:h3 "Contrats"]
-              [:div.prod-dash__details
-               (when adhesion?
-                 [:div.prod-dash__field
-                  [:span.prod-dash__field-label "Adhésion Elink-co"]
-                  [:span.consumption-block__contract-link
-                   {:on-click #(rf/dispatch [:auth/download-adhesion])}
-                   [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
-                          :fill "none" :stroke "currentColor" :stroke-width "2"
-                          :stroke-linecap "round" :stroke-linejoin "round"
-                          :style {:vertical-align "middle" :margin-right "0.3rem"}}
-                    [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
-                    [:polyline {:points "7 10 12 15 17 10"}]
-                    [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
-                   "Télécharger"]])
-               (when (:consumption/producer-contract-signed-at consumption)
-                 [:div.prod-dash__field
-                  [:span.prod-dash__field-label "Contrat Producteur"]
-                  [:span.consumption-block__contract-link
-                   {:on-click #(rf/dispatch [:consumptions/download-contract cid :producer])}
-                   [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
-                          :fill "none" :stroke "currentColor" :stroke-width "2"
-                          :stroke-linecap "round" :stroke-linejoin "round"
-                          :style {:vertical-align "middle" :margin-right "0.3rem"}}
-                    [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
-                    [:polyline {:points "7 10 12 15 17 10"}]
-                    [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
-                   "Télécharger"]])
-               (when (:consumption/sepa-mandate-signed-at consumption)
-                 [:div.prod-dash__field
-                  [:span.prod-dash__field-label "Mandat SEPA"]
-                  [:span.consumption-block__contract-link
-                   {:on-click #(rf/dispatch [:consumptions/download-contract cid :sepa])}
-                   [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
-                          :fill "none" :stroke "currentColor" :stroke-width "2"
-                          :stroke-linecap "round" :stroke-linejoin "round"
-                          :style {:vertical-align "middle" :margin-right "0.3rem"}}
-                    [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
-                    [:polyline {:points "7 10 12 15 17 10"}]
-                    [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
-                   "Télécharger"]])]])
+            ;; Technical details
+            [:div.prod-dash__section
+             [:h3 "Détails techniques"]
+             [:div.prod-dash__details
+              (when (:consumption/linky-reference consumption)
+                [:div.prod-dash__field
+                 [:span.prod-dash__field-label "Compteur Linky"]
+                 [:span (:consumption/linky-reference consumption)]])]]
 
-           ;; Invoices (draft)
-           [:div.prod-dash__section
-            [:h3 "Factures"]
-            [:div.prod-dash__finance-preview
-             [:div.prod-dash__finance-badge "Bientôt disponible"]
-             [:table.admin-table
-              [:thead
-               [:tr
-                [:th "Période"]
-                [:th "kWh"]
-                [:th "Montant"]
-                [:th "Statut"]]]
-              [:tbody
-               [:tr
-                [:td "Février 2026"]
-                [:td "187 kWh"]
-                [:td "24,31 €"]
-                [:td "Payée"]]
-               [:tr
-                [:td "Janvier 2026"]
-                [:td "210 kWh"]
-                [:td "27,30 €"]
-                [:td "Payée"]]
-               [:tr
-                [:td "Décembre 2025"]
-                [:td "195 kWh"]
-                [:td "25,35 €"]
-                [:td "Payée"]]]]]]]))})))
+            ;; Banking info (draft)
+            [:div.prod-dash__section
+             [:h3 "Informations bancaires"]
+             (when (:consumption/billing-address consumption)
+               [:div.prod-dash__details {:style {:margin-bottom "0.75rem"}}
+                [:div.prod-dash__field
+                 [:span.prod-dash__field-label "Adresse de facturation"]
+                 [editable-field (:consumption/billing-address consumption)
+                  #(rf/dispatch [:consumptions/update-billing-address cid %])]]])
+             (when (:consumption/iban consumption)
+               [:div.prod-dash__details
+                [:div.prod-dash__field
+                 [:span.prod-dash__field-label "IBAN"]
+                 [:span (let [iban (:consumption/iban consumption)]
+                          (if (> (count iban) 8)
+                            (str (subs iban 0 4) " •••• •••• " (subs iban (- (count iban) 4)))
+                            iban))]]
+                (when (:consumption/bic consumption)
+                  [:div.prod-dash__field
+                   [:span.prod-dash__field-label "BIC"]
+                   [:span (:consumption/bic consumption)]])
+                [:div.prod-dash__field
+                 [:span.prod-dash__field-label "Mandat SEPA"]
+                 [:span (if (:consumption/sepa-mandate-signed-at consumption)
+                          "Signé"
+                          "Non signé")]]])]
+
+            ;; Contracts
+            (when (or (:consumption/producer-contract-signed-at consumption)
+                      (:consumption/sepa-mandate-signed-at consumption)
+                      adhesion?)
+              [:div.prod-dash__section
+               [:h3 "Contrats"]
+               [:div.prod-dash__details
+                (when adhesion?
+                  [:div.prod-dash__field
+                   [:span.prod-dash__field-label "Adhésion Elink-co"]
+                   [:span.consumption-block__contract-link
+                    {:on-click #(rf/dispatch [:auth/download-adhesion])}
+                    [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
+                           :fill "none" :stroke "currentColor" :stroke-width "2"
+                           :stroke-linecap "round" :stroke-linejoin "round"
+                           :style {:vertical-align "middle" :margin-right "0.3rem"}}
+                     [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+                     [:polyline {:points "7 10 12 15 17 10"}]
+                     [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+                    "Télécharger"]])
+                (when (:consumption/producer-contract-signed-at consumption)
+                  [:div.prod-dash__field
+                   [:span.prod-dash__field-label "Contrat Producteur"]
+                   [:span.consumption-block__contract-link
+                    {:on-click #(rf/dispatch [:consumptions/download-contract cid :producer])}
+                    [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
+                           :fill "none" :stroke "currentColor" :stroke-width "2"
+                           :stroke-linecap "round" :stroke-linejoin "round"
+                           :style {:vertical-align "middle" :margin-right "0.3rem"}}
+                     [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+                     [:polyline {:points "7 10 12 15 17 10"}]
+                     [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+                    "Télécharger"]])
+                (when (:consumption/sepa-mandate-signed-at consumption)
+                  [:div.prod-dash__field
+                   [:span.prod-dash__field-label "Mandat SEPA"]
+                   [:span.consumption-block__contract-link
+                    {:on-click #(rf/dispatch [:consumptions/download-contract cid :sepa])}
+                    [:svg {:width "16" :height "16" :viewBox "0 0 24 24"
+                           :fill "none" :stroke "currentColor" :stroke-width "2"
+                           :stroke-linecap "round" :stroke-linejoin "round"
+                           :style {:vertical-align "middle" :margin-right "0.3rem"}}
+                     [:path {:d "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}]
+                     [:polyline {:points "7 10 12 15 17 10"}]
+                     [:line {:x1 "12" :y1 "15" :x2 "12" :y2 "3"}]]
+                    "Télécharger"]])]])
+
+            ;; Invoices (draft)
+            [:div.prod-dash__section
+             [:h3 "Factures"]
+             [:div.prod-dash__finance-preview
+              [:div.prod-dash__finance-badge "Bientôt disponible"]
+              [:table.admin-table
+               [:thead
+                [:tr
+                 [:th "Période"]
+                 [:th "kWh"]
+                 [:th "Montant"]
+                 [:th "Statut"]]]
+               [:tbody
+                [:tr
+                 [:td "Février 2026"]
+                 [:td "187 kWh"]
+                 [:td "24,31 €"]
+                 [:td "Payée"]]
+                [:tr
+                 [:td "Janvier 2026"]
+                 [:td "210 kWh"]
+                 [:td "27,30 €"]
+                 [:td "Payée"]]
+                [:tr
+                 [:td "Décembre 2025"]
+                 [:td "195 kWh"]
+                 [:td "25,35 €"]
+                 [:td "Payée"]]]]]]]]))})))
 
 ;; ── Main page ───────────────────────────────────────────────────────────────
 

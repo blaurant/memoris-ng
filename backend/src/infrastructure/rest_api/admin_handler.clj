@@ -249,6 +249,24 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
+(defn- update-monthly-history-handler [consumption-repo network-repo user-repo]
+  (fn [request]
+    (try
+      (let [consumption-id (id/build-id (get-in request [:path-params :id]))
+            entries        (get-in request [:body-params :monthly-history])
+            entries        (mapv (fn [e]
+                                  {:year  (int (:year e))
+                                   :month (int (:month e))
+                                   :kwh   (double (:kwh e))})
+                                entries)
+            c' (consumption-scenarios/update-monthly-history
+                 consumption-repo consumption-id entries)]
+        {:status 200
+         :body   (serialize-consumption c' network-repo user-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
 (defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret]
   [["/api/v1/alert"
     {:get (get-alert-handler alert-banner-repo)}]
@@ -297,6 +315,10 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/consumptions/:id/activate"
     {:put        (activate-consumption-handler consumption-repo network-repo user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/consumptions/:id/monthly-history"
+    {:put        (update-monthly-history-handler consumption-repo network-repo user-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions"

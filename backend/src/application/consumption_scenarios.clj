@@ -159,6 +159,17 @@
         (mu/log ::consumption-abandoned :consumption-id consumption-id)
         c'))
 
+(defn update-monthly-history
+  "Admin: update the monthly consumption history for a consumption."
+  [consumption-repo consumption-id entries]
+  (let [c (consumption/find-by-id consumption-repo consumption-id)]
+    (when-not c
+      (throw (ex-info "Consumption not found" {:consumption-id consumption-id})))
+    (let [c' (consumption/set-monthly-history c entries)
+          c' (consumption/save! consumption-repo c c')]
+      (mu/log ::monthly-history-updated :consumption-id consumption-id)
+      c')))
+
 (defn delete-consumption
   "Delete a consumption owned by the user."
   [consumption-repo user-id consumption-id]

@@ -23,6 +23,7 @@
             [infrastructure.xtdb.xtdb-production-repo]
             [infrastructure.xtdb.xtdb-eligibility-check-repo]
             [infrastructure.xtdb.xtdb-alert-banner-repo]
+            [infrastructure.xtdb.xtdb-news-repo]
             [infrastructure.docuseal.docuseal-gateway]))
 
 ;; Teach aero how to read #ig/ref tags from system.edn

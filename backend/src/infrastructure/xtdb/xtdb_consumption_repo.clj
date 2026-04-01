@@ -13,6 +13,12 @@
 (defrecord XtdbConsumptionRepo [node]
   consumption/ConsumptionRepo
 
+  (find-all [_]
+    (let [results (xt/q (xt/db node)
+                        '{:find  [(pull e [*])]
+                          :where [[e :consumption/id _]]})]
+      (mapv (fn [[doc]] (doc->consumption doc)) results)))
+
   (find-by-id [_ id]
     (doc->consumption (xt/entity (xt/db node) id)))
 

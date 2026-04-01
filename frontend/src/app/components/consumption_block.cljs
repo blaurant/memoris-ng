@@ -1,5 +1,6 @@
 (ns app.components.consumption-block
   (:require [app.consumptions.contract :as contract]
+            [app.consumptions.utils :as conso-utils]
             [re-frame.core :as rf]
             [reagent.core :as r]
             [reitit.frontend.easy :as rfee]))
@@ -36,7 +37,7 @@
             [:div.consumption-block__field
              [:span.consumption-block__label "Prix kWh"]
              [:span.consumption-block__value (str price " EUR/kWh")]])
-          (when-let [kwh (:consumption/last-monthly-kwh consumption)]
+          (when-let [kwh (conso-utils/latest-monthly-kwh consumption)]
             [:div.consumption-block__field
              [:span.consumption-block__label "Dernière conso"]
              [:span.consumption-block__value (str kwh " kWh")]])

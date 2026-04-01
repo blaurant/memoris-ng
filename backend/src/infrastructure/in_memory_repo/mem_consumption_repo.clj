@@ -5,6 +5,9 @@
 (defrecord InMemoryConsumptionRepo [store]
   consumption/ConsumptionRepo
 
+  (find-all [_]
+    (mapv consumption/build-consumption (vals @store)))
+
   (find-by-id [_ id]
     (when-let [c (get @store id)]
       (consumption/build-consumption c)))

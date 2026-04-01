@@ -381,6 +381,33 @@
                       (get-in response [:response :error] "unknown"))
     db))
 
+;; ── Update monthly history (admin) ───────────────────────────────────────────
+
+(rf/reg-event-fx :admin/update-monthly-history
+  (fn [{:keys [db]} [_ consumption-id entries on-success]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/consumptions/" consumption-id "/monthly-history")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:monthly-history entries}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-monthly-history-ok on-success]
+                  :on-failure      [:admin/update-monthly-history-err]}}))
+
+(rf/reg-event-db :admin/update-monthly-history-ok
+  (fn [db [_ on-success updated]]
+    (when on-success (on-success))
+    (let [cid (:consumption/id updated)]
+      (update db :admin/consumptions
+              (fn [consumptions]
+                (mapv #(if (= cid (:consumption/id %)) updated %) consumptions))))))
+
+(rf/reg-event-db :admin/update-monthly-history-err
+  (fn [db [_ response]]
+    (js/console.error "Failed to update monthly history"
+                      (get-in response [:response :error] "unknown"))
+    db))
+
 ;; ── Update user profile (admin) ──────────────────────────────────────────────
 
 (rf/reg-event-fx :admin/update-user-profile
@@ -403,6 +430,93 @@
 (rf/reg-event-db :admin/update-user-profile-err
   (fn [db [_ response]]
     (js/console.error "Failed to update user profile" (get-in response [:response :error]))
+    db))
+
+;; ── News CRUD (admin) ────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :admin/fetch-news
+  (fn [{:keys [db]} _]
+    {:db         (assoc db :admin/news-loading? true)
+     :http-xhrio {:method          :get
+                  :uri             (str config/API_BASE "/api/v1/admin/news")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/fetch-news-ok]
+                  :on-failure      [:admin/fetch-news-err]}}))
+
+(rf/reg-event-db :admin/fetch-news-ok
+  (fn [db [_ news-list]]
+    (-> db
+        (assoc :admin/news-list news-list)
+        (assoc :admin/news-loading? false))))
+
+(rf/reg-event-db :admin/fetch-news-err
+  (fn [db _]
+    (js/console.error "Failed to fetch news")
+    (assoc db :admin/news-loading? false)))
+
+(rf/reg-event-fx :admin/create-news
+  (fn [{:keys [db]} [_ params on-success]]
+    {:http-xhrio {:method          :post
+                  :uri             (str config/API_BASE "/api/v1/admin/news")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          params
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/create-news-ok on-success]
+                  :on-failure      [:admin/create-news-err]}}))
+
+(rf/reg-event-db :admin/create-news-ok
+  (fn [db [_ on-success created]]
+    (when on-success (on-success))
+    (update db :admin/news-list conj created)))
+
+(rf/reg-event-db :admin/create-news-err
+  (fn [db _]
+    (js/console.error "Failed to create news")
+    db))
+
+(rf/reg-event-fx :admin/update-news
+  (fn [{:keys [db]} [_ news-id params on-success]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/news/" news-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          params
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-news-ok on-success]
+                  :on-failure      [:admin/update-news-err]}}))
+
+(rf/reg-event-db :admin/update-news-ok
+  (fn [db [_ on-success updated]]
+    (when on-success (on-success))
+    (let [nid (:news/id updated)]
+      (update db :admin/news-list
+              (fn [news] (mapv #(if (= nid (:news/id %)) updated %) news))))))
+
+(rf/reg-event-db :admin/update-news-err
+  (fn [db _]
+    (js/console.error "Failed to update news")
+    db))
+
+(rf/reg-event-fx :admin/delete-news
+  (fn [{:keys [db]} [_ news-id]]
+    {:http-xhrio {:method          :delete
+                  :uri             (str config/API_BASE "/api/v1/admin/news/" news-id)
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/delete-news-ok news-id]
+                  :on-failure      [:admin/delete-news-err]}}))
+
+(rf/reg-event-db :admin/delete-news-ok
+  (fn [db [_ news-id _]]
+    (update db :admin/news-list
+            (fn [news] (filterv #(not= news-id (:news/id %)) news)))))
+
+(rf/reg-event-db :admin/delete-news-err
+  (fn [db _]
+    (js/console.error "Failed to delete news")
     db))
 
 ;; ── Tab switch ────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 (ns app.pages.reset-password
-  (:require [re-frame.core :as rf]
+  (:require [app.components.password-input :refer [password-input]]
+            [re-frame.core :as rf]
             [reagent.core :as r]))
 
 (defn- password-valid? [pw]
@@ -33,17 +34,15 @@
            [:div.email-auth-form
             (when error
               [:div.auth-error error])
-            [:input.onboarding__input
-             {:type        "password"
-              :placeholder "Nouveau mot de passe"
+            [password-input
+             {:placeholder "Nouveau mot de passe"
               :value       pw
               :on-change   #(reset! password (.. % -target -value))}]
             (when (and (seq pw) (not pw-ok?))
               [:div {:style {:font-size "0.8rem" :color "#d32f2f" :margin-top "-0.25rem"}}
                "8 caractères minimum dont 1 caractère spécial"])
-            [:input.onboarding__input
-             {:type        "password"
-              :placeholder "Confirmer le mot de passe"
+            [password-input
+             {:placeholder "Confirmer le mot de passe"
               :value       @confirm
               :on-change   #(reset! confirm (.. % -target -value))}]
             (when (and (seq pw) (seq @confirm) (not= pw @confirm))

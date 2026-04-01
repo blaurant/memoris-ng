@@ -125,7 +125,7 @@
           [:span.nd-stat-value (str diameter " km")]
           [:span.nd-stat-label "Diametre du reseau"]])
        (when price
-         [:div.nd-stat-card
+         [:div.nd-stat-card.nd-stat-card--price
           [:span.nd-stat-value (str price " €")]
           [:span.nd-stat-label "Prix HT/kWh"]])])))
 

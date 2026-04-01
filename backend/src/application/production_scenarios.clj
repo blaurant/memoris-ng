@@ -209,7 +209,7 @@
                              (let [u (user/find-by-id user-repo (:consumption/user-id c))]
                                {:name              (or (:user/name u) "—")
                                 :address           (:consumption/consumer-address c)
-                                :last-monthly-kwh  (:consumption/last-monthly-kwh c)
+                                :last-monthly-kwh  (consumption/last-monthly-kwh c)
                                 :lifecycle         (name (:consumption/lifecycle c))}))
                            active-consos)]
     {:production  p

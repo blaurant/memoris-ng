@@ -28,6 +28,9 @@
  :alerts/xtdb-repo
  {:node #ig/ref :xtdb/node}
 
+ :news/xtdb-repo
+ {:node #ig/ref :xtdb/node}
+
  :auth/token-verifier
  {:client-ids {:google   #env GOOGLE_CLIENT_ID
                :apple    #env APPLE_CLIENT_ID
@@ -72,6 +75,7 @@
   :verification-token-repo #ig/ref :verification-tokens/xtdb-repo
   :jwt-secret            #ig/ref :auth/jwt-secret
   :alert-banner-repo     #ig/ref :alerts/xtdb-repo
+  :news-repo             #ig/ref :news/xtdb-repo
   :document-signer       #ig/ref :docuseal/gateway}
 
  :http/server
