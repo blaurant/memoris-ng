@@ -49,7 +49,7 @@
           {:class    (when (= :admin-eligibility active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-eligibility])
                           (rf/dispatch [:admin/fetch-eligibility-checks]))}
-          "Visiteurs"]
+          "Éligibilités"]
          [:li.sidebar__item
           {:class    (when (= :admin-consumptions active) "sidebar__item--active")
            :on-click #(do (rf/dispatch [:portal/set-section :admin-consumptions])
@@ -96,26 +96,30 @@
           active-consos (filterv #(= "active" (:consumption/lifecycle %)) consumptions)
           active-prods  (filterv #(= "active" (:production/lifecycle %)) productions)
           total-conso-monthly (reduce + 0 (keep conso-utils/latest-monthly-kwh active-consos))
-          total-prod-monthly  (reduce + 0 (keep :production/last-monthly-kwh active-prods))]
+          total-prod-monthly  (reduce + 0
+                                       (keep (fn [p]
+                                               (when-let [h (seq (:production/monthly-history p))]
+                                                 (:kwh (first (sort-by (juxt :year :month) #(compare %2 %1) h)))))
+                                             active-prods))]
     [:div.dashboard
-     [:h1 "Bienvenue, " user-name]
+     [:h1 "Bienvenue\u00a0!"]
      (cond
        (or conso-loading? prod-loading? (not conso-loaded?) (not prod-loaded?))
        [:p "Chargement..."]
 
        (and (not has-conso?) (not has-prod?))
        [:div {:style {:margin-top "2rem"}}
-        [:p {:style {:margin-bottom "1.5rem" :font-size "1.1rem"}}
-         "Vous n'avez pas encore de contrat. Que souhaitez-vous faire ?"]
         [:div {:style {:display "flex" :gap "1rem" :flex-wrap "wrap"}}
          [:button.btn.btn--green
           {:on-click (fn []
                        (rf/dispatch [:consumptions/create])
-                       (rf/dispatch [:portal/set-section :consumptions]))}
-          "Je veux devenir consommateur d'électricité local"]
+                       (rf/dispatch [:portal/set-section :consumptions]))
+           :style {:flex "1" :min-width "200px"}}
+          "Je veux devenir consommateur d'\u00e9lectricit\u00e9 locale"]
          [:button.btn.btn--green
-          {:on-click #(rf/dispatch [:portal/set-section :productions])}
-          "Je veux devenir producteur d'électricité local"]]]
+          {:on-click #(rf/dispatch [:portal/set-section :productions])
+           :style {:flex "1" :min-width "200px"}}
+          "Je veux devenir producteur d'\u00e9lectricit\u00e9 locale"]]]
 
        :else
        [:div {:style {:margin-top "1.5rem" :display "flex" :flex-direction "column" :gap "1.5rem"}}

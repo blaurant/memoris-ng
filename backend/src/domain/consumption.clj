@@ -36,11 +36,13 @@
 
 (def iban?
   [:and string?
-   [:fn {:error/message "must not be blank"} #(not (clojure.string/blank? %))]])
+   [:fn {:error/message "IBAN must be 2 letters + 2 digits + 11-30 alphanumeric characters (spaces allowed)"}
+    #(re-matches #"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$" (clojure.string/upper-case (clojure.string/replace % #"\s" "")))]])
 
 (def BillingAddress
   [:map
    [:consumption/billing-address address?]
+   [:consumption/iban-holder address?]
    [:consumption/iban iban?]
    [:consumption/bic {:optional true} [:maybe string?]]])
 
@@ -147,8 +149,8 @@
                          :consumption/linky-reference linky-ref))))
 
 (defn complete-billing-address
-      "Transition :billing-address -> :contract-signature with billing address, IBAN, and optional BIC."
-      [c billing-addr iban bic]
+      "Transition :billing-address -> :contract-signature with billing address, IBAN holder, IBAN, and optional BIC."
+      [c billing-addr iban-holder iban bic]
       (let [_ (assert-lifecycle c :billing-address)]
         (validate (-> BaseConsumption
                       (mu/merge ConsumerInformation)
@@ -157,6 +159,7 @@
                   (cond-> (assoc c
                                  :consumption/lifecycle :contract-signature
                                  :consumption/billing-address billing-addr
+                                 :consumption/iban-holder iban-holder
                                  :consumption/iban iban)
                     (seq bic) (assoc :consumption/bic bic)))))
 

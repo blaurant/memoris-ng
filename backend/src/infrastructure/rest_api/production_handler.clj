@@ -115,13 +115,16 @@
 (defn- submit-payment-info-handler [production-repo network-repo]
   (fn [request]
     (try
-      (let [user-id       (user-id-from-request request)
-            production-id (id/build-id (get-in request [:path-params :id]))
-            iban          (require-param request :iban "iban")]
+      (let [user-id          (user-id-from-request request)
+            production-id    (id/build-id (get-in request [:path-params :id]))
+            iban-holder      (require-param request :iban-holder "iban-holder")
+            iban             (require-param request :iban "iban")
+            bic              (get-in request [:body-params :bic])
+            payment-address  (require-param request :payment-address "payment-address")]
         {:status 200
          :body   (serialize-production
                    (scenarios/submit-payment-info
-                     production-repo user-id production-id iban)
+                     production-repo user-id production-id iban-holder iban bic payment-address)
                    network-repo)})
       (catch clojure.lang.ExceptionInfo e
         {:status (error-status e)
@@ -258,8 +261,10 @@
         {:status 200
          :body   (-> dashboard
                      (update :production #(serialize-production % network-repo)))})
-      (catch clojure.lang.ExceptionInfo e
-        {:status (error-status e)
+      (catch Exception e
+        (println "DASHBOARD ERROR:" (type e) (.getMessage e) (ex-data e))
+        (.printStackTrace e)
+        {:status (if (instance? clojure.lang.ExceptionInfo e) (error-status e) 400)
          :body   {:error (.getMessage e)}}))))
 
 ;; ── Routes ──────────────────────────────────────────────────────────────────

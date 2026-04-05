@@ -1,5 +1,6 @@
 (ns app.pages.admin
-  (:require [clojure.string :as str]
+  (:require [app.config :as config]
+            [clojure.string :as str]
             [re-frame.core :as rf]
             [reagent.core :as r]
             [reitit.frontend.easy :as rfee]))
@@ -1108,7 +1109,95 @@
       {:on-click on-close}
       "Fermer"]]]])
 
-(defn- productions-table [productions selected]
+(defn- production-monthly-history-modal [production on-close]
+  (let [now    (js/Date.)
+        cur-y  (.getFullYear now)
+        cur-m  (inc (.getMonth now))
+        existing (or (:production/monthly-history production) [])
+        init   (if (seq existing)
+                 (mapv (fn [e] {:year (int (:year e)) :month (int (:month e)) :kwh (str (:kwh e))})
+                       (sort-by (juxt :year :month) #(compare %2 %1) existing))
+                 (vec (for [i (range 6)]
+                        (let [m (- cur-m i)
+                              y (if (<= m 0) (dec cur-y) cur-y)
+                              m (if (<= m 0) (+ 12 m) m)]
+                          {:year y :month m :kwh ""}))))
+        form   (r/atom init)]
+    (fn [_production on-close]
+      (let [entries @form
+            can-save? (every? #(and (pos? (:year %))
+                                   (<= 1 (:month %) 12)
+                                   (seq (str (:kwh %)))
+                                   (js/parseFloat (str (:kwh %))))
+                              entries)]
+        [:div.modal-overlay {:on-click (fn [e]
+                                         (when (= (.-target e) (.-currentTarget e))
+                                           (on-close)))}
+         [:div.modal {:on-click #(.stopPropagation %)
+                      :style {:max-width "500px"}}
+          [:div.modal__header
+           [:span "Historique production"]
+           [:button.btn.btn--small {:on-click on-close
+                                    :style {:background "transparent" :color "var(--color-muted)"
+                                            :border "none" :font-size "1.2rem" :padding "0"}}
+            "\u00D7"]]
+          [:div.modal__body
+           [:table {:style {:width "100%" :border-collapse "collapse"}}
+            [:thead
+             [:tr
+              [:th {:style {:text-align "left" :padding "0.3rem" :font-size "0.8rem" :color "var(--color-muted)"}} "Année"]
+              [:th {:style {:text-align "left" :padding "0.3rem" :font-size "0.8rem" :color "var(--color-muted)"}} "Mois"]
+              [:th {:style {:text-align "left" :padding "0.3rem" :font-size "0.8rem" :color "var(--color-muted)"}} "kWh"]
+              [:th {:style {:width "30px"}}]]]
+            [:tbody
+             (doall
+               (for [idx (range (count entries))]
+                 ^{:key idx}
+                 [:tr
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:input.onboarding__input
+                    {:type "number" :value (:year (nth entries idx))
+                     :style {:width "80px" :margin "0" :padding "0.3rem"}
+                     :on-change #(swap! form assoc-in [idx :year] (js/parseInt (.. % -target -value)))}]]
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:select.onboarding__input
+                    {:value (:month (nth entries idx))
+                     :style {:margin "0" :padding "0.3rem"}
+                     :on-change #(swap! form assoc-in [idx :month] (js/parseInt (.. % -target -value)))}
+                    (for [m (range 1 13)]
+                      ^{:key m}
+                      [:option {:value m} (month-label m)])]]
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:input.onboarding__input
+                    {:type "number" :step "0.1" :value (:kwh (nth entries idx))
+                     :style {:width "90px" :margin "0" :padding "0.3rem"}
+                     :on-change #(swap! form assoc-in [idx :kwh] (.. % -target -value))}]]
+                  [:td {:style {:padding "0.2rem 0.3rem"}}
+                   [:button {:on-click #(swap! form (fn [v] (vec (concat (subvec v 0 idx) (subvec v (inc idx))))))
+                             :style {:background "transparent" :border "none" :cursor "pointer"
+                                     :color "#d32f2f" :font-size "1.1rem" :padding "0"}}
+                    "\u00D7"]]]))]]
+           [:button.btn.btn--small.btn--outline
+            {:on-click #(swap! form conj {:year cur-y :month cur-m :kwh ""})
+             :style {:margin-top "0.5rem"}}
+            "+ Ajouter un mois"]]
+          [:div.modal__actions
+           [:button.btn.btn--small {:on-click on-close} "Annuler"]
+           [:button.btn.btn--small.btn--green
+            {:on-click (fn []
+                         (let [parsed (mapv (fn [e]
+                                              {:year  (int (:year e))
+                                               :month (int (:month e))
+                                               :kwh   (js/parseFloat (str (:kwh e)))})
+                                            entries)]
+                           (rf/dispatch [:admin/update-production-monthly-history
+                                         (:production/id production)
+                                         parsed
+                                         on-close])))
+             :disabled (not can-save?)}
+            "Enregistrer"]]]]))))
+
+(defn- productions-table [productions selected history-modal]
   [:table.admin-table
    [:thead
     [:tr
@@ -1132,15 +1221,22 @@
          [:td (get energy-type-labels (:production/energy-type p) "-")]
          [:td (or (:production/linky-meter p) "-")]
          [:td (:production/lifecycle p)]
-         [:td (when (= "pending" (:production/lifecycle p))
-                [:button.btn.btn--green.btn--small
-                 {:on-click (fn [e]
-                              (.stopPropagation e)
-                              (rf/dispatch [:admin/activate-production (:production/id p)]))}
-                 "Activer"])]]))]])
+         [:td {:style {:display "flex" :gap "0.3rem"}}
+          (when (= "pending" (:production/lifecycle p))
+            [:button.btn.btn--green.btn--small
+             {:on-click (fn [e]
+                          (.stopPropagation e)
+                          (rf/dispatch [:admin/activate-production (:production/id p)]))}
+             "Activer"])
+          [:button.btn.btn--small.btn--outline
+           {:on-click (fn [e]
+                        (.stopPropagation e)
+                        (reset! history-modal p))}
+           "Produit"]]]))]])
 
 (defn productions-tab []
-  (let [selected (r/atom nil)]
+  (let [selected      (r/atom nil)
+        history-modal (r/atom nil)]
     (fn []
       (let [productions @(rf/subscribe [:admin/productions])
             loading?    @(rf/subscribe [:admin/productions-loading?])
@@ -1163,9 +1259,11 @@
          (cond
            loading?         [:p.loading "Chargement..."]
            (empty? productions) [:p.admin__empty "Aucune production."]
-           :else            [productions-table productions selected])
+           :else            [productions-table productions selected history-modal])
          (when-let [p @selected]
            [production-detail-modal p #(reset! selected nil)])
+         (when-let [p @history-modal]
+           [production-monthly-history-modal p #(reset! history-modal nil)])
          (when error-msg
            [activation-error-modal error-msg])]))))
 
@@ -1492,9 +1590,28 @@
        [:div {:style {:display "flex" :justify-content "space-between" :align-items "center"
                       :margin-bottom "1rem"}}
         [:h2.admin__tab-title "Contrats"]
-        [:button.btn.btn--green.btn--small
-         {:on-click #(export-contracts-csv adhesion-rows prod-rows conso-rows)}
-         "Exporter CSV"]]
+        [:div {:style {:display "flex" :gap "0.5rem"}}
+         [:button.btn.btn--green.btn--small
+          {:on-click #(export-contracts-csv adhesion-rows prod-rows conso-rows)}
+          "Exporter CSV"]
+         [:button.btn.btn--small.btn--outline
+          {:on-click (fn []
+                       (let [token @(rf/subscribe [:auth/token])]
+                         (-> (js/fetch (str config/API_BASE "/api/v1/admin/contracts/export-zip")
+                                       #js {:headers #js {"Authorization" (str "Bearer " token)}})
+                             (.then (fn [resp]
+                                      (if (.-ok resp)
+                                        (.blob resp)
+                                        (throw (js/Error. "Export failed")))))
+                             (.then (fn [blob]
+                                      (let [url  (js/URL.createObjectURL blob)
+                                            a    (js/document.createElement "a")]
+                                        (set! (.-href a) url)
+                                        (set! (.-download a) "contrats-elink-co.zip")
+                                        (.click a)
+                                        (js/URL.revokeObjectURL url))))
+                             (.catch (fn [e] (js/console.error "ZIP export error:" e))))))}
+          "T\u00e9l\u00e9charger tous les contrats"]]]
        (cond
          loading?
          [:p.loading "Chargement..."]

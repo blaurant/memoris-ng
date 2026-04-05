@@ -26,14 +26,22 @@
 
 (def InstallationInfo
   [:map
-   [:production/pdl-prm non-blank-string?]
+   [:production/pdl-prm [:and string? [:re {:error/message "PDL/PRM must be exactly 14 digits"} #"^\d{14}$"]]]
    [:production/installed-power [:and number? [:fn {:error/message "must be positive"} pos?]]]
    [:production/energy-type [:enum :solar :wind :hydro :biomass :cogeneration]]
    [:production/linky-meter non-blank-string?]])
 
+(def iban?
+  [:and string?
+   [:fn {:error/message "IBAN must be 2 letters + 2 digits + 11-30 alphanumeric characters (spaces allowed)"}
+    #(re-matches #"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$" (clojure.string/upper-case (clojure.string/replace % #"\s" "")))]])
+
 (def PaymentInfo
   [:map
-   [:production/iban non-blank-string?]])
+   [:production/iban-holder non-blank-string?]
+   [:production/iban iban?]
+   [:production/bic {:optional true} [:maybe string?]]
+   [:production/payment-address non-blank-string?]])
 
 (def ContractSignature
   [:map
@@ -47,7 +55,11 @@
       (mu/merge (mu/optional-keys PaymentInfo))
       (mu/merge (mu/optional-keys ContractSignature))
       (mu/merge [:map
-                 [:production/last-monthly-kwh {:optional true} [:maybe double?]]])))
+                 [:production/monthly-history {:optional true}
+                  [:maybe [:vector [:map
+                                    [:year int?]
+                                    [:month [:int {:min 1 :max 12}]]
+                                    [:kwh double?]]]]]])))
 
 ;; ── Validation ──────────────────────────────────────────────────────────────
 
@@ -72,6 +84,22 @@
       (validate BaseProduction {:production/id        id
                                 :production/user-id   user-id
                                 :production/lifecycle :producer-information}))
+
+;; ── Monthly history helpers ────────────────────────────────────────────────
+
+(defn last-monthly-kwh
+  "Derives the most recent month's kWh from monthly-history, or nil."
+  [p]
+  (when-let [history (seq (:production/monthly-history p))]
+    (:kwh (first (sort-by (juxt :year :month) #(compare %2 %1) history)))))
+
+(defn set-monthly-history
+  "Replace the monthly-history on a production. Entries sorted desc by date."
+  [p entries]
+  (let [sorted (->> entries
+                    (sort-by (juxt :year :month) #(compare %2 %1))
+                    vec)]
+    (assoc p :production/monthly-history sorted)))
 
 ;; ── Queries ─────────────────────────────────────────────────────────────────
 
@@ -115,16 +143,19 @@
                          :production/linky-meter linky-meter))))
 
 (defn submit-payment-info
-      "Transition :payment-info -> :contract-signature with IBAN."
-      [p iban]
+      "Transition :payment-info -> :contract-signature with IBAN holder, IBAN, BIC and payment address."
+      [p iban-holder iban bic payment-address]
       (let [_ (assert-lifecycle p :payment-info)]
         (validate (-> BaseProduction
                       (mu/merge ProducerInformation)
                       (mu/merge InstallationInfo)
                       (mu/merge PaymentInfo))
-                  (assoc p
-                         :production/lifecycle :contract-signature
-                         :production/iban iban))))
+                  (cond-> (assoc p
+                                 :production/lifecycle :contract-signature
+                                 :production/iban-holder iban-holder
+                                 :production/iban iban
+                                 :production/payment-address payment-address)
+                    (seq bic) (assoc :production/bic bic)))))
 
 (defn sign-contract
       "Transitions to :pending if the user's adhesion is signed.

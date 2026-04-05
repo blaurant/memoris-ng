@@ -130,11 +130,11 @@
 ;; ── Submit step 3 ───────────────────────────────────────────────────────────
 
 (rf/reg-event-fx :consumptions/submit-step3
-  (fn [{:keys [db]} [_ consumption-id billing-address iban bic]]
+  (fn [{:keys [db]} [_ consumption-id billing-address iban-holder iban bic]]
     {:http-xhrio {:method          :put
                   :uri             (str config/API_BASE "/api/v1/consumptions/" consumption-id "/step/billing-address")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
-                  :params          (cond-> {:billing-address billing-address :iban iban}
+                  :params          (cond-> {:billing-address billing-address :iban-holder iban-holder :iban iban}
                                     (seq bic) (assoc :bic bic))
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})

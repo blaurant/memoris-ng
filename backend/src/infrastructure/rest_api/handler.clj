@@ -29,7 +29,7 @@
             (auth-handler/routes user-repo token-verifier password-hasher email-sender vt-repo jwt-secret)
             (consumption-handler/routes consumption-repo production-repo network-repo user-repo document-signer jwt-secret)
             (production-handler/routes production-repo network-repo consumption-repo user-repo email-sender jwt-secret)
-            (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret)
+            (admin-handler/routes user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret document-signer)
             (news-handler/routes news-repo jwt-secret)
             (contact-handler/routes user-repo email-sender))
     {:data {:muuntaja   m/instance

@@ -31,7 +31,9 @@
    {:q "Ai-je besoin d'un compteur spécial ?"
     :a "Vous devez disposer d'un compteur communicant (Linky) qui permet à Enedis de mesurer et répartir votre consommation d'énergie locale toutes les 30 minutes."}
    {:q "Comment sont fixés les prix de l'électricité locale ?"
-    :a "Les prix sont négociés directement entre le producteur et les consommateurs, sans intermédiaire. Ils sont généralement garantis pour plusieurs années, découplés des fluctuations du marché, ce qui offre une visibilité et une stabilité tarifaire."}])
+    :a "Les prix sont négociés directement entre le producteur et les consommateurs, sans intermédiaire. Ils sont généralement garantis pour plusieurs années, découplés des fluctuations du marché, ce qui offre une visibilité et une stabilité tarifaire."}
+   {:q "Où trouver le numéro point de livraison (PDL) du compteur Linky ?"
+    :a "Vous pouvez trouver le numéro PDL du compteur Linky sur votre facture. Ce numéro PDL peut aussi être trouvé directement sur votre compteur Linky. Pour cela, faites défiler les affichages du compteur (appui sur la touche +) jusqu'à lire la valeur du « numéro de PRM ». Le numéro de PRM est le nom donné au PDL sur le compteur Enedis Linky. Il s'agit d'une suite de 14 chiffres qui identifie le logement sur le réseau électrique."}])
 
 (defn- faq-item [{:keys [q a]} idx]
   (let [open? (r/atom false)]

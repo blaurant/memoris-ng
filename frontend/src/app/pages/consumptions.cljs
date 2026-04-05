@@ -426,10 +426,11 @@
 
      :reagent-render
      (fn []
-       (let [consumptions @(rf/subscribe [:consumptions/list])
-             loading?     @(rf/subscribe [:consumptions/loading?])
-             creating?    @(rf/subscribe [:consumptions/creating?])
-             active-consos (filterv #(not (onboarding? %)) consumptions)
+       (let [consumptions    @(rf/subscribe [:consumptions/list])
+             loading?        @(rf/subscribe [:consumptions/loading?])
+             creating?       @(rf/subscribe [:consumptions/creating?])
+             profile-ok?     @(rf/subscribe [:auth/profile-complete?])
+             active-consos   (filterv #(not (onboarding? %)) consumptions)
              onboarding-consos (filterv onboarding? consumptions)]
          [:div.consumptions
           (cond
@@ -444,11 +445,14 @@
                  [onboarding/onboarding-form c]))]
 
             (empty? consumptions)
-            [:div
-             [:p "Bienvenue ! Commencez votre première consommation."]
-             [:button.btn.btn--primary
-              {:on-click #(rf/dispatch [:consumptions/create])}
-              "Démarrer"]]
+            [:div.prod-dash__add-site
+             {:style {:flex-direction "column" :align-items "center"}}
+             [:span {:style {:font-size "1.15rem"}} "Vous n'avez pas encore de point de " [:strong "consommation d'\u00e9lectricit\u00e9"] "."]
+             [:span {:style {:font-size "1.15rem"}} "Pour commencer \u00e0 consommer, ajoutez votre lieu de consommation."]
+             [:button.btn.btn--small.btn--outline
+              {:on-click #(rf/dispatch [:consumptions/create])
+               :style {:font-size "1.15rem" :margin-top "0.75rem"}}
+              "+ Ajouter"]]
 
             :else
             [:div
@@ -459,6 +463,9 @@
                   [consumption-dashboard c]]))
              [:div.prod-dash__add-site
               [:span "Vous souhaitez ajouter un autre point de consommation ?"]
-              [:button.btn.btn--small.btn--outline
-               {:on-click #(rf/dispatch [:consumptions/create])}
-               "+ Ajouter"]]])]))}))
+              (if profile-ok?
+                [:button.btn.btn--small.btn--outline
+                 {:on-click #(rf/dispatch [:consumptions/create])}
+                 "+ Ajouter"]
+                [:span {:style {:font-size "0.85rem" :color "#e65100"}}
+                 "(compl\u00e9tez votre profil pour ajouter)"])]])]))}))

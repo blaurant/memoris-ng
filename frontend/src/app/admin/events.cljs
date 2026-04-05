@@ -408,6 +408,33 @@
                       (get-in response [:response :error] "unknown"))
     db))
 
+;; ── Update production monthly history (admin) ────────────────────────────────
+
+(rf/reg-event-fx :admin/update-production-monthly-history
+  (fn [{:keys [db]} [_ production-id entries on-success]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/admin/productions/" production-id "/monthly-history")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:monthly-history entries}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:admin/update-production-monthly-history-ok on-success]
+                  :on-failure      [:admin/update-production-monthly-history-err]}}))
+
+(rf/reg-event-db :admin/update-production-monthly-history-ok
+  (fn [db [_ on-success updated]]
+    (when on-success (on-success))
+    (let [pid (:production/id updated)]
+      (update db :admin/productions
+              (fn [productions]
+                (mapv #(if (= pid (:production/id %)) updated %) productions))))))
+
+(rf/reg-event-db :admin/update-production-monthly-history-err
+  (fn [db [_ response]]
+    (js/console.error "Failed to update production monthly history"
+                      (get-in response [:response :error] "unknown"))
+    db))
+
 ;; ── Update user profile (admin) ──────────────────────────────────────────────
 
 (rf/reg-event-fx :admin/update-user-profile

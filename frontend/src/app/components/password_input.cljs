@@ -13,9 +13,10 @@
                {:type  (if @visible? "text" "password")
                 :style (merge {:padding-right "2.5rem" :width "100%" :box-sizing "border-box"}
                               (:style props))})]
-       [:button {:on-click #(swap! visible? not)
-                 :type     "button"
-                 :style    {:position "absolute" :right "10px" :top "0" :bottom "0"
+       [:button {:on-click  #(swap! visible? not)
+                 :type      "button"
+                 :tab-index -1
+                 :style     {:position "absolute" :right "10px" :top "0" :bottom "0"
                             :background "transparent" :border "none" :cursor "pointer"
                             :padding "0" :display "flex" :align-items "center"
                             :color "var(--color-muted)"}}

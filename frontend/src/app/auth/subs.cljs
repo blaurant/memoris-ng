@@ -55,3 +55,10 @@
 
 (rf/reg-sub :auth/adhesion-loading?
   (fn [db _] (:auth/adhesion-loading? db)))
+
+(rf/reg-sub :auth/profile-complete?
+  :<- [:auth/user]
+  (fn [user _]
+    (let [np (:natural-person user)]
+      (and (seq (:first-name np))
+           (seq (:last-name np))))))

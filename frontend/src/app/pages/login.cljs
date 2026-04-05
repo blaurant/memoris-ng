@@ -90,7 +90,7 @@
                "Créer un compte")]
         [:p (if join-network
               "Créez votre compte gratuitement pour finaliser votre inscription au réseau."
-              "Créez votre compte gratuitement chez Elink-co. Cela ne vous engage en rien.")]
+              "Créez votre compte gratuitement sur Elink-co. Cela ne vous engage en rien.")]
         [:p {:style {:font-size "0.9rem" :color "var(--color-muted)" :margin-top "0.5rem"}}
          "Votre compte vous permettra ensuite d'adhérer à l'association, "
          "de créer un réseau, de consommer ou de produire de l'énergie locale."]

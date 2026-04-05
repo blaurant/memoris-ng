@@ -2,13 +2,14 @@
   (:require [app.components.legal-person-modal :as lpm]
             [app.consumptions.contract :as contract]
             [app.utils.google-maps :as google-maps]
+            [clojure.string]
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
 (def steps
   [{:key :consumer-information :label "Adresse & Réseau"        :number 1}
    {:key :linky-reference       :label "Référence Linky"        :number 2}
-   {:key :billing-address       :label "Info financières"       :number 3}
+   {:key :billing-address       :label "RIB"                    :number 3}
    {:key :contract-signature    :label "Signature du contrat"   :number 4}])
 
 (def ^:private step-order
@@ -309,7 +310,7 @@
        [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
         "Minimum 10 chiffres"])]))
 
-(defn- identity-modal
+(defn identity-modal
   "Modal to fill natural person identity, same fields as the profile page."
   [on-close]
   (let [form (r/atom {})]
@@ -485,10 +486,8 @@
            [:div {:style {:background "#fff8e1" :border "1px solid #ffe082"
                           :border-radius "var(--radius)" :padding "1.25rem"
                           :text-align "center"}}
-            [:p {:style {:font-weight "600" :margin-bottom "0.5rem"}}
-             "Veuillez d'abord renseigner votre identité"]
             [:p {:style {:font-size "0.9rem" :color "var(--color-muted)" :margin-bottom "1rem"}}
-             "Pour créer une consommation, nous avons besoin de vos informations personnelles "
+             "Pour continuer, nous avons besoin de vos informations personnelles "
              "(nom, prénom, adresse, etc.)."]
             [:button.btn.btn--green.btn--small
              {:on-click #(reset! show-identity? true)}
@@ -558,17 +557,37 @@
   (let [linky-ref (r/atom (or (:consumption/linky-reference consumption) ""))]
     (fn []
       [:div.onboarding__form
+       [:label "Numéro PDL/PRM"]
        [:input.onboarding__input
         {:type        "text"
-         :placeholder "Référence Linky (ex: PRM 12345678901234)"
+         :placeholder "Numéro à 14 chiffres"
+         :maxLength   14
          :value       @linky-ref
-         :on-change   #(reset! linky-ref (.. % -target -value))}]
+         :on-change   #(reset! linky-ref (clojure.string/replace (.. % -target -value) #"[^\d]" ""))
+         :style (when (and (seq @linky-ref) (not (re-matches #"^\d{14}$" @linky-ref)))
+                  {:border-color "#d32f2f"})}]
+       (when (and (seq @linky-ref) (not (re-matches #"^\d{14}$" @linky-ref)))
+         [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+          "Le numéro PDL/PRM doit contenir exactement 14 chiffres"])
+       [:div {:style {:display "flex" :gap "1rem" :align-items "flex-start" :margin-top "0.25rem"}}
+        [:p {:style {:font-size "0.8rem" :color "var(--color-muted)" :line-height "1.4" :flex "1"}}
+         "Vous pouvez trouver le numéro PDL du compteur Linky sur votre facture."
+         [:br]
+         "Ce numéro peut aussi être trouvé directement sur votre compteur Linky. "
+         "Pour cela, faites défiler les affichages du compteur (appui sur la touche +) "
+         "jusqu'à lire la valeur du « numéro de PRM ». "
+         "Le numéro de PRM est le nom donné au PDL sur le compteur Enedis Linky. "
+         "Il s'agit d'une suite de 14 chiffres qui identifie le logement sur le réseau électrique."]
+        [:img {:src "/img/linky-prm.png"
+               :alt "Compteur Linky affichant le numéro de PRM"
+               :style {:width "120px" :border-radius "var(--radius)"
+                       :box-shadow "0 1px 4px rgba(0,0,0,0.15)" :flex-shrink "0"}}]]
        [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
         [:button.btn.btn--small.btn--outline
          {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
          "Précédent"]
         [:button.btn.btn--green.btn--small
-         {:disabled (empty? @linky-ref)
+         {:disabled (not (re-matches #"^\d{14}$" (or @linky-ref "")))
           :on-click #(rf/dispatch [:consumptions/submit-step2
                                    consumption-id @linky-ref])}
          "Suivant"]]])))
@@ -578,6 +597,7 @@
         use-same?    (r/atom (or (nil? existing-billing)
                                  (= existing-billing consumer-address)))
         billing-addr (r/atom (or existing-billing ""))
+        iban-holder  (r/atom (or (:consumption/iban-holder consumption) ""))
         iban         (r/atom (or (:consumption/iban consumption) ""))
         bic          (r/atom (or (:consumption/bic consumption) ""))]
     (fn []
@@ -620,34 +640,53 @@
            :disabled    same?
            :on-change   #(reset! billing-addr (.. % -target -value))}]
 
-         ;; IBAN / BIC
+         ;; IBAN holder / IBAN / BIC
          [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "1rem"
                           :margin-bottom "0.25rem" :display "block"}}
-          "IBAN " [:span {:style {:color "#d32f2f"}} "*"]]
+          "Nom ou raison sociale du titulaire " [:span {:style {:color "#d32f2f"}} "*"]]
          [:input.onboarding__input
           {:type        "text"
-           :placeholder "Ex: FR76 3000 6000 0112 3456 7890 189"
-           :value       @iban
-           :on-change   #(reset! iban (.. % -target -value))}]
+           :placeholder "Ex: Jean Dupont ou SCI Les Oliviers"
+           :value       @iban-holder
+           :on-change   #(reset! iban-holder (.. % -target -value))}]
          [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "0.5rem"
                           :margin-bottom "0.25rem" :display "block"}}
-          "BIC " [:span {:style {:color "var(--color-muted)" :font-weight "400" :font-size "0.8rem"}}
-                  "(recommandé)"]]
-         [:input.onboarding__input
-          {:type        "text"
-           :placeholder "Ex: BNPAFRPP"
-           :value       @bic
-           :on-change   #(reset! bic (.. % -target -value))}]
+          "IBAN " [:span {:style {:color "#d32f2f"}} "*"]]
+         (let [iban-clean (clojure.string/replace (clojure.string/upper-case @iban) #"\s" "")
+               iban-valid? (and (seq iban-clean)
+                                (re-matches #"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$" iban-clean))]
+           [:<>
+            [:input.onboarding__input
+             {:type        "text"
+              :placeholder "Ex: FR76 3000 6000 0112 3456 7890 189"
+              :value       @iban
+              :on-change   #(reset! iban (.. % -target -value))
+              :style (when (and (seq @iban) (not iban-valid?))
+                       {:border-color "#d32f2f"})}]
+            (when (and (seq @iban) (not iban-valid?))
+              [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+               "IBAN invalide (2 lettres + 2 chiffres + 11 à 30 caractères alphanumériques)"])
 
-         [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
-          [:button.btn.btn--small.btn--outline
-           {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
-           "Précédent"]
-          [:button.btn.btn--green.btn--small
-           {:disabled (or (empty? effective-addr) (empty? @iban))
-            :on-click #(rf/dispatch [:consumptions/submit-step3
-                                     consumption-id effective-addr @iban @bic])}
-           "Suivant"]]]))))
+            [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "0.5rem"
+                             :margin-bottom "0.25rem" :display "block"}}
+             "BIC " [:span {:style {:color "var(--color-muted)" :font-weight "400" :font-size "0.8rem"}}
+                     "(recommandé)"]]
+            [:input.onboarding__input
+             {:type        "text"
+              :placeholder "Ex: BNPAFRPP"
+              :value       @bic
+              :on-change   #(reset! bic (.. % -target -value))}]
+
+            [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
+             [:button.btn.btn--small.btn--outline
+              {:on-click #(rf/dispatch [:consumptions/go-back consumption-id])}
+              "Précédent"]
+             [:button.btn.btn--green.btn--small
+              {:disabled (or (empty? effective-addr) (empty? @iban-holder) (not iban-valid?))
+               :on-click #(rf/dispatch [:consumptions/submit-step3
+                                        consumption-id effective-addr @iban-holder @iban @bic])}
+              "Suivant"]]])]))))
+
 
 (def ^:private contract-configs
   [{:type     :producer
@@ -813,7 +852,7 @@
         cid       (:consumption/id consumption)]
     [:div.consumption-block.consumption-block--onboarding
      [:div.consumption-block__header
-      [:span "Nouvelle Consommation"]
+      [:span "Je veux devenir consommateur d'\u00e9lectricit\u00e9 locale"]
       [:button {:on-click #(when (js/confirm "Annuler cette consommation ?")
                               (rf/dispatch [:consumptions/abandon cid]))
                :title    "Annuler cette consommation"

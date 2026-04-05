@@ -64,10 +64,10 @@
         p'))
 
 (defn submit-payment-info
-      "Submit step 2: IBAN."
-      [production-repo user-id production-id iban]
+      "Submit step 2: IBAN holder, IBAN, BIC and payment address."
+      [production-repo user-id production-id iban-holder iban bic payment-address]
       (let [p  (find-and-check-ownership production-repo user-id production-id)
-            p' (production/submit-payment-info p iban)
+            p' (production/submit-payment-info p iban-holder iban bic payment-address)
             p' (production/save! production-repo p p')]
         (mu/log ::payment-info-submitted :production-id production-id)
         p'))
@@ -239,3 +239,14 @@
               p' (production/save! production-repo p p')]
           (mu/log ::production-activated :production-id production-id)
           p')))
+
+(defn update-monthly-history
+  "Admin: update the monthly production history for a production."
+  [production-repo production-id entries]
+  (let [p (production/find-by-id production-repo production-id)]
+    (when-not p
+      (throw (ex-info "Production not found" {:production-id production-id})))
+    (let [p' (production/set-monthly-history p entries)
+          p' (production/save! production-repo p p')]
+      (mu/log ::monthly-history-updated :production-id production-id)
+      p')))

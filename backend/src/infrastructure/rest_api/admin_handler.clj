@@ -3,14 +3,20 @@
             [application.network-scenarios :as network-scenarios]
             [application.production-scenarios :as production-scenarios]
             [application.user-scenarios :as user-scenarios]
+            [clj-http.client :as http]
+            [clojure.string]
+            [com.brunobonacci.mulog :as mu]
             [domain.alert-banner :as alert]
             [domain.consumption :as consumption]
+            [domain.document-signer :as document-signer]
             [domain.network :as network]
             [domain.production :as production]
             [domain.user :as user]
             [domain.id :as id]
             [infrastructure.rest-api.admin-middleware :as admin-mw]
-            [infrastructure.rest-api.auth-middleware :as auth-mw]))
+            [infrastructure.rest-api.auth-middleware :as auth-mw])
+  (:import (java.io ByteArrayInputStream ByteArrayOutputStream)
+           (java.util.zip ZipEntry ZipOutputStream)))
 
 (defn- serialize-user [u]
   (-> u
@@ -207,6 +213,24 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
+(defn- update-production-monthly-history-handler [production-repo network-repo user-repo]
+  (fn [request]
+    (try
+      (let [production-id (id/build-id (get-in request [:path-params :id]))
+            entries       (get-in request [:body-params :monthly-history])
+            entries       (mapv (fn [e]
+                                  {:year  (int (:year e))
+                                   :month (int (:month e))
+                                   :kwh   (double (:kwh e))})
+                                entries)
+            p' (production-scenarios/update-monthly-history
+                 production-repo production-id entries)]
+        {:status 200
+         :body   (serialize-production p' network-repo user-repo)})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
 (defn- serialize-consumption [c network-repo user-repo]
   (let [nid (:consumption/network-id c)
         net-name (when nid
@@ -267,7 +291,88 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
-(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret]
+(defn- sanitize-filename
+  "Replace spaces and special chars with underscores for safe filenames."
+  [s]
+  (when s
+    (-> s
+        (clojure.string/replace #"[^a-zA-Z0-9àâäéèêëïîôùûüÿçÀÂÄÉÈÊËÏÎÔÙÛÜŸÇ_\-]" "_")
+        (clojure.string/replace #"_+" "_"))))
+
+(defn- download-pdf-bytes
+  "Download PDF bytes from a URL. Returns byte array or nil on failure."
+  [url]
+  (try
+    (let [resp (http/get url {:as :byte-array :throw-exceptions false})]
+      (when (<= 200 (:status resp) 299)
+        (:body resp)))
+    (catch Exception e
+      (mu/log ::pdf-download-failed :url url :error (.getMessage e))
+      nil)))
+
+(defn- collect-contract-entries
+  "Collect all signed contract entries with their submission IDs and metadata."
+  [user-repo consumption-repo]
+  (let [users        (user/find-all user-repo)
+        consumptions (consumption/find-all consumption-repo)]
+    (concat
+      ;; Adhesions
+      (for [u     users
+            :when (and (:user/adhesion-signed-at u)
+                       (:user/docuseal-submission-id u))]
+        {:type          "adhesion"
+         :submission-id (:user/docuseal-submission-id u)
+         :name          (or (:user/name u) (str (:user/email u)))
+         :signed-at     (:user/adhesion-signed-at u)})
+      ;; Producer contracts
+      (for [c     consumptions
+            :when (:consumption/docuseal-producer-submission-id c)
+            :let  [u (user/find-by-id user-repo (:consumption/user-id c))]]
+        {:type          "producteur"
+         :submission-id (:consumption/docuseal-producer-submission-id c)
+         :name          (or (:user/name u) (str (:user/email u)))
+         :signed-at     (:consumption/producer-contract-signed-at c)})
+      ;; SEPA mandates
+      (for [c     consumptions
+            :when (:consumption/docuseal-sepa-submission-id c)
+            :let  [u (user/find-by-id user-repo (:consumption/user-id c))]]
+        {:type          "sepa"
+         :submission-id (:consumption/docuseal-sepa-submission-id c)
+         :name          (or (:user/name u) (str (:user/email u)))
+         :signed-at     (:consumption/sepa-mandate-signed-at c)}))))
+
+(defn- export-contracts-zip-handler [user-repo consumption-repo document-signer]
+  (fn [_request]
+    (try
+      (let [entries   (collect-contract-entries user-repo consumption-repo)
+            baos      (ByteArrayOutputStream.)
+            zos       (ZipOutputStream. baos)
+            added     (atom 0)]
+        (doseq [{:keys [type submission-id name signed-at]} entries]
+          (when-let [url (document-signer/get-signed-document-url document-signer submission-id)]
+            (when-let [pdf-bytes (download-pdf-bytes url)]
+              (let [date-part (or (some-> signed-at (subs 0 10)) "unknown")
+                    filename  (str "contrats/" type "/"
+                                   (sanitize-filename name) "_" type "_" date-part ".pdf")]
+                (.putNextEntry zos (ZipEntry. filename))
+                (.write zos ^bytes pdf-bytes)
+                (.closeEntry zos)
+                (swap! added inc)))))
+        (.close zos)
+        (mu/log ::contracts-zip-exported :count @added)
+        (if (pos? @added)
+          {:status  200
+           :headers {"Content-Type"        "application/zip"
+                     "Content-Disposition" "attachment; filename=\"contrats-elink-co.zip\""}
+           :body    (ByteArrayInputStream. (.toByteArray baos))}
+          {:status 200
+           :body   {:message "Aucun contrat signé à exporter."}}))
+      (catch Exception e
+        (mu/log ::contracts-zip-error :error (.getMessage e))
+        {:status 500
+         :body   {:error "Erreur lors de la génération du ZIP."}}))))
+
+(defn routes [user-repo network-repo ec-repo alert-banner-repo consumption-repo production-repo email-sender jwt-secret document-signer]
   [["/api/v1/alert"
     {:get (get-alert-handler alert-banner-repo)}]
    ["/api/v1/admin/alert"
@@ -327,5 +432,13 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/productions/:id/activate"
     {:put        (activate-production-handler production-repo network-repo user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/productions/:id/monthly-history"
+    {:put        (update-production-monthly-history-handler production-repo network-repo user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/contracts/export-zip"
+    {:get        (export-contracts-zip-handler user-repo consumption-repo document-signer)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]])

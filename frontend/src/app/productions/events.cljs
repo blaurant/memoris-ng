@@ -72,11 +72,12 @@
 ;; ── Submit step 2 — payment info ───────────────────────────────────────────
 
 (rf/reg-event-fx :productions/submit-step2
-  (fn [{:keys [db]} [_ production-id iban]]
+  (fn [{:keys [db]} [_ production-id iban-holder iban bic payment-address]]
     {:http-xhrio {:method          :put
                   :uri             (str config/API_BASE "/api/v1/productions/" production-id "/step/payment-info")
                   :headers         {"Authorization" (str "Bearer " (:auth/token db))}
-                  :params          {:iban iban}
+                  :params          (cond-> {:iban-holder iban-holder :iban iban :payment-address payment-address}
+                                    (seq bic) (assoc :bic bic))
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
                   :on-success      [:productions/step-ok]

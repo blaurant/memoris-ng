@@ -1,6 +1,8 @@
 (ns app.components.production-onboarding-form
-  (:require [app.productions.contract :as contract]
+  (:require [app.components.onboarding-form :as conso-onboarding]
+            [app.productions.contract :as contract]
             [app.utils.google-maps :as google-maps]
+            [clojure.string]
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
@@ -247,14 +249,35 @@
 ;; ── Step 0: Producer information ──────────────────────────────────────────
 
 (defn- step0-form [production-id production]
-  (let [init-nid      (:production/network-id production)
-        address       (r/atom (or (:production/producer-address production) ""))
-        selected-name (r/atom (:production/network-name production))
-        selected-id   (r/atom init-nid)
-        show-modal?   (r/atom false)]
+  (let [init-nid       (:production/network-id production)
+        address        (r/atom (or (:production/producer-address production) ""))
+        selected-name  (r/atom (:production/network-name production))
+        selected-id    (r/atom init-nid)
+        show-modal?    (r/atom false)
+        show-identity? (r/atom false)]
     (fn []
-      (let [networks @(rf/subscribe [:networks/list])]
+      (let [networks @(rf/subscribe [:networks/list])
+            user     @(rf/subscribe [:auth/user])
+            natural  (:natural-person user)]
       [:div.onboarding__form
+       (if-not (and natural
+                    (seq (:first-name natural))
+                    (seq (:last-name natural)))
+         ;; No identity filled — show message + modal to fill it
+         [:div {:style {:background "#fff8e1" :border "1px solid #ffe082"
+                        :border-radius "var(--radius)" :padding "1.25rem"
+                        :text-align "center"}}
+          [:p {:style {:font-size "0.9rem" :color "var(--color-muted)" :margin-bottom "1rem"}}
+           "Pour continuer, nous avons besoin de vos informations personnelles "
+           "(nom, prénom, adresse, etc.)."]
+          [:button.btn.btn--green.btn--small
+           {:on-click #(reset! show-identity? true)}
+           "Renseigner mon identité"]
+          (when @show-identity?
+            [conso-onboarding/identity-modal #(reset! show-identity? false)])]
+
+         ;; Identity filled — show address form
+         [:<>
        [:label "Adresse de production"]
        [:input.onboarding__input
         {:type        "text"
@@ -299,7 +322,7 @@
                            production-id @address net-opts]))
           ;; on-cancel
           (fn []
-            (reset! show-modal? false))])]))))
+            (reset! show-modal? false))])])]))))
 
 ;; ── Step 1: Installation info ──────────────────────────────────────────────
 
@@ -324,9 +347,28 @@
        [:label "Numero PDL/PRM"]
        [:input.onboarding__input
         {:type        "text"
-         :placeholder "Ex: 12345678901234"
+         :placeholder "Numéro à 14 chiffres"
+         :maxLength   14
          :value       @pdl-prm
-         :on-change   #(reset! pdl-prm (.. % -target -value))}]
+         :on-change   #(reset! pdl-prm (clojure.string/replace (.. % -target -value) #"[^\d]" ""))
+         :style (when (and (seq @pdl-prm) (not (re-matches #"^\d{14}$" @pdl-prm)))
+                  {:border-color "#d32f2f"})}]
+       (when (and (seq @pdl-prm) (not (re-matches #"^\d{14}$" @pdl-prm)))
+         [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+          "Le numéro PDL/PRM doit contenir exactement 14 chiffres"])
+       [:div {:style {:display "flex" :gap "1rem" :align-items "flex-start" :margin-top "0.25rem"}}
+        [:p {:style {:font-size "0.8rem" :color "var(--color-muted)" :line-height "1.4" :flex "1"}}
+         "Vous pouvez trouver le numéro PDL du compteur Linky sur votre facture."
+         [:br]
+         "Ce numéro peut aussi être trouvé directement sur votre compteur Linky. "
+         "Pour cela, faites défiler les affichages du compteur (appui sur la touche +) "
+         "jusqu'à lire la valeur du « numéro de PRM ». "
+         "Le numéro de PRM est le nom donné au PDL sur le compteur Enedis Linky. "
+         "Il s'agit d'une suite de 14 chiffres qui identifie le logement sur le réseau électrique."]
+        [:img {:src "/img/linky-prm.png"
+               :alt "Compteur Linky affichant le numéro de PRM"
+               :style {:width "120px" :border-radius "var(--radius)"
+                       :box-shadow "0 1px 4px rgba(0,0,0,0.15)" :flex-shrink "0"}}]]
        [:label "Puissance installee (kWh)"]
        [:input.onboarding__input
         {:type        "number"
@@ -346,15 +388,18 @@
        [:label "Numero de compteur Linky"]
        [:input.onboarding__input
         {:type        "text"
-         :placeholder "Ex: 09123456789012"
+         :placeholder "Ex: LIN123456"
          :value       @linky-meter
          :on-change   #(reset! linky-meter (.. % -target -value))}]
+       [:p {:style {:font-size "0.8rem" :color "var(--color-muted)" :margin-top "0.25rem" :line-height "1.4"}}
+        "Votre numéro de compteur Linky figure " [:strong "sur le capot de votre appareil"] ". "
+        "D'un simple coup d'œil, vérifiez qu'il correspond bien à celui qui figure sur votre facture."]
        [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
         [:button.btn.btn--small.btn--outline
          {:on-click #(rf/dispatch [:productions/go-back production-id])}
          "Précédent"]
         [:button.btn.btn--green.btn--small
-         {:disabled (or (empty? @pdl-prm)
+         {:disabled (or (not (re-matches #"^\d{14}$" (or @pdl-prm "")))
                         (empty? @power)
                         (empty? @energy-type)
                         (empty? @linky-meter))
@@ -364,24 +409,91 @@
          "Suivant"]]])))
 
 (defn- step2-form [production-id production]
-  (let [iban (r/atom (or (:production/iban production) ""))]
+  (let [producer-address (:production/producer-address production)
+        use-same?        (r/atom (or (nil? (:production/payment-address production))
+                                     (= (:production/payment-address production) producer-address)))
+        payment-addr     (r/atom (or (:production/payment-address production) ""))
+        iban-holder      (r/atom (or (:production/iban-holder production) ""))
+        iban             (r/atom (or (:production/iban production) ""))
+        bic              (r/atom (or (:production/bic production) ""))]
     (fn []
-      [:div.onboarding__form
-       [:label "IBAN"]
-       [:input.onboarding__input
-        {:type        "text"
-         :placeholder "Ex: FR76 3000 6000 0112 3456 7890 189"
-         :value       @iban
-         :on-change   #(reset! iban (.. % -target -value))}]
-       [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
-        [:button.btn.btn--small.btn--outline
-         {:on-click #(rf/dispatch [:productions/go-back production-id])}
-         "Précédent"]
-        [:button.btn.btn--green.btn--small
-         {:disabled (empty? @iban)
-          :on-click #(rf/dispatch [:productions/submit-step2
-                                    production-id @iban])}
-         "Suivant"]]])))
+      (let [same?          @use-same?
+            effective-addr (if same? producer-address @payment-addr)]
+        [:div.onboarding__form
+         ;; Payment address
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-bottom "0.25rem" :display "block"}}
+          "Adresse de paiement"]
+         [:div.onboarding__radio-group
+          [:label.onboarding__radio-label
+           [:input {:type      "radio"
+                    :name      "payment-addr-choice"
+                    :checked   same?
+                    :on-change #(reset! use-same? true)}]
+           "Utiliser la même adresse que l'adresse de production"]
+          [:label {:class (str "onboarding__radio-label"
+                               (when same? " onboarding__radio-label--disabled"))}
+           [:input {:type      "radio"
+                    :name      "payment-addr-choice"
+                    :checked   (not same?)
+                    :on-change #(reset! use-same? false)}]
+           "Utiliser une adresse différente"]]
+         [:input.onboarding__input
+          {:type        "text"
+           :placeholder "Adresse de paiement"
+           :value       (if same? producer-address @payment-addr)
+           :disabled    same?
+           :on-change   #(reset! payment-addr (.. % -target -value))}]
+
+         ;; IBAN holder / IBAN / BIC
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "1rem"
+                          :margin-bottom "0.25rem" :display "block"}}
+          "Nom ou raison sociale du titulaire " [:span {:style {:color "#d32f2f"}} "*"]]
+         [:input.onboarding__input
+          {:type        "text"
+           :placeholder "Ex: Jean Dupont ou SCI Les Oliviers"
+           :value       @iban-holder
+           :on-change   #(reset! iban-holder (.. % -target -value))}]
+
+         ;; IBAN
+         [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "0.5rem"
+                          :margin-bottom "0.25rem" :display "block"}}
+          "IBAN " [:span {:style {:color "#d32f2f"}} "*"]]
+         (let [iban-clean (clojure.string/replace (clojure.string/upper-case @iban) #"\s" "")
+               iban-valid? (and (seq iban-clean)
+                                (re-matches #"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$" iban-clean))]
+           [:<>
+            [:input.onboarding__input
+             {:type        "text"
+              :placeholder "Ex: FR76 3000 6000 0112 3456 7890 189"
+              :value       @iban
+              :on-change   #(reset! iban (.. % -target -value))
+              :style (when (and (seq @iban) (not iban-valid?))
+                       {:border-color "#d32f2f"})}]
+            (when (and (seq @iban) (not iban-valid?))
+              [:span {:style {:font-size "0.8rem" :color "#d32f2f"}}
+               "IBAN invalide (2 lettres + 2 chiffres + 11 à 30 caractères alphanumériques)"])
+
+            ;; BIC
+            [:label {:style {:font-weight "600" :font-size "0.9rem" :margin-top "0.5rem"
+                             :margin-bottom "0.25rem" :display "block"}}
+             "BIC " [:span {:style {:color "var(--color-muted)" :font-weight "400" :font-size "0.8rem"}}
+                     "(recommandé)"]]
+            [:input.onboarding__input
+             {:type        "text"
+              :placeholder "Ex: BNPAFRPP"
+              :value       @bic
+              :on-change   #(reset! bic (.. % -target -value))}]
+
+            [:div {:style {:display "flex" :justify-content "space-between" :margin-top "0.75rem"}}
+             [:button.btn.btn--small.btn--outline
+              {:on-click #(rf/dispatch [:productions/go-back production-id])}
+              "Précédent"]
+             [:button.btn.btn--green.btn--small
+              {:disabled (or (empty? effective-addr) (empty? @iban-holder) (not iban-valid?))
+               :on-click #(rf/dispatch [:productions/submit-step2
+                                         production-id @iban-holder @iban @bic effective-addr])}
+              "Suivant"]]])]))))
+
 
 (defn- contract-icon []
   [:svg {:width "24" :height "24" :viewBox "0 0 24 24"
