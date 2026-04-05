@@ -5,7 +5,8 @@
   [:map
    [:alert-banner/id uuid?]
    [:alert-banner/message string?]
-   [:alert-banner/active? boolean?]])
+   [:alert-banner/active? boolean?]
+   [:alert-banner/contract-notifications? {:optional true} boolean?]])
 
 (defn build-alert-banner [attrs]
   (when-not (m/validate AlertBanner attrs)

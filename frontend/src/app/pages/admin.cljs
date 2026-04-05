@@ -1531,8 +1531,18 @@
     (.revokeObjectURL js/URL url)))
 
 (defn contracts-tab []
-  (fn []
-    (let [users         @(rf/subscribe [:admin/users])
+  (let [notif-enabled? (r/atom nil)
+        loading-notif? (r/atom true)]
+    ;; Fetch initial state
+    (-> (js/fetch (str config/API_BASE "/api/v1/admin/contract-notifications")
+                  #js {:headers #js {"Authorization" (str "Bearer " @(rf/subscribe [:auth/token]))}})
+        (.then #(.json %))
+        (.then (fn [data]
+                 (reset! notif-enabled? (.-enabled data))
+                 (reset! loading-notif? false)))
+        (.catch (fn [_] (reset! loading-notif? false))))
+    (fn []
+      (let [users         @(rf/subscribe [:admin/users])
           consumptions  @(rf/subscribe [:admin/consumptions])
           productions   @(rf/subscribe [:admin/productions])
           users-load?   @(rf/subscribe [:admin/users-loading?])
@@ -1612,6 +1622,36 @@
                                         (js/URL.revokeObjectURL url))))
                              (.catch (fn [e] (js/console.error "ZIP export error:" e))))))}
           "T\u00e9l\u00e9charger tous les contrats"]]]
+
+       ;; Contract notification toggle
+       [:div {:style {:display "flex" :align-items "center" :gap "0.75rem"
+                      :margin-bottom "1rem" :padding "0.75rem 1rem"
+                      :background "var(--color-green-pale)" :border-radius "var(--radius)"}}
+        (let [enabled? (boolean @notif-enabled?)]
+          [:div {:style {:display "flex" :align-items "center" :gap "0.75rem" :cursor "pointer"}
+                 :on-click (fn []
+                             (when-not @loading-notif?
+                               (let [new-val (not @notif-enabled?)
+                                     token   @(rf/subscribe [:auth/token])]
+                                 (reset! notif-enabled? new-val)
+                                 (-> (js/fetch (str config/API_BASE "/api/v1/admin/contract-notifications")
+                                               #js {:method  "PUT"
+                                                    :headers #js {"Authorization"  (str "Bearer " token)
+                                                                  "Content-Type"   "application/json"}
+                                                    :body    (js/JSON.stringify #js {:enabled new-val})})
+                                     (.catch (fn [_] (reset! notif-enabled? (not new-val))))))))}
+           ;; iOS-style toggle
+           [:div {:style {:width "44px" :height "26px" :border-radius "13px" :flex-shrink "0"
+                          :background (if enabled? "#43a047" "#ccc")
+                          :position "relative" :transition "background 0.2s ease"}}
+            [:div {:style {:width "22px" :height "22px" :border-radius "50%"
+                           :background "#fff" :position "absolute" :top "2px"
+                           :left (if enabled? "20px" "2px")
+                           :transition "left 0.2s ease"
+                           :box-shadow "0 1px 3px rgba(0,0,0,0.3)"}}]]
+           [:span {:style {:font-size "0.9rem" :color "var(--color-text)"}}
+            "Recevoir un e-mail \u00e0 chaque signature de contrat (jurgenklein28@gmail.com)"]])]
+
        (cond
          loading?
          [:p.loading "Chargement..."]
@@ -1623,4 +1663,4 @@
          [:div
           [contracts-table-section "Adh\u00e9sions" adhesion-rows]
           [contracts-table-section "Productions" prod-rows]
-          [contracts-table-section "Consommations" conso-rows]])])))
+          [contracts-table-section "Consommations" conso-rows]])]))))

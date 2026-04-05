@@ -153,7 +153,7 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- docuseal-webhook-handler [user-repo]
+(defn- docuseal-webhook-handler [user-repo alert-banner-repo email-sender]
   (fn [request]
     (try
       (let [body          (json/read-str (slurp (:body request)) :key-fn keyword)
@@ -163,18 +163,18 @@
                             (or (:submission_id data) (:id data)))]
         (mu/log ::docuseal-webhook :event-type event-type :submission-id submission-id)
         (when (and (= "submission.completed" event-type) submission-id)
-          (scenarios/complete-adhesion-webhook user-repo submission-id))
+          (scenarios/complete-adhesion-webhook user-repo alert-banner-repo email-sender submission-id))
         {:status 200 :body {:ok true}})
       (catch clojure.lang.ExceptionInfo e
         (mu/log ::docuseal-webhook-error :error (.getMessage e))
         {:status 200 :body {:ok true}}))))
 
-(defn- check-adhesion-handler [user-repo document-signer]
+(defn- check-adhesion-handler [user-repo document-signer alert-banner-repo email-sender]
   (fn [request]
     (try
       (let [user-id (user-id-from-request request)
             result  (scenarios/check-adhesion-status
-                      user-repo document-signer user-id)]
+                      user-repo document-signer alert-banner-repo email-sender user-id)]
         {:status 200
          :body   result})
       (catch clojure.lang.ExceptionInfo e
@@ -209,7 +209,7 @@
         {:status (error-status e)
          :body   {:error (.getMessage e)}}))))
 
-(defn- check-contract-handler [consumption-repo user-repo document-signer]
+(defn- check-contract-handler [consumption-repo user-repo document-signer alert-banner-repo email-sender]
   (fn [request]
     (try
       (let [user-id        (user-id-from-request request)
@@ -218,6 +218,7 @@
             contract-type  (keyword ct-str)
             result         (scenarios/check-contract-status
                              consumption-repo user-repo document-signer
+                             alert-banner-repo email-sender
                              user-id consumption-id contract-type)]
         {:status 200
          :body   result})
@@ -297,7 +298,7 @@
 
 (defn routes
       "Returns Reitit route vectors for consumption endpoints."
-      [consumption-repo production-repo network-repo user-repo document-signer jwt-secret]
+      [consumption-repo production-repo network-repo user-repo document-signer alert-banner-repo email-sender jwt-secret]
       [["/api/v1/consumptions"
         {:get        (list-consumptions-handler consumption-repo)
          :post       (create-consumption-handler consumption-repo)
@@ -333,7 +334,7 @@
         {:put        (initiate-contract-handler consumption-repo user-repo document-signer)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/check-contract"
-        {:get        (check-contract-handler consumption-repo user-repo document-signer)
+        {:get        (check-contract-handler consumption-repo user-repo document-signer alert-banner-repo email-sender)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/consumptions/:id/contract-document"
         {:get        (contract-document-handler consumption-repo document-signer)
@@ -342,10 +343,10 @@
         {:put        (sign-adhesion-handler user-repo document-signer)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/auth/check-adhesion"
-        {:get        (check-adhesion-handler user-repo document-signer)
+        {:get        (check-adhesion-handler user-repo document-signer alert-banner-repo email-sender)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/auth/adhesion-document"
         {:get        (adhesion-document-handler user-repo document-signer)
          :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
        ["/api/v1/webhooks/docuseal"
-        {:post       (docuseal-webhook-handler user-repo)}]])
+        {:post       (docuseal-webhook-handler user-repo alert-banner-repo email-sender)}]])

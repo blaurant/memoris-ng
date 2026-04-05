@@ -1,14 +1,32 @@
 (ns application.consumption-scenarios
   (:require [com.brunobonacci.mulog :as mu]
             [domain.adhesion-html :as adhesion-html]
+            [domain.alert-banner :as alert]
             [domain.consumption :as consumption]
             [domain.contract-html :as contract-html]
             [domain.document-signer :as document-signer]
+            [domain.email-sender :as email-sender]
             [domain.id]
             [domain.network :as network]
             [domain.production :as production]
             [domain.user :as user]))
 
+(def ^:private admin-notification-email "jurgenklein28@gmail.com")
+
+(defn- notify-contract-signed!
+  "Send an email notification to the admin when a contract is signed, if enabled."
+  [alert-banner-repo email-sender user-name contract-type]
+  (try
+    (let [banner (alert/find-current alert-banner-repo)]
+      (when (:alert-banner/contract-notifications? banner)
+        (email-sender/send-admin-notification!
+          email-sender
+          [admin-notification-email]
+          (str "Contrat signé — " contract-type)
+          (str "<p>Le contrat <strong>" contract-type "</strong> a été signé par <strong>"
+               user-name "</strong>.</p>"))))
+    (catch Exception e
+      (mu/log ::contract-notification-failed :error (.getMessage e)))))
 
 (defn list-consumptions
       "List all consumptions for the given user."
@@ -203,7 +221,7 @@
 (defn complete-adhesion-webhook
       "Called by the DocuSeal webhook when adhesion is signed.
        Finds the user by submission-id and marks adhesion as signed."
-      [user-repo submission-id]
+      [user-repo alert-banner-repo email-sender submission-id]
       (let [u (user/find-by-docuseal-submission-id user-repo submission-id)]
         (when-not u
           (throw (ex-info "User not found for submission" {:submission-id submission-id})))
@@ -211,13 +229,15 @@
           (let [u' (user/sign-adhesion u)]
             (user/save! user-repo u')
             (mu/log ::adhesion-signed :user-id (:user/id u)
-                    :submission-id submission-id)))
+                    :submission-id submission-id)
+            (notify-contract-signed! alert-banner-repo email-sender
+                                     (:user/name u) "Adhésion")))
         :ok))
 
 (defn check-adhesion-status
       "Check with DocuSeal if the adhesion has been signed.
        If completed, marks the user's adhesion as signed."
-      [user-repo document-signer user-id]
+      [user-repo document-signer alert-banner-repo email-sender user-id]
       (let [u (user/find-by-id user-repo user-id)]
         (when-not u
           (throw (ex-info "User not found" {:user-id user-id})))
@@ -232,7 +252,9 @@
                   (user/save! user-repo u')
                   (mu/log ::adhesion-confirmed-via-poll
                           :user-id user-id
-                          :submission-id (:user/docuseal-submission-id u))))
+                          :submission-id (:user/docuseal-submission-id u))
+                  (notify-contract-signed! alert-banner-repo email-sender
+                                           (:user/name u) "Adhésion")))
               {:signed completed?})))))
 
 (defn get-adhesion-document-url
@@ -284,7 +306,8 @@
 (defn check-contract-status
       "Check with DocuSeal if a contract has been signed.
        If completed, marks the contract as signed on the consumption."
-      [consumption-repo user-repo document-signer user-id consumption-id contract-type]
+      [consumption-repo user-repo document-signer alert-banner-repo email-sender
+       user-id consumption-id contract-type]
       (let [c       (find-and-check-ownership consumption-repo user-id consumption-id)
             u       (user/find-by-id user-repo user-id)
             sub-key (or (contract-type->submission-key contract-type)
@@ -299,7 +322,9 @@
                 (mu/log ::contract-signed
                         :consumption-id consumption-id
                         :contract-type  contract-type
-                        :submission-id  sub-id)))
+                        :submission-id  sub-id)
+                (notify-contract-signed! alert-banner-repo email-sender
+                                         (:user/name u) (name contract-type))))
             {:signed completed?}))))
 
 (defn get-contract-document-url

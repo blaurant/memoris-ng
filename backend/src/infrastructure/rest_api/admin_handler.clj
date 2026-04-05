@@ -122,6 +122,26 @@
         {:status 400
          :body   {:error (.getMessage e)}}))))
 
+(defn- get-contract-notifications-handler [alert-banner-repo]
+  (fn [_request]
+    (let [banner (or (alert/find-current alert-banner-repo) (alert/default-alert-banner))]
+      {:status 200
+       :body   {:enabled (boolean (:alert-banner/contract-notifications? banner))}})))
+
+(defn- toggle-contract-notifications-handler [alert-banner-repo]
+  (fn [request]
+    (try
+      (let [{:keys [enabled]} (:body-params request)
+            current (or (alert/find-current alert-banner-repo) (alert/default-alert-banner))
+            updated (alert/build-alert-banner
+                      (assoc current :alert-banner/contract-notifications? (boolean enabled)))]
+        (alert/save! alert-banner-repo updated)
+        {:status 200
+         :body   {:enabled (boolean (:alert-banner/contract-notifications? updated))}})
+      (catch Exception e
+        {:status 400
+         :body   {:error (.getMessage e)}}))))
+
 (defn- serialize-production [p network-repo user-repo]
   (let [nid (:production/network-id p)
         net-name (when nid
@@ -440,5 +460,10 @@
                   [admin-mw/wrap-admin-only]]}]
    ["/api/v1/admin/contracts/export-zip"
     {:get        (export-contracts-zip-handler user-repo consumption-repo document-signer)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
+                  [admin-mw/wrap-admin-only]]}]
+   ["/api/v1/admin/contract-notifications"
+    {:get        (get-contract-notifications-handler alert-banner-repo)
+     :put        (toggle-contract-notifications-handler alert-banner-repo)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]
                   [admin-mw/wrap-admin-only]]}]])
