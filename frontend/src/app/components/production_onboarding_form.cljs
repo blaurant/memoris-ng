@@ -564,7 +564,7 @@
            "Chargement..."]
           [:button.btn.btn--small.btn--outline
            {:on-click #(rf/dispatch [:auth/sign-adhesion])}
-           "A signer"]))]
+           "Ouvrir pour signature"]))]
      ;; DocuSeal signing watcher
      [docuseal-signing-watcher]
      ;; Navigation buttons

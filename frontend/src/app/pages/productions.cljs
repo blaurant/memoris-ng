@@ -31,11 +31,12 @@
         max-kwh (apply max 1 (map :kwh sorted))
         n       (count sorted)
         w       280
-        h       130
+        h       145
         bar-w   30
+        top-pad 15
         gap     (if (> n 1) (/ (- w (* n bar-w)) (dec n)) 0)
         chart-h 90
-        label-y (+ chart-h 15)]
+        label-y (+ top-pad chart-h 15)]
     (when (seq sorted)
       [:svg {:viewBox (str "0 0 " w " " h) :width "100%"
              :style {:max-width "320px" :display "block" :margin "0 auto"}}
@@ -43,15 +44,17 @@
          (for [[idx entry] (map-indexed vector sorted)]
            (let [x      (* idx (+ bar-w gap))
                  bar-h  (* chart-h (/ (:kwh entry) max-kwh))
-                 y      (- chart-h bar-h)
+                 y      (+ top-pad (- chart-h bar-h))
                  cx     (+ x (/ bar-w 2))]
              ^{:key idx}
-             [:g
+             [:g {:style {:cursor "pointer"}}
               [:rect {:x x :y y :width bar-w :height bar-h
-                      :rx 3 :fill "#43a047"}]
-              [:text {:x cx :y (- y 4) :text-anchor "middle"
+                      :rx 3 :fill "#f5aa46"}
+               [:title (str (.toFixed (:kwh entry) 1) " kWh — "
+                            (get month-labels (:month entry) "?") " " (:year entry))]]
+              [:text {:x cx :y (- y 3) :text-anchor "middle"
                       :font-size "9" :fill "#333" :font-weight "600"}
-               (str (.toFixed (:kwh entry) 0))]
+               (str (.toFixed (:kwh entry) 1))]
               [:text {:x cx :y label-y :text-anchor "middle"
                       :font-size "9" :fill "#888"}
                (get month-labels (:month entry) "?")]])))])))
@@ -176,6 +179,10 @@
                              :radius-km (:network/radius-km network)})]
                (reset! circle c)
                (.fitBounds gm (.getBounds c))
+               ;; Click on circle → navigate to network detail
+               (.addListener c "click"
+                 (fn [_]
+                   (rfee/push-state :page/network-detail {:id (:network/id network)})))
                ;; Markers producteurs (bleu)
                (let [blue-pin "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"]
                  (doseq [p producers]

@@ -837,7 +837,7 @@
                                 (if (= type :adhesion)
                                   (rf/dispatch [:auth/sign-adhesion])
                                   (rf/dispatch [:consumptions/submit-step4 consumption-id type])))}
-                   "A signer"]))])))
+                   "Ouvrir pour signature"]))])))
        ;; DocuSeal signing watchers
        [docuseal-signing-watcher]
        [contract-signing-watcher consumption-id]

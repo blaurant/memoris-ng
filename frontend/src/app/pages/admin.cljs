@@ -1017,7 +1017,7 @@
          [:td [:span {:class (consumption-status-class (:consumption/lifecycle c))}
                (consumption-lifecycle-label (:consumption/lifecycle c))]]
          [:td (or (:consumption/linky-reference c) "—")]
-         [:td {:style {:display "flex" :gap "0.3rem"}}
+         [:td
           (when (= "pending" (:consumption/lifecycle c))
             [:button.btn.btn--green.btn--small
              {:on-click (fn [e]
@@ -1221,7 +1221,7 @@
          [:td (get energy-type-labels (:production/energy-type p) "-")]
          [:td (or (:production/linky-meter p) "-")]
          [:td (:production/lifecycle p)]
-         [:td {:style {:display "flex" :gap "0.3rem"}}
+         [:td
           (when (= "pending" (:production/lifecycle p))
             [:button.btn.btn--green.btn--small
              {:on-click (fn [e]

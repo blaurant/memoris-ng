@@ -11,6 +11,7 @@
             [app.pages.forgot-password :as forgot-password]
             [app.pages.home :as home]
             [app.pages.how-it-works :as how-it-works]
+            [app.pages.legal :as legal]
             [app.pages.network-detail :as network-detail]
             [app.pages.news :as news]
             [app.pages.login :as login]
@@ -160,6 +161,7 @@
       :page/testimonials    [testimonials/testimonials-page]
       :page/contact         [contact/contact-page]
       :page/news            [news/news-page]
+      :page/legal           [legal/legal-page]
       [home/home-page])))
 
 (defn main-panel []
@@ -171,4 +173,5 @@
    [:footer.footer
     [:span "\u00a9 2026 elink-co \u2014 \u00c9nergie locale partag\u00e9e"]
     [:a.footer__link {:href (rfee/href :page/about)} "Qui sommes-nous"]
-    [:a.footer__link {:href (rfee/href :page/faq)} "FAQ"]]])
+    [:a.footer__link {:href (rfee/href :page/faq)} "FAQ"]
+    [:a.footer__link {:href (rfee/href :page/legal)} "Mentions l\u00e9gales"]]])

@@ -23,7 +23,8 @@
     ["/agriculteurs"             {:name :page/for-farmers}]
     ["/temoignages"              {:name :page/testimonials}]
     ["/actualites"               {:name :page/news}]
-    ["/contact"                  {:name :page/contact}]]))
+    ["/contact"                  {:name :page/contact}]
+    ["/mentions-legales"         {:name :page/legal}]]))
 
 (defn init!
   "Starts reitit HTML5 history listener. Dispatches :router/navigated on each change."
