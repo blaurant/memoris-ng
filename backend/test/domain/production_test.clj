@@ -110,9 +110,9 @@
   (testing "transitions from :installation-info to :payment-info"
     (let [p  (-> (production/create-new-production (id/build-id) user-id)
                  (production/register-producer-information "12 rue de la Paix" network-id))
-          p' (production/register-installation-info p "PRM-123456" 9.0 :solar "LINKY-789")]
+          p' (production/register-installation-info p "12345678901234" 9.0 :solar "LINKY-789")]
       (is (= :payment-info (:production/lifecycle p')))
-      (is (= "PRM-123456" (:production/pdl-prm p')))
+      (is (= "12345678901234" (:production/pdl-prm p')))
       (is (= 9.0 (:production/installed-power p')))
       (is (= :solar (:production/energy-type p')))
       (is (= "LINKY-789" (:production/linky-meter p')))))
@@ -128,15 +128,15 @@
   (testing "transitions from :payment-info to :contract-signature"
     (let [p  (-> (production/create-new-production (id/build-id) user-id)
                  (production/register-producer-information "addr" network-id)
-                 (production/register-installation-info "PRM-123" 9.0 :solar "LK-1"))
-          p' (production/submit-payment-info p "FR76 3000 6000 0112 3456 7890 189")]
+                 (production/register-installation-info "12345678901234" 9.0 :solar "LK-1"))
+          p' (production/submit-payment-info p "Jean Dupont" "FR7630006000011234567890189" nil "20 avenue de Lyon")]
       (is (= :contract-signature (:production/lifecycle p')))
-      (is (= "FR76 3000 6000 0112 3456 7890 189" (:production/iban p')))))
+      (is (= "FR7630006000011234567890189" (:production/iban p')))))
 
   (testing "throws when not in :payment-info state"
     (let [p (production/create-new-production (id/build-id) user-id)]
       (is (thrown? clojure.lang.ExceptionInfo
-                  (production/submit-payment-info p "FR76 ..."))))))
+                  (production/submit-payment-info p "Test" "FR76..." nil "addr"))))))
 
 ;; ── sign-contract ──────────────────────────────────────────────────────────
 
@@ -144,16 +144,16 @@
   (testing "signing transitions to :pending when adhesion is signed"
     (let [p  (-> (production/create-new-production (id/build-id) user-id)
                  (production/register-producer-information "addr" network-id)
-                 (production/register-installation-info "PRM-123" 9.0 :solar "LK-1")
-                 (production/submit-payment-info "FR76 3000 6000 0112 3456 7890 189"))
+                 (production/register-installation-info "12345678901234" 9.0 :solar "LK-1")
+                 (production/submit-payment-info "Jean Dupont" "FR7630006000011234567890189" nil "20 avenue de Lyon"))
           p' (production/sign-contract p true)]
       (is (= :pending (:production/lifecycle p')))))
 
   (testing "throws when adhesion not signed"
     (let [p (-> (production/create-new-production (id/build-id) user-id)
                 (production/register-producer-information "addr" network-id)
-                (production/register-installation-info "PRM-123" 9.0 :solar "LK-1")
-                (production/submit-payment-info "FR76 3000 6000 0112 3456 7890 189"))]
+                (production/register-installation-info "12345678901234" 9.0 :solar "LK-1")
+                (production/submit-payment-info "Jean Dupont" "FR7630006000011234567890189" nil "20 avenue de Lyon"))]
       (is (thrown? clojure.lang.ExceptionInfo
                    (production/sign-contract p false)))))
 
@@ -171,20 +171,20 @@
         ;; Create two active productions for network A
         prod-a1    (-> (production/create-new-production (id/build-id) user-id)
                        (production/register-producer-information "addr A1" net-id-a)
-                       (production/register-installation-info "PRM-A1" 3.0 :solar "LK-A1")
-                       (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 001")
-                       (production/sign-contract "2026-01-01T00:00:00Z"))
+                       (production/register-installation-info "11111111111111" 3.0 :solar "LK-A1")
+                       (production/submit-payment-info "Jean Dupont" "FR7630006000011234567890189" nil "addr A1")
+                       (production/sign-contract true))
         prod-a2    (-> (production/create-new-production (id/build-id) user-id)
                        (production/register-producer-information "addr A2" net-id-a)
-                       (production/register-installation-info "PRM-A2" 5.0 :wind "LK-A2")
-                       (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 002")
-                       (production/sign-contract "2026-01-02T00:00:00Z"))
+                       (production/register-installation-info "22222222222222" 5.0 :wind "LK-A2")
+                       (production/submit-payment-info "Jean Dupont" "FR7630006000011234567890189" nil "addr A2")
+                       (production/sign-contract true))
         ;; One production for network B
         prod-b1    (-> (production/create-new-production (id/build-id) user-id)
                        (production/register-producer-information "addr B1" net-id-b)
-                       (production/register-installation-info "PRM-B1" 2.0 :hydro "LK-B1")
-                       (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 003")
-                       (production/sign-contract "2026-01-03T00:00:00Z"))]
+                       (production/register-installation-info "33333333333333" 2.0 :hydro "LK-B1")
+                       (production/submit-payment-info "Jean Dupont" "FR7630006000011234567890189" nil "addr B1")
+                       (production/sign-contract true))]
     ;; Save all productions
     (production/save! repo prod-a1)
     (production/save! repo prod-a2)

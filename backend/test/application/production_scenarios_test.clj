@@ -63,7 +63,7 @@
   (WHEN "the user submits step 1 (installation info)" [ctx]
     (let [p' (scenarios/register-installation-info
                (:repo ctx) (:user-id ctx) (:production/id (:production ctx))
-               "PRM-123456" 9.0 :solar "LINKY-789")]
+               "12345678901234" 9.0 :solar "LINKY-789")]
       (assoc ctx :production p')))
   (THEN "the production is in :payment-info state" [ctx]
     (assert (= :payment-info (:production/lifecycle (:production ctx)))))
@@ -71,7 +71,7 @@
     (assoc ctx :production
            (scenarios/submit-payment-info
              (:repo ctx) (:user-id ctx) (:production/id (:production ctx))
-             "FR76 3000 6000 0112 3456 7890 189")))
+             "Jean Dupont" "FR7630006000011234567890189" nil "20 avenue de Lyon")))
   (THEN "the production is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:production/lifecycle (:production ctx)))))
   (WHEN "the user signs the adhesion contract" [ctx]

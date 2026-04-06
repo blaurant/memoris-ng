@@ -26,9 +26,9 @@
   (let [user-id (id/build-id)]
     (-> (production/create-new-production (id/build-id) user-id)
         (production/register-producer-information address network-id)
-        (production/register-installation-info (str "PRM-" (rand-int 999999)) installed-power energy-type (str "LK-" (rand-int 999999)))
-        (production/submit-payment-info "FR76 0000 0000 0000 0000 0000 001")
-        (production/sign-contract "2026-01-01T00:00:00Z")
+        (production/register-installation-info (format "%014d" (rand-int 99999999)) installed-power energy-type (str "LK-" (rand-int 999999)))
+        (production/submit-payment-info "Jean Dupont" "FR7630006000011234567890189" nil "10 rue de Paris")
+        (production/sign-contract true)
         ;; sign-contract puts it in :pending, we need :active
         (assoc :production/lifecycle :active))))
 

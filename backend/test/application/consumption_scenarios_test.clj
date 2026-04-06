@@ -1,12 +1,26 @@
 (ns application.consumption-scenarios-test
   (:require [bdd.test-gwt :refer [defscenario GIVEN WHEN THEN]]
             [application.consumption-scenarios :as scenarios]
+            [domain.alert-banner :as alert]
+            [domain.email-sender :as email-sender]
             [domain.id :as id]
             [domain.user :as user]
             [infrastructure.in-memory-repo.mem-consumption-repo :as mem-repo]
             [infrastructure.in-memory-repo.mem-document-signer :as mem-signer]
             [infrastructure.in-memory-repo.mem-network-repo :as mem-net-repo]
             [infrastructure.in-memory-repo.mem-user-repo :as mem-user-repo]))
+
+(defn- noop-alert-repo []
+  (reify alert/AlertBannerRepo
+    (find-current [_] (alert/default-alert-banner))
+    (save! [_ _] nil)))
+
+(defn- noop-email-sender []
+  (reify email-sender/EmailSender
+    (send-verification-email! [_ _ _])
+    (send-password-reset-email! [_ _ _])
+    (send-welcome-email! [_ _ _])
+    (send-admin-notification! [_ _ _ _])))
 
 ;; ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,7 +79,7 @@
     (assoc ctx :consumption
            (scenarios/complete-billing-address
              (:repo ctx) (:user-id ctx) (:consumption/id (:consumption ctx))
-             "20 avenue de Lyon" "FR7630006000011234567890189" nil)))
+             "20 avenue de Lyon" "Jean Dupont" "FR7630006000011234567890189" nil)))
   (THEN "the consumption is in :contract-signature state" [ctx]
     (assert (= :contract-signature (:consumption/lifecycle (:consumption ctx)))))
 
@@ -75,7 +89,8 @@
       (scenarios/initiate-contract-signing
         (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :producer)
       (scenarios/check-contract-status
-        (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :producer)
+        (:repo ctx) (:user-repo ctx) signer (noop-alert-repo) (noop-email-sender)
+        (:user-id ctx) cid :producer)
       ctx))
 
   (THEN "the consumption is still in :contract-signature state" [ctx]
@@ -88,7 +103,8 @@
       (scenarios/initiate-contract-signing
         (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :sepa)
       (scenarios/check-contract-status
-        (:repo ctx) (:user-repo ctx) signer (:user-id ctx) cid :sepa)
+        (:repo ctx) (:user-repo ctx) signer (noop-alert-repo) (noop-email-sender)
+        (:user-id ctx) cid :sepa)
       ctx))
 
   (THEN "the consumption is in :pending state with both signatures" [ctx]

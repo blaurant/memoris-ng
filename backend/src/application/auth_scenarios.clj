@@ -140,6 +140,26 @@
             (mu/log ::password-reset :user-id (:user/id u'))
             u'))))
 
+(defn change-password
+      "Change password for a logged-in email user.
+      1. Verify current password
+      2. Validate new password policy
+      3. Hash and save"
+      [user-repo password-hasher user-id current-password new-password]
+      (let [u (user/find-by-id user-repo user-id)]
+        (when-not u
+          (throw (ex-info "User not found" {})))
+        (when-not (= :email (:user/provider u))
+          (throw (ex-info "Password change not available for OAuth accounts" {})))
+        (when-not (password-hasher/check-password password-hasher current-password (:user/password-hash u))
+          (throw (ex-info "Mot de passe actuel incorrect" {})))
+        (user/assert-valid-password new-password)
+        (let [hashed (password-hasher/hash-password password-hasher new-password)
+              u'     (assoc u :user/password-hash hashed)]
+          (user/save! user-repo u')
+          (mu/log ::password-changed :user-id user-id)
+          u')))
+
 (defn resend-verification-email
       "Resend the verification email to a user."
       [user-repo email-sender vt-repo email]

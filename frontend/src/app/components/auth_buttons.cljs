@@ -3,17 +3,21 @@
             [re-frame.core :as rf]))
 
 (defn sign-in-buttons
-  "Renders three OAuth sign-in buttons (Google, Apple, Facebook)."
-  []
+  "Renders three OAuth sign-in buttons (Google, Apple, Facebook).
+   Optional :disabled? key to block all buttons.
+   Optional :rgpd-checkbox to render above buttons."
+  [& [{:keys [disabled? rgpd-checkbox]}]]
   (let [loading? @(rf/subscribe [:auth/loading?])
         error    @(rf/subscribe [:auth/error])]
     [:div.auth-buttons
      (when error
        [:div.auth-error error])
+     (when rgpd-checkbox
+       rgpd-checkbox)
 
      [:button.auth-btn.auth-btn--google
       {:on-click #(oauth/google-sign-in!)
-       :disabled loading?}
+       :disabled (or loading? disabled?)}
       [:svg {:width "20" :height "20" :viewBox "0 0 24 24" :fill "none"}
        [:path {:d "M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                :fill "#4285F4"}]

@@ -1,5 +1,6 @@
 (ns app.pages.profile
   (:require [app.components.legal-person-modal :as lpm]
+            [app.components.password-input :refer [password-input]]
             [re-frame.core :as rf]
             [reagent.core :as r]))
 
@@ -199,6 +200,68 @@
        (when @show?
          [lpm/new-legal-person-modal #(reset! show? false)])])))
 
+;; ── Change password ─────────────────────────────────────────────────────────
+
+(defn- password-valid? [pw]
+  (and (>= (count pw) 8)
+       (re-find #"[^a-zA-Z0-9]" pw)))
+
+(defn- change-password-section []
+  (let [current  (r/atom "")
+        new-pw   (r/atom "")
+        confirm  (r/atom "")
+        status   (r/atom nil)
+        error    (r/atom nil)]
+    (fn []
+      (let [pw       @new-pw
+            pw-ok?   (password-valid? pw)
+            match?   (= pw @confirm)
+            valid?   (and (seq @current) pw-ok? (seq @confirm) match?)]
+        [:div {:style {:margin-top "2.5rem"}}
+         [:h3 {:style {:margin-bottom "1rem" :font-size "1.1rem"}} "Changer le mot de passe"]
+         [:div {:style {:display "flex" :flex-direction "column" :gap "0.75rem" :max-width "350px"}}
+          [password-input
+           {:placeholder "Mot de passe actuel"
+            :value       @current
+            :on-change   #(do (reset! current %) (reset! status nil) (reset! error nil))}]
+          [password-input
+           {:placeholder "Nouveau mot de passe"
+            :value       pw
+            :on-change   #(do (reset! new-pw %) (reset! status nil) (reset! error nil))}]
+          (when (and (seq pw) (not pw-ok?))
+            [:div {:style {:font-size "0.8rem" :color "#d32f2f" :margin-top "-0.25rem"}}
+             "8 caract\u00e8res minimum dont 1 caract\u00e8re sp\u00e9cial"])
+          [password-input
+           {:placeholder "Confirmer le nouveau mot de passe"
+            :value       @confirm
+            :on-change   #(do (reset! confirm %) (reset! status nil) (reset! error nil))}]
+          (when (and (seq pw) (seq @confirm) (not match?))
+            [:div {:style {:font-size "0.8rem" :color "#d32f2f" :margin-top "-0.25rem"}}
+             "Les mots de passe ne correspondent pas"])
+          [:div {:style {:display "flex" :align-items "center" :gap "1rem" :margin-top "0.25rem"}}
+           [:button.btn.btn--green.btn--small
+            {:disabled (not valid?)
+             :on-click (fn []
+                         (reset! status :saving)
+                         (reset! error nil)
+                         (rf/dispatch
+                           [:auth/change-password @current @new-pw
+                            (fn []
+                              (reset! status :saved)
+                              (reset! current "")
+                              (reset! new-pw "")
+                              (reset! confirm ""))
+                            (fn [err-msg]
+                              (reset! status nil)
+                              (reset! error err-msg))]))}
+            (if (= @status :saving) "Enregistrement..." "Modifier")]
+           (when (= @status :saved)
+             [:span {:style {:color "var(--color-green)" :font-size "0.9rem"}}
+              "Mot de passe modifi\u00e9 \u2713"])]
+          (when @error
+            [:div {:style {:font-size "0.85rem" :color "#d32f2f"}}
+             @error])]]))))
+
 ;; ── Main page ───────────────────────────────────────────────────────────────
 
 (defn profile-page []
@@ -214,6 +277,10 @@
          [:div {:style {:max-width "700px" :margin-top "1.5rem"}}
           ;; Natural person
           [natural-person-section natural-form natural-saved]
+
+          ;; Change password (email users only)
+          (when (= "email" (:provider user))
+            [change-password-section])
 
           ;; Legal persons
           [:div {:style {:margin-top "2.5rem"}}

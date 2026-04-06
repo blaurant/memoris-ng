@@ -345,6 +345,30 @@
 (rf/reg-event-db :auth/refresh-user-err
   (fn [db _] db))
 
+;; ── Change password ──────────────────────────────────────────────────────────
+
+(rf/reg-event-fx :auth/change-password
+  (fn [{:keys [db]} [_ current-password new-password on-success on-failure]]
+    {:http-xhrio {:method          :put
+                  :uri             (str config/API_BASE "/api/v1/auth/change-password")
+                  :headers         {"Authorization" (str "Bearer " (:auth/token db))}
+                  :params          {:current-password current-password
+                                    :new-password     new-password}
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:auth/change-password-ok on-success]
+                  :on-failure      [:auth/change-password-err on-failure]}}))
+
+(rf/reg-event-fx :auth/change-password-ok
+  (fn [_ [_ on-success _resp]]
+    (when on-success (on-success))
+    {}))
+
+(rf/reg-event-fx :auth/change-password-err
+  (fn [_ [_ on-failure resp]]
+    (when on-failure (on-failure (get-in resp [:response :error] "Erreur lors du changement de mot de passe.")))
+    {}))
+
 ;; ── Restore session ──────────────────────────────────────────────────────────
 
 (rf/reg-event-db :auth/restore-session

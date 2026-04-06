@@ -178,6 +178,18 @@
       (catch clojure.lang.ExceptionInfo e
         {:status 400 :body {:error (.getMessage e)}}))))
 
+(defn- change-password-handler
+  "PUT /api/v1/auth/change-password — change password for logged-in email user."
+  [user-repo password-hasher]
+  (fn [request]
+    (try
+      (let [user-id          (id/build-id (get-in request [:identity :sub]))
+            {:keys [current-password new-password]} (:body-params request)]
+        (auth/change-password user-repo password-hasher user-id current-password new-password)
+        {:status 200 :body {:message "Mot de passe modifié avec succès."}})
+      (catch clojure.lang.ExceptionInfo e
+        {:status 400 :body {:error (.getMessage e)}}))))
+
 (defn routes
   "Returns Reitit route vectors for auth endpoints."
   [user-repo token-verifier password-hasher email-sender vt-repo jwt-secret]
@@ -205,4 +217,7 @@
    ["/api/v1/auth/profile/legal/:index"
     {:put        (update-legal-person-handler user-repo)
      :delete     (remove-legal-person-handler user-repo)
+     :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]
+   ["/api/v1/auth/change-password"
+    {:put        (change-password-handler user-repo password-hasher)
      :middleware [[auth-mw/wrap-jwt-auth jwt-secret]]}]])
